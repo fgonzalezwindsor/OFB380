@@ -208,12 +208,12 @@ public class MInvoiceTax extends X_C_InvoiceTax
 					amt = Env.ZERO;
 				boolean isSOTrx = "Y".equals(rs.getString(3));
 				
-				auxAmt = auxAmt.add(amt);//faaguilar OFB
+				//auxAmt = auxAmt.add(amt);//faaguilar OFB
 				//
 				// phib [ 1702807 ]: manual tax should never be amended
 				// on line level taxes
 				if (!documentLevel && amt.signum() != 0 && !isSOTrx)	//	manually entered
-					;
+					auxAmt = auxAmt.add(amt);//faaguilar OFB;
 				else if (documentLevel || baseAmt.signum() == 0)
 					amt = Env.ZERO;
 				else	// calculate line tax
@@ -231,8 +231,6 @@ public class MInvoiceTax extends X_C_InvoiceTax
 			DB.close(rs, pstmt);
 			rs = null; pstmt = null;
 		}
-		
-		
 		
 		//	Calculate Tax
 		if (documentLevel || taxAmt.signum() == 0)

@@ -29,7 +29,7 @@ import org.compiere.process.SvrProcess;
  *	@author Jorg Janke
  *	@version $Id: CopyFromOrder.java,v 1.2 2006/07/30 00:51:02 jjanke Exp $
  */
-public class CopyFromOrder extends SvrProcess
+public class CopyFromOrderWindsor extends SvrProcess
 {
 	/**	The Order				*/
 	private int		p_C_Order_ID = 0;
