@@ -23,11 +23,13 @@ import org.compiere.model.MBPartner;
 import org.compiere.model.MClient;
 import org.compiere.model.MInOut;
 import org.compiere.model.MInOutLine;
+import org.compiere.model.MOrder;
 import org.compiere.model.MPayment;
 import org.compiere.model.ModelValidationEngine;
 import org.compiere.model.ModelValidator;
 import org.compiere.model.PO;
 import org.compiere.util.CLogger;
+import org.compiere.util.DB;
 import org.compiere.util.Env;
 
 /**
@@ -71,7 +73,6 @@ public class ModBaskakowUpdateSO_Credit implements ModelValidator
 		//	Tables to be monitored	
 		engine.addModelChange(MBPartner.Table_Name, this);
 		//	Documents to be monitored
-		//engine.addDocValidate(MOrder.Table_Name, this);
 		engine.addDocValidate(MInOut.Table_Name, this);
 		engine.addDocValidate(MPayment.Table_Name, this);
 		
@@ -85,8 +86,8 @@ public class ModBaskakowUpdateSO_Credit implements ModelValidator
 	{
 		log.info(po.get_TableName() + " Type: "+type);
 		if(type == TYPE_BEFORE_CHANGE && po.get_Table_ID() == MBPartner.Table_ID 
-				&& (po.is_ValueChanged("TotalOpenBalance") || po.is_ValueChanged("SO_CreditUsedOFB") 
-						|| po.is_ValueChanged("SO_CreditUsed"))) 
+				&& (po.is_ValueChanged("TotalOpenBalanceOFB") || po.is_ValueChanged("SO_CreditUsedOFB")
+						|| po.is_ValueChanged("SO_CreditLimit"))) 
 		{
 			MBPartner bp = (MBPartner)po;
 			BigDecimal usedOFB = Env.ZERO;
@@ -96,59 +97,59 @@ public class ModBaskakowUpdateSO_Credit implements ModelValidator
 				usedOFB = (BigDecimal)bp.get_Value("SO_CreditUsedOFB");
 			BigDecimal amtOpen = bp.getSO_CreditLimit().subtract(usedOFB);
 			//bp.setTotalOpenBalance(amtOpen);			
-			bp.setTotalOpenBalance(usedOFB);
-			bp.setSO_CreditUsed(usedOFB);
-			if(amtOpen.compareTo(Env.ZERO) > 0)
+			bp.setTotalOpenBalance(Env.ZERO);
+			bp.setSO_CreditUsed(Env.ZERO);
+			bp.set_CustomColumn("TotalOpenBalanceOFB",amtOpen);
+			/*if(amtOpen.compareTo(Env.ZERO) > 0)
 				bp.setSOCreditStatus("O");
 			else
-				bp.setSOCreditStatus("H");
+				bp.setSOCreditStatus("H");*/
 		}
 		return null;
 	}	//	modelChange
 
 	public String docValidate (PO po, int timing)
-	{
-		log.info(po.get_TableName() + " Timing: "+timing);
-		
+	{	
+		log.info(po.get_TableName() + " Timing: "+timing);				
+		//model que actualiza los saldos
 		if(timing == TIMING_AFTER_COMPLETE && po.get_Table_ID() == MInOut.Table_ID) 
 		{	
 			MInOut ship = (MInOut)po;
-			//if(ship.getDocStatus().compareTo("IP") == 0)
-			//{
-				MBPartner bp = new MBPartner(po.getCtx(), ship.getC_BPartner_ID(), po.get_TrxName());
+			MBPartner bp = new MBPartner(po.getCtx(), ship.getC_BPartner_ID(), po.get_TrxName());
 				
-				//monto lo sacaremos linea x linea
-				BigDecimal invAmt = Env.ZERO;			
-				MInOutLine[] fromLines = ship.getLines(false);
-				for (int i = 0; i < fromLines.length; i++)
+			//monto lo sacaremos linea x linea
+			BigDecimal invAmt = Env.ZERO;			
+			MInOutLine[] fromLines = ship.getLines(false);
+			for (int i = 0; i < fromLines.length; i++)
+			{
+				MInOutLine sLine = fromLines[i];
+				if(sLine.getC_OrderLine_ID() > 0)
 				{
-					MInOutLine sLine = fromLines[i];
-					if(sLine.getC_OrderLine_ID() > 0)
-					{
-						BigDecimal amtTax = Env.ZERO;
-						BigDecimal amtTemp = Env.ZERO;
-						amtTemp = sLine.getQtyEntered().multiply(sLine.getC_OrderLine().getPriceEntered());
-						amtTax = amtTemp.multiply(sLine.getC_OrderLine().getC_Tax().getRate().divide(Env.ONEHUNDRED));
-						amtTemp = amtTemp.add(amtTax);
-						amtTemp = amtTemp.setScale(sLine.getC_OrderLine().getC_Order().getC_Currency().getStdPrecision(), BigDecimal.ROUND_HALF_UP);
-						invAmt = invAmt.add(amtTemp);					
-					}
+					BigDecimal amtTax = Env.ZERO;
+					BigDecimal amtTemp = Env.ZERO;
+					amtTemp = sLine.getQtyEntered().multiply(sLine.getC_OrderLine().getPriceEntered());
+					amtTax = amtTemp.multiply(sLine.getC_OrderLine().getC_Tax().getRate().divide(Env.ONEHUNDRED));
+					amtTemp = amtTemp.add(amtTax);
+					amtTemp = amtTemp.setScale(sLine.getC_OrderLine().getC_Order().getC_Currency().getStdPrecision(), BigDecimal.ROUND_HALF_UP);
+					invAmt = invAmt.add(amtTemp);					
 				}
-				
-				if(invAmt == null)
-					invAmt = Env.ZERO;
-				BigDecimal newCreditAmt = ship.getC_BPartner().getSO_CreditUsed();
-				if (newCreditAmt == null)
-					newCreditAmt = Env.ZERO;
-				if (ship.isSOTrx())			
-					newCreditAmt = newCreditAmt.add(invAmt);
-				else
-					newCreditAmt = newCreditAmt.subtract(invAmt);
-				bp.set_CustomColumn("SO_CreditUsedOFB", newCreditAmt);
-				bp.save();
-			//}
+			}			
+			if(invAmt == null)
+				invAmt = Env.ZERO;
+			BigDecimal usedOFB = (BigDecimal)bp.get_Value("SO_CreditUsedOFB");				
+			if(usedOFB == null)
+				usedOFB = Env.ZERO;
+			if (ship.isSOTrx())			
+				usedOFB = usedOFB.add(invAmt);
+			else
+				usedOFB = usedOFB.subtract(invAmt);
+			bp.set_CustomColumn("SO_CreditUsedOFB", usedOFB);
+			bp.set_CustomColumn("TotalOpenBalanceOFB", bp.getSO_CreditLimit().subtract(usedOFB));
+			bp.setTotalOpenBalance(Env.ZERO);
+			bp.setSO_CreditUsed(Env.ZERO);
+			bp.save();
 		}
-		if(timing == TIMING_AFTER_VOID && po.get_Table_ID() == MInOut.Table_ID) 
+		if(timing == TIMING_BEFORE_VOID && po.get_Table_ID() == MInOut.Table_ID) 
 		{	
 			MInOut ship = (MInOut)po;
 			MBPartner bp = new MBPartner(po.getCtx(), ship.getC_BPartner_ID(), po.get_TrxName());
@@ -172,15 +173,17 @@ public class ModBaskakowUpdateSO_Credit implements ModelValidator
 			}
 			if(invAmt == null)
 				invAmt = Env.ZERO;
-			BigDecimal newCreditAmt = ship.getC_BPartner().getSO_CreditUsed();
-			if (newCreditAmt == null)
-				newCreditAmt = Env.ZERO;
+			BigDecimal usedOFB = (BigDecimal)bp.get_Value("SO_CreditUsedOFB");				
+			if(usedOFB == null)
+				usedOFB = Env.ZERO;
 			if (ship.isSOTrx())			
-				newCreditAmt = newCreditAmt.subtract(invAmt);
+				usedOFB = usedOFB.subtract(invAmt);
 			else
-				newCreditAmt = newCreditAmt.add(invAmt);
-			//bp.setSO_CreditUsed(newCreditAmt);
-			bp.set_CustomColumn("SO_CreditUsedOFB", newCreditAmt);
+				usedOFB = usedOFB.add(invAmt);
+			bp.set_CustomColumn("SO_CreditUsedOFB", usedOFB);
+			bp.set_CustomColumn("TotalOpenBalanceOFB", bp.getSO_CreditLimit().subtract(usedOFB));
+			bp.setTotalOpenBalance(Env.ZERO);
+			bp.setSO_CreditUsed(Env.ZERO);
 			bp.save();
 		}
 		if(timing == TIMING_AFTER_COMPLETE && po.get_Table_ID() == MPayment.Table_ID) 
@@ -188,32 +191,36 @@ public class ModBaskakowUpdateSO_Credit implements ModelValidator
 			MPayment pay = (MPayment)po;
 			MBPartner bp = new MBPartner(po.getCtx(),pay.getC_BPartner_ID(), po.get_TrxName());
 			
-			BigDecimal newCreditAmt = pay.getC_BPartner().getSO_CreditUsed();
-			if (newCreditAmt == null)
-				newCreditAmt = Env.ZERO;
+			BigDecimal usedOFB = (BigDecimal)bp.get_Value("SO_CreditUsedOFB");				
+			if(usedOFB == null)
+				usedOFB = Env.ZERO;
 			if (pay.isReceipt())			
-				newCreditAmt = newCreditAmt.subtract(pay.getPayAmt());
+				usedOFB = usedOFB.subtract(pay.getPayAmt());
 			else
-				newCreditAmt = newCreditAmt.add(pay.getPayAmt());
-			//bp.setSO_CreditUsed(newCreditAmt);
-			bp.set_CustomColumn("SO_CreditUsedOFB", newCreditAmt);
-			bp.save();			
+				usedOFB = usedOFB.add(pay.getPayAmt());			
+			bp.set_CustomColumn("SO_CreditUsedOFB", usedOFB);
+			bp.set_CustomColumn("TotalOpenBalanceOFB", bp.getSO_CreditLimit().subtract(usedOFB));
+			bp.setTotalOpenBalance(Env.ZERO);
+			bp.setSO_CreditUsed(Env.ZERO);
+			bp.save();
 		}
-		if(timing == TIMING_AFTER_VOID && po.get_Table_ID() == MPayment.Table_ID) 
+		if(timing == TIMING_BEFORE_VOID && po.get_Table_ID() == MPayment.Table_ID) 
 		{
 			MPayment pay = (MPayment)po;
 			MBPartner bp = new MBPartner(po.getCtx(),pay.getC_BPartner_ID(), po.get_TrxName());
 			
-			BigDecimal newCreditAmt = pay.getC_BPartner().getSO_CreditUsed();
-			if (newCreditAmt == null)
-				newCreditAmt = Env.ZERO;
+			BigDecimal usedOFB = (BigDecimal)bp.get_Value("SO_CreditUsedOFB");				
+			if(usedOFB == null)
+				usedOFB = Env.ZERO;
 			if (pay.isReceipt())			
-				newCreditAmt = newCreditAmt.add(pay.getPayAmt());
+				usedOFB = usedOFB.add(pay.getPayAmt());
 			else
-				newCreditAmt = newCreditAmt.subtract(pay.getPayAmt());
-			//bp.setSO_CreditUsed(newCreditAmt);
-			bp.set_CustomColumn("SO_CreditUsedOFB", newCreditAmt);
-			bp.save();			
+				usedOFB = usedOFB.subtract(pay.getPayAmt());			
+			bp.set_CustomColumn("SO_CreditUsedOFB", usedOFB);
+			bp.set_CustomColumn("TotalOpenBalanceOFB", bp.getSO_CreditLimit().subtract(usedOFB));
+			bp.setTotalOpenBalance(Env.ZERO);
+			bp.setSO_CreditUsed(Env.ZERO);
+			bp.save();
 		}
 		
 		return null;

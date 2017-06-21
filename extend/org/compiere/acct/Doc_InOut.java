@@ -38,6 +38,7 @@ import org.compiere.model.ProductCost;
 import org.compiere.model.X_C_DocType;
 import org.compiere.util.DB;
 import org.compiere.util.Env;
+import org.ofb.model.OFBForward;
 
 /**
  *  Post Shipment/Receipt Documents.
@@ -557,9 +558,19 @@ public class Doc_InOut extends Doc
 				//faaguilar OFB costs para el recibo de provedor begin
 				if (line.getM_Product_ID() != 0)
 				{
+					Timestamp dateAcctForCost = getDateAcct();
+					if(OFBForward.UseDateOrderForCostRM())
+					{
+						if (C_OrderLine_ID > 0) 
+						{
+						    MOrderLine oLineForDate = new MOrderLine (getCtx(), C_OrderLine_ID, getTrxName());
+						    dateAcctForCost = oLineForDate.getC_Order().getDateAcct(); 
+						}
+					}
+					if(dateAcctForCost == null)
+						dateAcctForCost = getDateAcct();
 					
-					
-					costs = MConversionRate.convert(getCtx(), costs, C_Currency_ID, as.getC_Currency_ID(), getDateAcct(), 0, getAD_Client_ID(), line.getAD_Org_ID());
+					costs = MConversionRate.convert(getCtx(), costs, C_Currency_ID, as.getC_Currency_ID(), dateAcctForCost, 0, getAD_Client_ID(), line.getAD_Org_ID());
 						
 					if(precioZero)//faaguilar precio 0 correccion por si tomo el costo actual del producto.
 						costs=Env.ZERO; // aqui podrian reemplazar por Env.ONE

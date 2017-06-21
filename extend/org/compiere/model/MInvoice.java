@@ -3371,6 +3371,11 @@ public class MInvoice extends X_C_Invoice implements DocAction
 							+" Where C_Payment_ID IN (select C_Payment_ID from C_InvoiceLine where C_Invoice_ID="+getC_Invoice_ID()+")";
 							log.config("update cdc vdc");
 						    int	no = DB.executeUpdate(mysql,get_TrxName());
+				//actualizacion de facturas
+				String mysqlIn="Update C_Invoice set IsPaid = 'N' Where C_Invoice_ID IN (select C_Invoicefac_ID from C_InvoiceLine where C_Invoice_ID="+getC_Invoice_ID()+")";
+							log.config("update cdc vdc");
+						    DB.executeUpdate(mysqlIn,get_TrxName());
+			
 			
 		}
 		else if(getDocBase().equals("FAT") && isSOTrx ())

@@ -115,13 +115,12 @@ public class ModAndesCD3 implements ModelValidator
 				//se crea summary
 				X_CD_Summary sum = new X_CD_Summary(po.getCtx(),0, po.get_TrxName());
 				sum.setCD_Header_ID(line.getCD_Header_ID());
-				//sum.save();			
 				sum.setTotalIncome(amtIN);
 				sum.setTotalExpenses(amtEG);
 				sum.save();
 			}
 		}		
-		if((type == TYPE_BEFORE_NEW || type == TYPE_BEFORE_CHANGE) && po.get_Table_ID() == X_CD_Header.Table_ID)  
+		if((type == TYPE_AFTER_NEW || type == TYPE_AFTER_CHANGE) && po.get_Table_ID() == X_CD_Header.Table_ID)  
 		{
 			X_CD_Header cab = (X_CD_Header) po;
 			MBankAccount bAccount = new MBankAccount(po.getCtx(), cab.getC_BankAccount_ID(), po.get_TrxName());
@@ -150,46 +149,30 @@ public class ModAndesCD3 implements ModelValidator
 				}
 				else
 				{
+					log.config("monto total antes de sql: "+bBalance);
 					String sql = "SELECT SUM(AvailableBalance) FROM C_BankAccountBalance " +
 							"WHERE C_BankAccountBalance_ID IN " +
 							" (SELECT MIN(C_BankAccountBalance_ID) " +
 							"   FROM C_BankAccountBalance " +
 							"   WHERE C_BankAccount_ID IN " +
 							"     (SELECT C_BankAccount_ID FROM C_BankAccount " +
-							"       WHERE C_Bank_ID = "+bAccount.getC_Bank_ID()+
+							"       WHERE IsActive = 'Y' AND C_Bank_ID = "+bAccount.getC_Bank_ID()+
 							"       AND (Type IS NULL OR Type IN ('H')) " +
-							"		OR C_BankAccount_ID = "+bAccount.get_ID()+") AND DateDoc = ? AND IsActive = 'Y' " +
-							"	GROUP BY C_BankAccount_ID) ";
+							"		OR C_BankAccount_ID = "+bAccount.get_ID()+") AND DateDoc IS NOT NULL AND DateDoc = ? AND IsActive = 'Y' " +
+							"	GROUP BY C_BankAccount_ID) ";					
 					bBalance = DB.getSQLValueBD(po.get_TrxName(), sql, cab.getDateTrx());
+					log.config("SQL SUmatoria de saldos: "+sql);
+					log.config("parametros: banco="+bAccount.getC_Bank_ID()+". Account_ID="+bAccount.get_ID()+". DateDoc="+cab.getDateTrx());
+					log.config("monto total: "+bBalance);
 				}
-				/*if(bBalance != null && (cab.getBeginningBalance() == null || 
-						cab.getBeginningBalance().compareTo(Env.ZERO) == 0))*/
+				
 				if(bBalance != null)
-					cab.setBeginningBalance(bBalance);
-			}
-			/*else if (bAccount.get_ValueAsBoolean("IsCollector"))
-			{
-				BigDecimal bBalance = null;
-				if(cab.get_ValueAsInt("C_BankAccountBalance_ID") > 0)
-				{	
-					X_C_BankAccountBalance balance = new X_C_BankAccountBalance(po.getCtx(), cab.get_ValueAsInt("C_BankAccountBalance_ID"), po.get_TrxName()) ;
-					bBalance = balance.getAvailableBalance();
-				}
-				else
 				{
-					String sql = "SELECT SUM(AvailableBalance) FROM C_BankAccountBalance " +
-							" WHERE C_BankAccountBalance_ID IN ( " +
-							" SELECT MIN(C_BankAccountBalance_ID) " +
-							" FROM C_BankAccountBalance " +
-							" WHERE IsActive = 'Y' AND C_BankAccount_ID IN ("+bAccount.get_ID()+") " +
-							" AND DateDoc = ? GROUP BY C_BankAccount_ID)";
-					 bBalance = DB.getSQLValueBD(po.get_TrxName(), sql, cab.getDateTrx());					
+					//cab.setBeginningBalance(bBalance);
+					//la actualizacion sera por DB para evitar error de requery
+					DB.executeUpdate("UPDATE CD_Header SET BeginningBalance="+bBalance+" WHERE CD_Header_ID = "+cab.get_ID(), po.get_TrxName());
 				}
-				/*if(bBalance != null && (cab.getBeginningBalance() == null || 
-						cab.getBeginningBalance().compareTo(Env.ZERO) == 0))*/
-				/*if(bBalance != null)
-					cab.setBeginningBalance(bBalance);
-			}*/
+			}
 			else
 			{
 				//return "Error: Cuenta debe ser madre o recaudadora";
@@ -210,10 +193,12 @@ public class ModAndesCD3 implements ModelValidator
 							" AND DateDoc = ? GROUP BY C_BankAccount_ID)";
 					 bBalance = DB.getSQLValueBD(po.get_TrxName(), sql, cab.getDateTrx());					
 				}
-				/*if(bBalance != null && (cab.getBeginningBalance() == null || 
-						cab.getBeginningBalance().compareTo(Env.ZERO) == 0))*/
 				if(bBalance != null)
-					cab.setBeginningBalance(bBalance);
+				{
+					//cab.setBeginningBalance(bBalance);
+					//la actualizacion sera por DB para evitar error de requery
+					DB.executeUpdate("UPDATE CD_Header SET BeginningBalance="+bBalance+" WHERE CD_Header_ID = "+cab.get_ID(), po.get_TrxName());
+				}
 			}
 		}
 		if((type == TYPE_AFTER_NEW || type == TYPE_AFTER_CHANGE) && po.get_Table_ID() == X_CD_Header.Table_ID)  
@@ -258,6 +243,28 @@ public class ModAndesCD3 implements ModelValidator
 				sum.save();
 			}
 		}
+		//ininoles ahora no se pueden modificar transferencias destino
+		if(type == TYPE_BEFORE_CHANGE && po.get_Table_ID() == X_CD_Transfer.Table_ID 
+				&& (po.is_ValueChanged("Amt") || po.is_ValueChanged("C_BankAccount_ID")))  
+		{
+			X_CD_Transfer trans = (X_CD_Transfer) po;
+			if(trans.getDescription() != null && trans.getDescription().contains("Generado desde cuenta")
+					|| trans.get_ValueAsInt("CD_TransferRef_ID") > 0)
+			{
+				X_CD_Transfer transFrom = new X_CD_Transfer(po.getCtx(), trans.get_ValueAsInt("CD_TransferRef_ID"), po.get_TrxName());
+				if(trans.getAmt().negate().compareTo(transFrom.getAmt()) != 0)
+					return "Error: No se puede modificar movimiento destino. Debe modificar movimiento origen";
+			}
+		}
+		if(type == TYPE_BEFORE_DELETE && po.get_Table_ID() == X_CD_Transfer.Table_ID)  
+		{
+			X_CD_Transfer trans = (X_CD_Transfer) po;
+			if(trans.getDescription() != null && trans.getDescription().contains("Generado desde cuenta")
+					|| trans.get_ValueAsInt("CD_TransferRef_ID") > 0)
+			{
+				return "Error: No se puede eliminar movimiento destino. Debe eliminar movimiento origen";
+			}
+		}
 		if((type == TYPE_AFTER_NEW || type == TYPE_AFTER_CHANGE)&& po.get_Table_ID() == X_CD_Transfer.Table_ID)  
 		{
 			X_CD_Transfer trans = (X_CD_Transfer) po;
@@ -265,19 +272,6 @@ public class ModAndesCD3 implements ModelValidator
 			{	
 				MBankAccount bAccountTo = new MBankAccount(po.getCtx(), trans.getC_BankAccount_ID(), po.get_TrxName());
 				int ID_DisponTo = 0;
-				//ininoles ahora toda cuenta genera un dispon.
-				/*if(bAccountTo.get_ValueAsBoolean("IsParent") || bAccountTo.get_ValueAsBoolean("IsCollector"))//cuenta madre o recolectora
-				{
-					//se busca dispon existente
-					ID_DisponTo = DB.getSQLValue(po.get_TrxName(), "SELECT MAX(CD_Header_ID) FROM CD_Header " +
-							" WHERE C_BankAccount_ID = "+bAccountTo.get_ID()+" AND DateTrx = ? ", trans.getCD_Header().getDateTrx());
-				}else // cuenta hija
-				{
-					ID_DisponTo = DB.getSQLValue(po.get_TrxName(), "SELECT MAX(CD_Header_ID) FROM CD_Header " +
-							" WHERE DateTrx = ? AND C_BankAccount_ID IN (" +
-							"	SELECT C_BankAccount_ID FROM C_BankAccount " +
-							"   WHERE C_Bank_ID = "+bAccountTo.getC_Bank_ID()+" AND IsParent = 'Y')", trans.getCD_Header().getDateTrx());
-				}*/
 				ID_DisponTo = DB.getSQLValue(po.get_TrxName(), "SELECT MAX(CD_Header_ID) FROM CD_Header " +
 						" WHERE C_BankAccount_ID = "+bAccountTo.get_ID()+" AND DateTrx = ? ", trans.getCD_Header().getDateTrx());
 				if(ID_DisponTo > 0)
@@ -357,8 +351,67 @@ public class ModAndesCD3 implements ModelValidator
 					sum.setCD_Header_ID(trans.getCD_Header_ID());
 					sum.setTotalTransfer(trans.getCD_Header().getBeginningBalance().add(amtIN).add(amtTrans));
 					sum.save();
-				}				
-			}			
+				}					
+			}					
+		}
+		if(type == TYPE_BEFORE_DELETE && po.get_Table_ID() == X_CD_Transfer.Table_ID)  
+		{
+			X_CD_Transfer trans = (X_CD_Transfer) po;
+			if(!(trans.getDescription() != null && trans.getDescription().contains("Generado desde cuenta")))
+			{	
+				//destino
+				int ID_HeadDes = DB.getSQLValue(po.get_TrxName(), "SELECT CD_Header_ID FROM CD_Transfer WHERE IsActive = 'Y' AND CD_TransferRef_ID ="+trans.get_ID());
+				DB.executeUpdate("DELETE FROM CD_Transfer WHERE CD_TransferRef_ID = "+trans.get_ID(), po.get_TrxName());
+				//actualizamos sumary y cabecera destino
+				if(ID_HeadDes > 0)
+				{
+					//actualizamos summary destino
+					X_CD_Header head = new X_CD_Header(po.getCtx(), ID_HeadDes, po.get_TrxName());
+					BigDecimal amtTransDest = DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(amt) FROM CD_Transfer " +
+							" WHERE CD_Header_ID = "+head.get_ID()+" AND IsActive = 'Y'");
+					if(amtTransDest == null)
+						amtTransDest = Env.ZERO;
+					BigDecimal amtINDest = DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(amt) FROM CD_Line " +
+							" WHERE CD_Header_ID = "+head.get_ID()+" AND Type = 'IN'");
+					if(amtINDest == null)
+						amtINDest = Env.ZERO;
+					int ID_SummaryDest = DB.getSQLValue(po.get_TrxName(), "SELECT MAX(CD_Summary_ID) " +
+							" FROM CD_Summary WHERE IsActive = 'Y' AND CD_Header_ID = "+head.get_ID());
+					if(ID_SummaryDest > 0)
+					{
+						X_CD_Summary sumDest = new X_CD_Summary(po.getCtx(),ID_SummaryDest, po.get_TrxName());
+						sumDest.setTotalTransfer(head.getBeginningBalance().add(amtINDest).add(amtTransDest));
+						sumDest.save();
+					}
+				}
+			}
+		}	
+		if(type == TYPE_AFTER_DELETE && po.get_Table_ID() == X_CD_Transfer.Table_ID)  
+		{
+			X_CD_Transfer trans = (X_CD_Transfer) po;
+			if(!(trans.getDescription() != null && trans.getDescription().contains("Generado desde cuenta")))
+			{
+				//origen
+				//actualizamos sumary y cabecera origen
+				//actualizamos summary origen
+				X_CD_Header headOrg= new X_CD_Header(po.getCtx(), trans.getCD_Header_ID(), po.get_TrxName());
+				BigDecimal amtTransOrg = DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(amt) FROM CD_Transfer " +
+						" WHERE CD_Header_ID = "+headOrg.get_ID()+" AND IsActive = 'Y'");
+				if(amtTransOrg == null)
+					amtTransOrg = Env.ZERO;
+				BigDecimal amtINOrg = DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(amt) FROM CD_Line " +
+						" WHERE CD_Header_ID = "+headOrg.get_ID()+" AND Type = 'IN'");
+				if(amtINOrg == null)
+					amtINOrg = Env.ZERO;
+				int ID_SummaryOrg = DB.getSQLValue(po.get_TrxName(), "SELECT MAX(CD_Summary_ID) " +
+						" FROM CD_Summary WHERE IsActive = 'Y' AND CD_Header_ID = "+headOrg.get_ID());
+				if(ID_SummaryOrg > 0)
+				{
+					X_CD_Summary sumOrg = new X_CD_Summary(po.getCtx(),ID_SummaryOrg, po.get_TrxName());
+					sumOrg.setTotalTransfer(headOrg.getBeginningBalance().add(amtINOrg).add(amtTransOrg));
+					sumOrg.save();
+				}
+			}
 		}
 		if((type == TYPE_AFTER_NEW || type == TYPE_AFTER_CHANGE)&& po.get_Table_ID() == X_CD_Transfer.Table_ID)  
 		{
@@ -434,9 +487,11 @@ public class ModAndesCD3 implements ModelValidator
 		if((type == TYPE_AFTER_NEW || type == TYPE_AFTER_CHANGE) && po.get_Table_ID()==X_CD_Summary.Table_ID)  
 		{
 			X_CD_Summary summ = (X_CD_Summary) po;
-			X_CD_Header dispon = new X_CD_Header(po.getCtx(), summ.getCD_Header_ID(), po.get_TrxName());
-			dispon.setEndingBalance(summ.getGrandTotal());
-			dispon.save();
+			//actualizacion será por DB
+			//X_CD_Header dispon = new X_CD_Header(po.getCtx(), summ.getCD_Header_ID(), po.get_TrxName());
+			/*dispon.setEndingBalance(summ.getGrandTotal());
+			dispon.save();*/
+			DB.executeUpdate("UPDATE CD_Header SET EndingBalance="+summ.getGrandTotal()+" WHERE CD_Header_ID = "+summ.getCD_Header_ID(), po.get_TrxName());
 		}
 		if((type == TYPE_AFTER_NEW || type == TYPE_AFTER_CHANGE)&& po.get_Table_ID() == X_CD_Line.Table_ID)  
 		{

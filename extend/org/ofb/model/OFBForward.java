@@ -593,6 +593,36 @@ public class OFBForward {
 		}
 		return flag.equals("Y");
 	}
+	public static boolean InvoiceTaxPA()
+	{
+		String validLine = "N";
+		try 
+		{
+			validLine = DB.getSQLValueString(null, "Select Value from AD_SysConfig where name='OFB_InvoiceTaxPA'");
+			if(validLine == null)	
+				validLine = "N";
+		}
+		catch (Exception e)
+		{
+			validLine = "N";
+		}
+		return validLine.equals("Y");
+	}	
+	public static boolean UseDateOrderForCostRM()
+	{
+		String GenerateXML = "N";
+		try 
+		{
+			GenerateXML = DB.getSQLValueString(null, "Select Value from AD_SysConfig where name='OFB_UseDateOrderForCostRM'");
+			if(GenerateXML == null)	
+				GenerateXML = "N";
+		}
+		catch (Exception e)
+		{
+			GenerateXML = "N";
+		}
+		return GenerateXML.equals("Y");
+	}
 
 }
 

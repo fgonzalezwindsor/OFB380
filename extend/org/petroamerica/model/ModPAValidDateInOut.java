@@ -21,6 +21,7 @@ import java.util.Calendar;
 
 import org.compiere.model.MClient;
 import org.compiere.model.MInOut;
+import org.compiere.model.MInvoice;
 import org.compiere.model.ModelValidationEngine;
 import org.compiere.model.ModelValidator;
 import org.compiere.model.PO;
@@ -65,7 +66,8 @@ public class ModPAValidDateInOut implements ModelValidator
 
 		//	Tables to be monitored
 		//engine.addModelChange(MInOut.Table_Name, this);
-		engine.addDocValidate(MInOut.Table_Name, this);		
+		engine.addDocValidate(MInOut.Table_Name, this);
+		engine.addDocValidate(MInvoice.Table_Name, this);		
 		
 	}	//	initialize
 
@@ -75,32 +77,7 @@ public class ModPAValidDateInOut implements ModelValidator
      */
 	public String modelChange (PO po, int type) throws Exception
 	{
-		log.info(po.get_TableName() + " Type: "+type);
-		if((type == TYPE_BEFORE_CHANGE || type == TYPE_BEFORE_NEW) && po.get_Table_ID() == MInOut.Table_ID) 
-		{	
-			MInOut inOut = (MInOut)po;
-			if(inOut.isSOTrx())
-			{	
-				Calendar cal = Calendar.getInstance();
-				cal.set(Calendar.HOUR, 0);
-				cal.set(Calendar.MINUTE, 0);
-				cal.set(Calendar.SECOND, 0);
-				cal.set(Calendar.MILLISECOND, 0);
-				cal.add(Calendar.DATE, -7);
-				Timestamp PreviousDate = new Timestamp(cal.getTime().getTime());
-				cal = Calendar.getInstance();
-				cal.set(Calendar.HOUR, 0);
-				cal.set(Calendar.MINUTE, 0);
-				cal.set(Calendar.SECOND, 0);
-				cal.set(Calendar.MILLISECOND, 0);
-				cal.add(Calendar.DATE, 1);
-				Timestamp NextDate = new Timestamp(cal.getTime().getTime());				
-				if(inOut.getMovementDate().compareTo(PreviousDate) < 0
-						|| inOut.getMovementDate().compareTo(NextDate) > 0)
-					return "Error: Fecha de despacho debe estar entre "+PreviousDate+
-					" y "+NextDate.toString();
-			}
-		}
+		log.info(po.get_TableName() + " Type: "+type);		
 		return null;
 	}	//	modelChange
 
@@ -112,25 +89,59 @@ public class ModPAValidDateInOut implements ModelValidator
 			MInOut inOut = (MInOut)po;
 			if(inOut.isSOTrx())
 			{	
-				Calendar cal = Calendar.getInstance();
-				cal.set(Calendar.HOUR, 0);
-				cal.set(Calendar.MINUTE, 0);
-				cal.set(Calendar.SECOND, 0);
-				cal.set(Calendar.MILLISECOND, 0);
-				cal.add(Calendar.DATE, -7);
-				Timestamp PreviousDate = new Timestamp(cal.getTime().getTime());
-				cal = Calendar.getInstance();
-				cal.set(Calendar.HOUR, 0);
-				cal.set(Calendar.MINUTE, 0);
-				cal.set(Calendar.SECOND, 0);
-				cal.set(Calendar.MILLISECOND, 0);
-				cal.add(Calendar.DATE, 1);
-				Timestamp NextDate = new Timestamp(cal.getTime().getTime());				
-				if(inOut.getMovementDate().compareTo(PreviousDate) < 0
-						|| inOut.getMovementDate().compareTo(NextDate) > 0)
+				if(!inOut.get_ValueAsBoolean("Override"))
 				{
-					return "Error: Fecha de despacho debe estar entre "+PreviousDate.toString()+
-					" y "+NextDate.toString();
+					Calendar cal = Calendar.getInstance();
+					cal.set(Calendar.HOUR, 0);
+					cal.set(Calendar.MINUTE, 0);
+					cal.set(Calendar.SECOND, 0);
+					cal.set(Calendar.MILLISECOND, 0);
+					cal.add(Calendar.DATE, -7);
+					Timestamp PreviousDate = new Timestamp(cal.getTime().getTime());
+					cal = Calendar.getInstance();
+					cal.set(Calendar.HOUR, 0);
+					cal.set(Calendar.MINUTE, 0);
+					cal.set(Calendar.SECOND, 0);
+					cal.set(Calendar.MILLISECOND, 0);
+					cal.add(Calendar.DATE, 2);
+					Timestamp NextDate = new Timestamp(cal.getTime().getTime());				
+					if(inOut.getC_Order().getDateOrdered().compareTo(PreviousDate) < 0
+							|| inOut.getC_Order().getDateOrdered().compareTo(NextDate) > 0)
+					{
+						return "Error: Fecha de despacho debe estar entre "+PreviousDate.toString()+
+						" y "+NextDate.toString();
+					}
+				}
+			}
+		}
+		
+		if(timing == TIMING_BEFORE_COMPLETE && po.get_Table_ID() == MInvoice.Table_ID) 
+		{	
+			MInvoice inv = (MInvoice)po;
+			if(inv.isSOTrx())
+			{	
+				if(!inv.get_ValueAsBoolean("Override"))
+				{
+					Calendar cal = Calendar.getInstance();
+					cal.set(Calendar.HOUR_OF_DAY, 0);
+					cal.set(Calendar.MINUTE, 0);
+					cal.set(Calendar.SECOND, 0);
+					cal.set(Calendar.MILLISECOND, 0);
+					cal.add(Calendar.DATE, -7);
+					Timestamp PreviousDate = new Timestamp(cal.getTime().getTime());
+					cal = Calendar.getInstance();
+					cal.set(Calendar.HOUR_OF_DAY, 0);
+					cal.set(Calendar.MINUTE, 0);
+					cal.set(Calendar.SECOND, 0);
+					cal.set(Calendar.MILLISECOND, 0);
+					cal.add(Calendar.DATE, 2);
+					Timestamp NextDate = new Timestamp(cal.getTime().getTime());				
+					if(inv.getC_Order().getDateOrdered().compareTo(PreviousDate) < 0
+							|| inv.getC_Order().getDateOrdered().compareTo(NextDate) > 0)
+					{
+						return "Error: Fecha de despacho debe estar entre "+PreviousDate.toString()+
+						" y "+NextDate.toString();
+					}
 				}
 			}
 		}

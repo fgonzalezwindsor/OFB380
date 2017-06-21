@@ -56,6 +56,17 @@ public class CalloutTSMRefundLine extends CalloutEngine
 				mTab.setValue("Amt", amt);
 		}		
 		return "";
-    }	
+    }
+	public String amtNew (Properties ctx, int WindowNo, GridTab mTab, GridField mField, Object value)
+	{
+		if(value==null)
+			return "";
+
+		BigDecimal amt = DB.getSQLValueBD(null,"SELECT amt FROM TP_RefundAmt " +
+				" WHERE TP_RefundAmt_ID = "+value);
+		if(amt != null)
+				mTab.setValue("Amt", amt);	
+		return "";
+    }
 }	//	CalloutOrder
 

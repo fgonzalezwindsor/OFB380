@@ -85,7 +85,7 @@ public class AndesRedFileWriteAD extends SvrProcess
 		String strDeleteDoc = "";
 		boolean flagBCI = false;
 		
-		for (int a = 0; a < 14; a++)
+		for (int a = 0; a < 15; a++)
 	    {				
 			if(a < 2)//banco bbva
 			{
@@ -218,6 +218,16 @@ public class AndesRedFileWriteAD extends SvrProcess
 				pRet1d = -1;
 				pRetMas1d = -1;
 				pRetOtro = -1;
+				pTotal = 3;
+			}
+			else if (a < 15)//banco internacional
+			{
+				pCuenta = 0;
+				pSaldoC = 1;
+				pSaldoD = 3;
+				pRet1d = -1;
+				pRetMas1d = -1;
+				pRetOtro = 2;
 				pTotal = 3;
 			}
 			

@@ -137,7 +137,7 @@ public class CreateFromPaymentRequest extends CreateFrom
 				line.setAmt(amt);
 				line.setDescription(desc);
 				
-				if(type.equals("I") || type.equals("R"))
+				if(type.equals("I"))
 					line.setC_Invoice_ID(document.getKey());
 					
 				if(type.equals("J") || type.equals("P"))
@@ -146,8 +146,8 @@ public class CreateFromPaymentRequest extends CreateFrom
 				if (type.equals("I") && Schedule_ID > 0)					
 					line.set_CustomColumn("C_InvoicePaySchedule_ID",Schedule_ID);
 				
-				//if(type.equals("R"))
-				//	line.set_CustomColumn("DM_MandateAgreement_ID", document.getKey());
+				if(type.equals("R"))
+					line.set_CustomColumn("DM_Document_ID", document.getKey());
 				
 			    line.save();
 			    

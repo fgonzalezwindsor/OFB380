@@ -23,7 +23,7 @@ import java.sql.ResultSet;
 import org.compiere.model.X_TP_CommissionDetailTSM;
 import org.compiere.process.SvrProcess;
 import org.compiere.util.DB;
-import org.compiere.util.Env;
+//import org.compiere.util.Env;
 
 /**
  *	
@@ -48,17 +48,17 @@ public class ImportCommission extends SvrProcess
 	protected String doIt() throws Exception
 	{
 		
-	    String clientCheck = " AND AD_Client_ID=" + Env.getAD_Client_ID(getCtx());
+	    //String clientCheck = " AND AD_Client_ID=" + Env.getAD_Client_ID(getCtx());
 		
-		//actualizamos flota
-		StringBuffer sqlf = new StringBuffer ("UPDATE I_Commission icom "
+		//actualizamos comision
+		/*StringBuffer sqlf = new StringBuffer ("UPDATE I_Commission icom "
 				+ " SET TP_CommissionTSM_ID = (SELECT MAX(TP_CommissionTSM_ID) FROM TP_CommissionTSM tpcom"
 				+ " WHERE icom.C_Period_ID = tpcom.C_Period_ID AND icom.AD_Org_ID = tpcom.AD_Org_ID) "
 				+ " WHERE icom.TP_CommissionTSM_ID IS NULL AND I_IsImported <> 'Y'").append (clientCheck);
-		DB.executeUpdate(sqlf.toString(), get_TrxName());
+		DB.executeUpdate(sqlf.toString(), get_TrxName());*/
 		
 		/*actualizar errores*/		
-		if (DB.isPostgreSQL())
+		/*if (DB.isPostgreSQL())
 		{	
 			sqlf = new StringBuffer ("UPDATE I_Commission "	// no Commission
 					  + " SET I_IsImported='N', I_ErrorMsg=Coalesce(I_ErrorMsg,'')||'ERR=No Header Commision, ' "

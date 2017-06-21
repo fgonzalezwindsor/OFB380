@@ -388,13 +388,17 @@ public class ExportDTEInvoiceFOLPA extends SvrProcess
 	            	amountImpFixed = Env.ZERO;
 	            
 	            //ininoles se calcula iva ya que la diferencia de impuestos se agregará a imp variable
-	            ivaTaxAmt = invoice.getGrandTotal().multiply(new BigDecimal("0.19")).divide(Env.ONEHUNDRED);
+	            ivaTaxAmt = invoice.getTotalLines().multiply(new BigDecimal("0.19"));
 	            ivaTaxAmt = ivaTaxAmt.setScale(0, RoundingMode.HALF_EVEN);
-	            difTaxTotal = invoice.getGrandTotal().subtract(ivaTaxAmt).subtract(amountImpVariable).subtract(amountImpFixed);
+	            difTaxTotal = invoice.getGrandTotal().subtract(invoice.getTotalLines()).subtract(ivaTaxAmt).subtract(amountImpVariable).subtract(amountImpFixed);
 	            if(difTaxTotal == null)
 	            	difTaxTotal = Env.ZERO;	        
 	            else
-	            	difTax = difTaxTotal.divide(new BigDecimal(invoice.getLines().length));
+	            {
+	            	//difTax = difTaxTotal.divide(new BigDecimal(invoice.getLines().length));
+	            	//ininoles diferencia se pasa a unitaria para multiplicar en las lineas por la cantidad
+	            	difTax = difTaxTotal.divide(qtyInvoice, 12, RoundingMode.HALF_EVEN);	            	
+	            }
 	            amountImpFixed = amountImpFixed.add(amountImpVariable);
 	            amountImpFixed = amountImpFixed.setScale(0, RoundingMode.HALF_EVEN);
 	            //se le suma diferencia
@@ -738,9 +742,16 @@ public class ExportDTEInvoiceFOLPA extends SvrProcess
             
             //fin referencia
             
-            
-            //fin referencia
+          //ininoles nueva descripcion:
+            String DescXML = "";
+            String payRule = DB.getSQLValueString(invoice.get_TrxName(), "SELECT rlt.name FROM AD_Ref_List rl " +
+            	" INNER JOIN AD_Ref_List_Trl rlt ON (rl.AD_Ref_List_ID = rlt.AD_Ref_List_ID ) " +
+            	" WHERE AD_Reference_ID=195 AND AD_Language='es_CL' AND rl.Value = '"+invoice.getPaymentRule()+"'");
+            if(payRule != null && payRule.length() > 1)
+            	DescXML = "Regla de Pago: "+payRule;
             if (invoice.getDescription() != null && invoice.getDescription() != "" && invoice.getDescription() != " ")
+            	DescXML = DescXML +". Descripcion: "+invoice.getDescription();
+            if (DescXML != null && DescXML != "" && DescXML != " " && DescXML.length() > 1)
             {            
 	            mylog = "Adicional";
 	            Element Adicional = document.createElement("Adicional");
@@ -748,7 +759,7 @@ public class ExportDTEInvoiceFOLPA extends SvrProcess
 	            Element NodosA = document.createElement("NodosA");
 	            Adicional.appendChild(NodosA);
 	            Element A6 = document.createElement("A6");
-	            org.w3c.dom.Text a6Text = document.createTextNode(invoice.getDescription());
+	            org.w3c.dom.Text a6Text = document.createTextNode(DescXML);
 	            A6.appendChild(a6Text);
 	            NodosA.appendChild(A6);
             }            
@@ -1565,9 +1576,16 @@ public class ExportDTEInvoiceFOLPA extends SvrProcess
             
             //fin referencia
             
-            
-            //fin referencia
+            //ininoles nueva descripcion:
+            String DescXML = "";
+            String payRule = DB.getSQLValueString(invoice.get_TrxName(), "SELECT rlt.name FROM AD_Ref_List rl " +
+            	" INNER JOIN AD_Ref_List_Trl rlt ON (rl.AD_Ref_List_ID = rlt.AD_Ref_List_ID ) " +
+            	" WHERE AD_Reference_ID=195 AND AD_Language='es_CL' AND rl.Value = '"+invoice.getPaymentRule()+"'");
+            if(payRule != null && payRule.length() > 1)
+            	DescXML = "Regla de Pago: "+payRule;
             if (invoice.getDescription() != null && invoice.getDescription() != "" && invoice.getDescription() != " ")
+            	DescXML = DescXML +". Descripcion: "+invoice.getDescription();
+            if (DescXML != null && DescXML != "" && DescXML != " " && DescXML.length() > 1)
             {            
 	            mylog = "Adicional";
 	            Element Adicional = document.createElement("Adicional");
@@ -1575,7 +1593,7 @@ public class ExportDTEInvoiceFOLPA extends SvrProcess
 	            Element NodosA = document.createElement("NodosA");
 	            Adicional.appendChild(NodosA);
 	            Element A6 = document.createElement("A6");
-	            org.w3c.dom.Text a6Text = document.createTextNode(invoice.getDescription());
+	            org.w3c.dom.Text a6Text = document.createTextNode(DescXML);
 	            A6.appendChild(a6Text);
 	            NodosA.appendChild(A6);
             }            

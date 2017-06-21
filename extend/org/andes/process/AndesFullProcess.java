@@ -73,11 +73,11 @@ public class AndesFullProcess extends SvrProcess
 		//ejecucion de archivo bat
 		X_C_AccountCredentials aCr = new X_C_AccountCredentials(getCtx(),getRecord_ID(), get_TrxName());
 		String rutaBat = OFBForward.PathBatIMacro();		
-		ejecucion(aCr.getFileName(),rutaBat);
+		//ejecucion(aCr.getFileName(),rutaBat);
 		//delay a espera de terminar de ejecutar imacro
 		try 
     	{
-    		Thread.sleep (100000);
+    		//Thread.sleep (100000);
     	} catch (Exception e) 
     	{
     		log.config("Error al esperar tiempo");
@@ -129,6 +129,11 @@ public class AndesFullProcess extends SvrProcess
 		{
 			indice = 14;
 			largo = 15;
+		}
+		else if(bank.getName().toLowerCase().contains("internacio"))
+		{
+			indice = 15;
+			largo = 16;
 		}
 		DecimalFormatSymbols symbols = new DecimalFormatSymbols();
 		symbols.setGroupingSeparator('.');
@@ -296,6 +301,16 @@ public class AndesFullProcess extends SvrProcess
 				pRet1d = -1;
 				pRetMas1d = -1;
 				pRetOtro = -1;
+				pTotal = 3;
+			}
+			else if (indice-1 < 15)//banco internacional
+			{
+				pCuenta = 0;
+				pSaldoC = 1;
+				pSaldoD = 3;
+				pRet1d = -1;
+				pRetMas1d = -1;
+				pRetOtro = 2;
 				pTotal = 3;
 			}
 			

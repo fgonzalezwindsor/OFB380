@@ -26,6 +26,7 @@ import org.adempiere.exceptions.DBException;
 import org.compiere.util.CLogger;
 import org.compiere.util.DB;
 import org.compiere.util.Env;
+import org.ofb.model.OFBForward;
 
 /**
  *	Invoice Tax Model
@@ -208,12 +209,18 @@ public class MInvoiceTax extends X_C_InvoiceTax
 					amt = Env.ZERO;
 				boolean isSOTrx = "Y".equals(rs.getString(3));
 				
-				//auxAmt = auxAmt.add(amt);//faaguilar OFB
+				if(OFBForward.InvoiceTaxPA())
+					auxAmt = auxAmt.add(amt);//faaguilar OFB//ininoles se descomenta por problemas en cliente PA
 				//
 				// phib [ 1702807 ]: manual tax should never be amended
 				// on line level taxes
-				if (!documentLevel && amt.signum() != 0 && !isSOTrx)	//	manually entered
-					auxAmt = auxAmt.add(amt);//faaguilar OFB;
+				if (!documentLevel && amt.signum() != 0 && !isSOTrx)	
+				{//	manually entered
+					if(!OFBForward.InvoiceTaxPA())
+						auxAmt = auxAmt.add(amt);
+					else
+						;//auxAmt = auxAmt.add(amt);//faaguilar OFB;//ininoles se comenta por problemas en cliente PA					
+				}
 				else if (documentLevel || baseAmt.signum() == 0)
 					amt = Env.ZERO;
 				else	// calculate line tax

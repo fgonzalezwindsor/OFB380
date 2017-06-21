@@ -81,7 +81,8 @@ public class ModPAUpdateStatusBPCredit implements ModelValidator
 					 || po.is_ValueChanged("PaymentRule")
 					 || po.is_ValueChanged("C_PaymentTerm_ID")
 					 || po.is_ValueChanged("SalesRep_ID")
-					 || po.is_ValueChanged("SO_Description"))) 
+					 || po.is_ValueChanged("SO_Description")
+					 || po.is_ValueChanged("MontoUF"))) 
 		{	
 			MBPartner bp = (MBPartner)po;
 			//bp.setSOCreditStatus("H");

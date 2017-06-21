@@ -65,6 +65,7 @@ public class ModWindsorUniqueOpenReq implements ModelValidator
 		}
 
 		//	Tables to be monitored
+		engine.addModelChange(MRequisitionLine.Table_Name, this);
 		//	Documents to be monitored
 		engine.addDocValidate(MRequisition.Table_Name, this);
 
@@ -77,6 +78,29 @@ public class ModWindsorUniqueOpenReq implements ModelValidator
 	public String modelChange (PO po, int type) throws Exception
 	{
 		log.info(po.get_TableName() + " Type: "+type);
+		
+
+		if((type == TYPE_BEFORE_CHANGE || type == TYPE_BEFORE_NEW) && po.get_Table_ID()== MRequisitionLine.Table_ID)  
+		{
+			MRequisitionLine reqLine = (MRequisitionLine) po;
+			MRequisition req = new MRequisition(po.getCtx(), reqLine.getM_Requisition_ID(), po.get_TrxName());
+			if(reqLine.getM_Product_ID() > 0 && reqLine.getM_Product().isStocked()
+					&& reqLine.getM_Product().getProductType().compareTo("I") == 0)
+			{
+				int cant = DB.getSQLValue(po.get_TrxName(), "SELECT COUNT(*) FROM M_RequisitionLine rl " +
+						" INNER JOIN M_Requisition mr ON (rl.M_Requisition_ID = mr.M_Requisition_ID) " +
+						" WHERE mr.DocStatus IN ('CO','CL') AND mr.C_BPartner_ID = "+req.get_ValueAsInt("C_BPartner_ID") +
+						" AND rl.M_Product_ID = "+reqLine.getM_Product_ID()+" AND qty > qtyUsed " +
+						" AND M_RequisitionLine_ID <> "+reqLine.get_ID());
+				
+				if(cant > 0)
+				{
+					MBPartner bPart = new MBPartner(po.getCtx(), req.get_ValueAsInt("C_BPartner_ID"), po.get_TrxName());
+					return "ERROR: Ya Existe una solicitud para el producto "+reqLine.getM_Product().getName()+
+					" y el socio de negocio "+bPart.getName();
+				}
+			}
+		}
 		
 		return null;
 	}	//	modelChange

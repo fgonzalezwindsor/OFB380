@@ -448,9 +448,25 @@ public class AndesFullProcessCD4 extends SvrProcess
 						    	log.config("Linea en blanco no agregada");*/
 					    	else if(x == cantLines-2)	//ultima linea del detalle se modifica segun solicitud
 					    	{	
+					    		String tipo = datos.get(x)[0].trim().substring(70,71);
+					    		String desc = datos.get(x)[0].trim().substring(11,61);
+					    		String cod = "42";
+					    		if(desc.toUpperCase().contains("CHEQUE") && tipo.toUpperCase().compareTo("C")==0)
+					    			cod = "42";
+					    		else if(desc.toUpperCase().contains("TRANSFERENCIA") && tipo.toUpperCase().compareTo("C")==0)					    			
+					    			cod = "28";
+					    		else if(desc.toUpperCase().contains("CARGO") && tipo.toUpperCase().compareTo("C")==0)
+					    			cod = "28";
+					    		else if(desc.toUpperCase().contains("TRANSFERENCIA") && tipo.toUpperCase().compareTo("A")==0)
+					    			cod = "78";
+					    		else if(desc.toUpperCase().contains("DEPOSITO") && tipo.toUpperCase().compareTo("A")==0)
+					    			cod = "51";
+					    		else if(desc.toUpperCase().contains("ABONO") && tipo.toUpperCase().compareTo("A")==0)
+					    			cod = "78";
 					    		String signo = datos.get(x)[0].trim().substring(71,72);
 					    		String strLine = datos.get(x)[0].trim().substring(0, 11) 
-				    			+ datos.get(x)[0].trim().substring(11, 61)
+					    		+cod+" "
+				    			+ datos.get(x)[0].trim().substring(11, 58)
 				    			+ datos.get(x)[0].trim().substring(61, 72)
 				    			+ datos.get(x)[0].trim().substring(72, 87)
 				    			+ signo 
@@ -459,8 +475,24 @@ public class AndesFullProcessCD4 extends SvrProcess
 					    	}
 					    	else	//modificaciones a linea 2 en adelante
 					    	{	
-					    		String strLine = datos.get(x)[0].trim().substring(0, 11) 
-					    			+ datos.get(x)[0].trim().substring(11, 61)
+					    		String tipo = datos.get(x)[0].trim().substring(70,71);
+					    		String desc = datos.get(x)[0].trim().substring(11,61);
+					    		String cod = "42";
+					    		if(desc.toUpperCase().contains("CHEQUE") && tipo.toUpperCase().compareTo("C")==0)
+					    			cod = "42";
+					    		else if(desc.toUpperCase().contains("TRANSFERENCIA") && tipo.toUpperCase().compareTo("C")==0)					    			
+					    			cod = "28";
+					    		else if(desc.toUpperCase().contains("CARGO") && tipo.toUpperCase().compareTo("C")==0)
+					    			cod = "28";
+					    		else if(desc.toUpperCase().contains("TRANSFERENCIA") && tipo.toUpperCase().compareTo("A")==0)
+					    			cod = "78";
+					    		else if(desc.toUpperCase().contains("DEPOSITO") && tipo.toUpperCase().compareTo("A")==0)
+					    			cod = "51";
+					    		else if(desc.toUpperCase().contains("ABONO") && tipo.toUpperCase().compareTo("A")==0)
+					    			cod = "78";
+					    		String strLine = datos.get(x)[0].trim().substring(0, 11)
+					    			+cod+" "
+					    			+ datos.get(x)[0].trim().substring(11, 58)
 					    			+ datos.get(x)[0].trim().substring(61, 72)
 					    			+ datos.get(x)[0].trim().substring(72, 87);					    		
 					    			newLine.append(rellenarCadenaDerecha(strLine, 300, " "));
@@ -688,9 +720,11 @@ public class AndesFullProcessCD4 extends SvrProcess
 		else if(desc.trim().toUpperCase().contains("TRANSF. DESDE LINEA DE SOBREG"))
 			cod = "9A";
 		//ininoles nuevos tipos
-		else if(desc.trim().toUpperCase().contains("ABONOS"))
+		else if(desc.trim().toUpperCase().contains("ABONO"))
 			cod = "FT";
 		else if(desc.trim().toUpperCase().contains("TRANSF."))
+			cod = "FT";
+		else if(desc.trim().toUpperCase().contains("TRANSFERENCIA POR TELEX/CREDI"))
 			cod = "FT";
 		return cod;
 	}

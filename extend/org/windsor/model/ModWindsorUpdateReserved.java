@@ -24,6 +24,7 @@ import java.util.logging.Level;
 import org.compiere.model.MClient;
 import org.compiere.model.MOrder;
 import org.compiere.model.MOrderLine;
+import org.compiere.model.MRequisition;
 import org.compiere.model.MRequisitionLine;
 import org.compiere.model.MStorage;
 import org.compiere.model.MWarehouse;
@@ -76,6 +77,7 @@ public class ModWindsorUpdateReserved implements ModelValidator
 		//	Tables to be monitored
 		//	Documents to be monitored
 		engine.addDocValidate(MOrder.Table_Name, this);
+		engine.addDocValidate(MRequisition.Table_Name, this);
 
 	}	//	initialize
 
@@ -130,7 +132,13 @@ public class ModWindsorUpdateReserved implements ModelValidator
 							MWarehouse wh = MWarehouse.get(reqL.getCtx(), reqL.getM_Requisition().getM_Warehouse_ID());
 							if(existReservationTable(order.get_TrxName()))
 							{
-								OFBReservation(wh.get_ID(), oLine.getM_Product_ID(), oLine.getQtyOrdered(), oLine.getQtyOrdered(), po);
+								//no se agrega reservado ya que se hizo con la solicitud
+								OFBReservation(wh.get_ID(), oLine.getM_Product_ID(),Env.ZERO, oLine.getQtyOrdered().negate(), po);
+								//siempre semodifica paa el storage nativo
+								MStorage.add(wh.getCtx(), wh.getM_Warehouse_ID(),wh.getDefaultLocator().getM_Locator_ID(), 
+										oLine.getM_Product_ID(), 
+									oLine.getM_AttributeSetInstance_ID(), oLine.getM_AttributeSetInstance_ID(),
+									Env.ZERO, oLine.getQtyOrdered().negate(), Env.ZERO, order.get_TrxName());
 							}
 							else
 							{							
@@ -140,6 +148,123 @@ public class ModWindsorUpdateReserved implements ModelValidator
 									Env.ZERO, oLine.getQtyOrdered().negate(), Env.ZERO, order.get_TrxName());
 							}
 						}
+					}
+				}
+			}
+		}
+		if(timing == TIMING_BEFORE_VOID && po.get_Table_ID()== MOrder.Table_ID)  
+		{
+			MOrder order = (MOrder) po;
+			if(order.isSOTrx())
+			{
+				MOrderLine[] oLines = order.getLines(false, null);
+				for (int i = 0; i < oLines.length; i++)
+				{
+					MOrderLine oLine = oLines[i];
+					if(oLine.getM_Product_ID() > 0 && oLine.getM_Product().isStocked()
+							&& oLine.getM_Product().getProductType().compareTo("I") == 0)
+					{
+						if(oLine.get_ValueAsInt("M_RequisitionLine_ID") > 0)
+						{
+							MRequisitionLine reqL = new MRequisitionLine(po.getCtx(), oLine.get_ValueAsInt("M_RequisitionLine_ID"), po.get_TrxName());
+							MWarehouse wh = MWarehouse.get(reqL.getCtx(), reqL.getM_Requisition().getM_Warehouse_ID());
+							if(existReservationTable(order.get_TrxName()))
+							{
+								//no se agrega reservado ya que se hizo con la solicitud
+								OFBReservation(wh.get_ID(), oLine.getM_Product_ID(),Env.ZERO, oLine.getQtyOrdered(), po);
+								//siempre semodifica paa el storage nativo
+								MStorage.add(wh.getCtx(), wh.getM_Warehouse_ID(),wh.getDefaultLocator().getM_Locator_ID(), 
+										oLine.getM_Product_ID(), 
+									oLine.getM_AttributeSetInstance_ID(), oLine.getM_AttributeSetInstance_ID(),
+									Env.ZERO, oLine.getQtyOrdered(), Env.ZERO, order.get_TrxName());
+							}
+							else
+							{							
+								MStorage.add(wh.getCtx(), wh.getM_Warehouse_ID(),wh.getDefaultLocator().getM_Locator_ID(), 
+										oLine.getM_Product_ID(), 
+									oLine.getM_AttributeSetInstance_ID(), oLine.getM_AttributeSetInstance_ID(),
+									Env.ZERO, oLine.getQtyOrdered(), Env.ZERO, order.get_TrxName());
+							}
+						}
+					}
+				}
+			}
+		}
+		if(timing == TIMING_BEFORE_VOID && po.get_Table_ID()== MRequisition.Table_ID)  
+		{
+			MRequisition req = (MRequisition) po;
+			if(req.isSOTrx())
+			{
+				MRequisitionLine[] rLines = req.getLines();
+				for (int i = 0; i < rLines.length; i++)
+				{
+					MRequisitionLine rLine = rLines[i];
+					if(rLine.getM_Product_ID() > 0 && rLine.getM_Product().isStocked()
+							&& rLine.getM_Product().getProductType().compareTo("I") == 0)
+					{						
+						MWarehouse wh = MWarehouse.get(req.getCtx(), req.getM_Warehouse_ID());
+						if(existReservationTable(req.get_TrxName()))
+						{
+							//no se agrega reservado ya que se hizo con la solicitud
+							OFBReservation(wh.get_ID(), rLine.getM_Product_ID(),Env.ZERO, rLine.getQty().negate(), po);
+							//siempre semodifica paa el storage nativo
+							MStorage.add(wh.getCtx(), wh.getM_Warehouse_ID(),wh.getDefaultLocator().getM_Locator_ID(), 
+									rLine.getM_Product_ID(), 
+								rLine.getM_AttributeSetInstance_ID(), rLine.getM_AttributeSetInstance_ID(),
+								Env.ZERO, rLine.getQty().negate(), Env.ZERO, req.get_TrxName());
+						}
+						else
+						{							
+							MStorage.add(wh.getCtx(), wh.getM_Warehouse_ID(),wh.getDefaultLocator().getM_Locator_ID(), 
+									rLine.getM_Product_ID(), 
+								rLine.getM_AttributeSetInstance_ID(), rLine.getM_AttributeSetInstance_ID(),
+								Env.ZERO, rLine.getQty().negate(), Env.ZERO, req.get_TrxName());
+						}
+					}
+				}
+			}
+		}
+		
+		//actualizamos campo qtyReserved en solicitud de venta
+		if(timing == TIMING_AFTER_COMPLETE && po.get_Table_ID()== MRequisition.Table_ID)  
+		{
+			MRequisition req = (MRequisition) po;
+			if(req.isSOTrx())
+			{
+				MRequisitionLine[] rLines = req.getLines();
+				for (int i = 0; i < rLines.length; i++)
+				{
+					MRequisitionLine rLine = rLines[i];
+					rLine.set_CustomColumn("QtyReserved", rLine.getQty());
+					rLine.save();
+				}
+			}
+		}
+		//al anular liberamos reserva
+		if(timing == TIMING_AFTER_VOID && po.get_Table_ID()== MRequisition.Table_ID)  
+		{
+			MRequisition req = (MRequisition) po;
+			if(req.isSOTrx())
+				DB.executeUpdate("UPDATE M_RequisitionLine SET QtyReserved = 0 WHERE M_Requisition_ID = "+req.get_ID(), po.get_TrxName());				
+		}
+		//actualizamos campo qtyReserved en solicitud de venta
+		if(timing == TIMING_AFTER_COMPLETE && po.get_Table_ID()== MOrder.Table_ID)  
+		{
+			MOrder order = (MOrder) po;
+			if(order.isSOTrx())
+			{
+				MOrderLine[] oLines = order.getLines(false, null);
+				for (int i = 0; i < oLines.length; i++)
+				{
+					MOrderLine oLine = oLines[i];
+					if(oLine.get_ValueAsInt("M_RequisitionLine_ID") > 0)
+					{
+						MRequisitionLine rLine = new MRequisitionLine(po.getCtx(), oLine.get_ValueAsInt("M_RequisitionLine_ID"), po.get_TrxName());
+						BigDecimal qtyAva = (BigDecimal)rLine.get_Value("QtyReserved");
+						if(qtyAva == null)
+							qtyAva = Env.ZERO;
+						qtyAva = qtyAva.subtract(oLine.getQtyOrdered());
+						DB.executeUpdate("UPDATE M_RequisitionLine SET QtyReserved = "+qtyAva+" WHERE M_RequisitionLine_ID = "+rLine.get_ID(), po.get_TrxName());
 					}
 				}
 			}

@@ -472,7 +472,7 @@ public class ModPetroAmericaCustomTax implements ModelValidator
 		{
 			MInvoice inv = (MInvoice)po;		
 			BigDecimal amtTaxNew =  DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(FixedTaxAmt) + SUM(VariableTaxAmt) " +
-					" FROM C_OrderLine WHERE C_Order_ID = "+inv.get_ID());
+					" FROM C_Invoice WHERE C_Invoice_ID = "+inv.get_ID());
 			if(amtTaxNew != null)				
 			{
 				amtTaxNew = amtTaxNew.add(inv.getGrandTotal());

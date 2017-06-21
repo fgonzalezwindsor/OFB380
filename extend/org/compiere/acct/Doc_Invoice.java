@@ -492,7 +492,9 @@ public class Doc_Invoice extends Doc
 			//ininoles se agrega linea de impuesto especifico para PA
 			if(OFBForward.UpdateIVAPA())
 			{
-				BigDecimal amtIVA = DB.getSQLValueBD("C_Invoice_ID","SELECT ROUND(COALESCE(SUM(IVATaxAmt),0)) FROM C_InvoiceLine WHERE IsActive = 'Y' AND C_Invoice_ID = "+invoice.get_ID());
+				BigDecimal amtIVA = DB.getSQLValueBD("C_Invoice_ID","SELECT ROUND(COALESCE(SUM(IVATaxAmt),0)) FROM C_InvoiceLine cil " +
+					" INNER JOIN C_Tax ct ON (cil.C_Tax_ID = ct.C_Tax_ID)" +
+					" WHERE cil.IsActive = 'Y' AND IsTaxExempt = 'N' AND C_Invoice_ID = "+invoice.get_ID());
 				if(amtIVA == null)
 					amtIVA = Env.ZERO;
 				BigDecimal oTax = invoice.getGrandTotal().subtract(invoice.getTotalLines()).subtract(amtIVA);

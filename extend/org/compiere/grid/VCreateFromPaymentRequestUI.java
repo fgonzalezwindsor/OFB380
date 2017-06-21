@@ -447,6 +447,35 @@ public class VCreateFromPaymentRequestUI extends CreateFromPaymentRequest implem
 					" inner join c_paymentrequest r on (rl.c_paymentrequest_id=r.c_paymentrequest_id) where r.docstatus IN ('DR','CL','WC','CO')and gl_journalline_id is not null ) ");
 			
 		}
+		else if(type.equals("R"))//desde resolucion
+		{
+			sql.append("select dm.DM_Document_ID, dm.documentno,dm.datetrx, dm.c_bpartner_id, bp.name, dm.amt-dm.allocatedamt, dm.description,0,dm.AD_Org_ID, org.name" +
+					" from  DM_Document dm " +
+					" left outer join c_bpartner bp on (dm.c_bpartner_id=bp.c_bpartner_id) " +
+					" left outer join AD_Org org on (dm.AD_Org_ID = org.AD_Org_ID) " +
+					" where dm.docstatus='CO' and (dm.amt-dm.allocatedamt)>0");
+			
+			if(bPartnerLookup.getValue()!=null && (Integer)bPartnerLookup.getValue()>0)
+				sql.append( " And dm.c_bpartner_id=" +(Integer)bPartnerLookup.getValue());
+			
+			if(OrgLookup.getValue()!=null)
+				sql.append( " And dm.AD_Org_ID=" + (Integer)OrgLookup.getValue());
+			
+			if (documentNoField.getText().length() > 0)
+				sql.append(" AND UPPER(dm.DocumentNo) LIKE '%" + documentNoField.getText() + "%'");
+			
+			if (dateFromField.getValue() != null || dateToField.getValue() != null)
+			{
+				Timestamp from = (Timestamp) dateFromField.getValue();
+				Timestamp to = (Timestamp) dateToField.getValue();
+				if (from == null && to != null)
+					sql.append(" AND TRUNC(dm.datetrx) <= ?");
+				else if (from != null && to == null)
+					sql.append(" AND TRUNC(dm.datetrx) >= ?");
+				else if (from != null && to != null)
+					sql.append(" AND TRUNC(dm.datetrx) BETWEEN ? AND ?");
+			}
+		}
 		else{ // resolution
 			
 			/*sql.append("select dm.DM_MandateAgreement_ID, dm2.documentno,dm.datetrx, dm.c_bpartner_id, bp.name, dm.amt-dm.allocatedamt, dm.description " +
@@ -475,7 +504,7 @@ public class VCreateFromPaymentRequestUI extends CreateFromPaymentRequest implem
 				else if (from != null && to != null)
 					sql.append(" AND TRUNC(dm.datetrx) BETWEEN ? AND ?");
 			}*/
-			sql.append( " select i.c_invoice_id,i.documentno,i.dateinvoiced,i.c_bpartner_id,bp.name,invoiceOpen(i.c_invoice_id,null), i.description" +
+			sql.append( " select i.c_invoice_id,i.documentno,i.dateinvoiced,i.c_bpartner_id,bp.name,invoiceOpen(i.c_invoice_id,null), i.description,0" +
 					" from c_invoice i inner join c_bpartner bp on (i.c_bpartner_id=bp.c_bpartner_id) " +
 					" where i.issotrx='N' and i.docstatus in ('CO','CL')");
 			
@@ -553,7 +582,7 @@ public class VCreateFromPaymentRequestUI extends CreateFromPaymentRequest implem
 				
 				line.add(pp);     //3- Documentno
 				
-				if(type.equals("I") || type.equals("R"))
+				if(type.equals("I"))
 				{
 					line.add(rs.getBigDecimal(6)); 		//4-amt
 					line.add(rs.getString(7));     // 5 description
@@ -570,6 +599,19 @@ public class VCreateFromPaymentRequestUI extends CreateFromPaymentRequest implem
 					if(type.equals("I"))
 						line.add(rs.getString(9));
 					
+				}
+				if(type.equals("R"))
+				{
+					KeyNamePair pp3 = new KeyNamePair(rs.getInt(9), rs.getString(10));
+					line.add(rs.getBigDecimal(6)); 		//4-amt
+					line.add(rs.getString(7));     // 5 description
+					line.add(pp3);     // 6 organización
+					line.add(" ");     // 7 descripcion3
+					line.add(" ");     // 8 descripcion4
+					if (rs.getString(8) == null || rs.getInt(8)==0)//se agrega manejo de cuota
+						line.add(0);
+					else
+						line.add(rs.getInt(8));
 				}
 				if(type.equals("J")) 
 				{

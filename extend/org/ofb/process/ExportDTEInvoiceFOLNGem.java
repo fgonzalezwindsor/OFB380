@@ -610,7 +610,7 @@ public class ExportDTEInvoiceFOLNGem extends SvrProcess
     				"</wst:SolicitarSesion>"+
     			"</soapenv:Body>"+
     			"</soapenv:Envelope>";
-
+    			log.config("llamada WS: "+request);
     			Source response = null;
     					
     			try
@@ -680,7 +680,7 @@ public class ExportDTEInvoiceFOLNGem extends SvrProcess
     				"</wst:EnviarDTEPdf>"+
     			"</soapenv:Body>"+
     			"</soapenv:Envelope>";
-
+    	log.config("llamada WS: "+request);
     			Source response = null;
     					
     			try

@@ -445,8 +445,8 @@ public class AndesRedFileWriteCD4 extends SvrProcess
 					    			cod = "78";
 					    		String signo = datos.get(x)[0].trim().substring(71,72);
 					    		String strLine = datos.get(x)[0].trim().substring(0, 11) 
-					    		+"  "+cod+"  "
-				    			+ datos.get(x)[0].trim().substring(11, 55)
+					    		+cod+" "
+				    			+ datos.get(x)[0].trim().substring(11, 58)
 				    			+ datos.get(x)[0].trim().substring(61, 72)
 				    			+ datos.get(x)[0].trim().substring(72, 87)
 				    			+ signo 
@@ -471,8 +471,8 @@ public class AndesRedFileWriteCD4 extends SvrProcess
 					    		else if(desc.toUpperCase().contains("ABONO") && tipo.toUpperCase().compareTo("A")==0)
 					    			cod = "78";
 					    		String strLine = datos.get(x)[0].trim().substring(0, 11)
-					    			+"  "+cod+"  "
-					    			+ datos.get(x)[0].trim().substring(11, 55)
+					    			+cod+" "
+					    			+ datos.get(x)[0].trim().substring(11, 58)
 					    			+ datos.get(x)[0].trim().substring(61, 72)
 					    			+ datos.get(x)[0].trim().substring(72, 87);					    		
 					    			newLine.append(rellenarCadenaDerecha(strLine, 300, " "));
@@ -632,7 +632,7 @@ public class AndesRedFileWriteCD4 extends SvrProcess
 		else if(desc.trim().toUpperCase().contains("TRANFERENCIA POR TELEX/CREDITO"))
 			cod = "WC";
 		else if(desc.trim().toUpperCase().contains("TRANSFERENCIA POR TELEX/CREDITO"))
-			cod = "WD";
+			cod = "FT";
 		else if(desc.trim().toUpperCase().contains("GIRO"))
 			cod = "WH";
 		else if(desc.trim().toUpperCase().contains("ND APERTURA L/C"))
@@ -684,9 +684,11 @@ public class AndesRedFileWriteCD4 extends SvrProcess
 		else if(desc.trim().toUpperCase().contains("TRANSF. DESDE LINEA DE SOBREG"))
 			cod = "9A";
 		//ininoles nuevos tipos
-		else if(desc.trim().toUpperCase().contains("ABONOS"))
+		else if(desc.trim().toUpperCase().contains("ABONO"))
 			cod = "FT";
 		else if(desc.trim().toUpperCase().contains("TRANSF."))
+			cod = "FT";
+		else if(desc.trim().toUpperCase().contains("TRANSFERENCIA POR TELEX/CREDI"))
 			cod = "FT";
 		return cod;
 	}

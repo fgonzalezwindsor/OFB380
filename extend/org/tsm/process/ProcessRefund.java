@@ -52,13 +52,26 @@ public class ProcessRefund extends SvrProcess
 			Boolean sig3 = viatico.get_ValueAsBoolean("Signature3");
 			Boolean sig4 = viatico.get_ValueAsBoolean("Signature4");
 			if(sig1 == false || sig2 == false || sig3 == false || sig4 == false)
-				throw new AdempiereException("Error: No se puede completar sin las firmas necesarias");			
+				throw new AdempiereException("Error: No se puede completar sin las firmas necesarias");						
 			if(viatico.getDocStatus().compareToIgnoreCase("DR")==0)
 			{	
-				viatico.setDocStatus("CO");
-				viatico.setProcessed(true);
-				//DB.executeUpdate("UPDATE TP_RefundLine SET Processed = 'Y' " +
-				//		" WHERE TP_Refund_ID = "+p_TP_Viatico_ID, get_TrxName());
+				if(viatico.get_ValueAsBoolean("overwrite"))
+				{
+					viatico.setDocStatus("CO");
+					viatico.setProcessed(true);
+				}
+				else
+				{
+					int cantRep = DB.getSQLValue(get_TrxName(), "SELECT COALESCE(COUNT(1),0)FROM TP_RefundLine " +
+						" WHERE TP_Refund_ID="+viatico.get_ID()+" GROUP BY DateTrx HAVING COUNT(1) > 1");
+					if(cantRep > 0)
+						throw new AdempiereException("Error: Existe mas de una Hoja de Ruta para la misma Fecha");
+					else
+					{
+						viatico.setDocStatus("CO");
+						viatico.setProcessed(true);
+					}
+				}
 			}
 			viatico.save();
 		}
