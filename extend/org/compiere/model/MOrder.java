@@ -2198,7 +2198,8 @@ public class MOrder extends X_C_Order implements DocAction
 		MDocType dt = MDocType.get(getCtx(), getC_DocType_ID());
 		String DocSubTypeSO = dt.getDocSubTypeSO();
 		//ininoles tampoco que deja anular ordenes de compra
-		if (MDocType.DOCSUBTYPESO_StandardOrder.equals(DocSubTypeSO) || getC_DocType().getDocBaseType().compareToIgnoreCase("POO")==0)
+		//se busca tipo de documento en base al doctypetarget ininoles		
+		if (MDocType.DOCSUBTYPESO_StandardOrder.equals(DocSubTypeSO) || getC_DocTypeTarget().getDocBaseType().compareToIgnoreCase("POO")==0)
 		{
 			String mysql="select count(1) from C_InvoiceLine ivl "+
 						"inner join C_Invoice iv on (ivl.C_Invoice_ID=iv.C_Invoice_ID) "+

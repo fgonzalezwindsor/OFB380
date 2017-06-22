@@ -141,6 +141,23 @@ public class ExportDTEInvoiceFOLNGem extends SvrProcess
             org.w3c.dom.Text emis = document.createTextNode(invoice.getDateInvoiced().toString().substring(0, 10));
             FchEmis.appendChild(emis);
             IdDoc.appendChild(FchEmis);
+          //ininoles nuevos campos de termino de pago
+            Element MntPagos = document.createElement("MntPagos");
+            IdDoc.appendChild(MntPagos);
+            mylog = "Termino de Pago";
+            Element FchPago = document.createElement("FchPago");
+            org.w3c.dom.Text fPago = document.createTextNode(invoice.getDateInvoiced().toString().substring(0, 10));
+            FchPago.appendChild(fPago);
+            MntPagos.appendChild(FchPago);
+            Element MntPago = document.createElement("MntPago");
+            org.w3c.dom.Text mPago = document.createTextNode(invoice.getGrandTotal().setScale(0, 4).toString());
+            MntPago.appendChild(mPago);
+            MntPagos.appendChild(MntPago);
+            Element GlosaPagos = document.createElement("GlosaPagos");
+            org.w3c.dom.Text gPagos = document.createTextNode(invoice.getC_PaymentTerm().getName());
+            GlosaPagos.appendChild(gPagos);
+            MntPagos.appendChild(GlosaPagos);
+            //ininoles end
             Element FchVenc = document.createElement("FchVenc");
             org.w3c.dom.Text venc = document.createTextNode(invoice.getDateInvoiced().toString().substring(0, 10));
             FchVenc.appendChild(venc);
@@ -417,11 +434,11 @@ public class ExportDTEInvoiceFOLNGem extends SvrProcess
             }
             //fin referencia
             //referencia HES Geminis
-          //nuevos campos de referencia geminis. ininoles
+            //nuevos campos de referencia geminis. ininoles
             String sqlDN = "Select o.DocumentNo FROM C_Order o INNER JOIN C_Invoice i ON (o.C_Order_ID = i.C_Order_ID) WHERE i.C_Invoice_ID= ?";
             String docNoRef = DB.getSQLValueString(get_TrxName(), sqlDN, invoice.get_ID()); 
             
-            if (docNoRef != null)
+            /*if (docNoRef != null)
             {
             	Element Referencia2 = document.createElement("Referencia");
                 Documento.appendChild(Referencia2);
@@ -456,10 +473,11 @@ public class ExportDTEInvoiceFOLNGem extends SvrProcess
                 org.w3c.dom.Text codref2 = document.createTextNode(invoice.get_ValueAsString("CodRef"));
                 CodRef2.appendChild(codref2);
                 Referencia2.appendChild(CodRef2);
-            }
+            }*/
+            
             //end ininoles
             //creamos nuevo concatenado de string ininoles
-            String strDesc= "Descripcion: ";
+            String strDesc= " ";
             if(invoice.getDescription() != null && invoice.getDescription().trim().length() > 0)
             	strDesc = strDesc + invoice.getDescription();
             BigDecimal mulRate = (BigDecimal)invoice.get_Value("MultiplyRate");
@@ -467,7 +485,9 @@ public class ExportDTEInvoiceFOLNGem extends SvrProcess
             	strDesc = strDesc +". Tipo de Cambio:"+mulRate.toString();
             if(invoice.getAD_User_ID() > 0)
             	strDesc = strDesc +". Contacto:"+invoice.getAD_User().getName();
-            
+            //ininoles se agrega HES
+            if (docNoRef != null && docNoRef.trim().length() > 0)
+            	strDesc = strDesc + ". HES:"+docNoRef;
             if (strDesc != null && strDesc != "" && strDesc != " ")
             {            
 	            mylog = "Adicional";

@@ -386,6 +386,10 @@ public class DepreAssetsGeminis extends SvrProcess
 				
 				if(DepDoc.getDepType().equalsIgnoreCase((X_A_Asset_Dep.DEPTYPE_Depreciacion ))){
 					MDepreciationWorkfile workfile=MAsset.getWorkFile(jour.get_ValueAsInt("A_Asset_ID"));
+					//ininoles actualizacion de journal
+					DB.executeUpdate("UPDATE GL_Journal SET A_Asset_Cost = "+workfile.getA_Asset_Cost()+", A_Accumulated_Depr = "+workfile.getA_Accumulated_Depr()
+							+" WHERE GL_Journal_ID = "+jour.get_ID(), get_TrxName());
+					//ininoles end
 					workfile.setA_Accumulated_Depr(workfile.getA_Accumulated_Depr().add(jour.getTotalCr()) );
 					workfile.setA_Period_Posted(workfile.getA_Period_Posted()+1);
 					workfile.setAssetDepreciationDate(DepDoc.getDateDoc());
@@ -426,6 +430,10 @@ public class DepreAssetsGeminis extends SvrProcess
 				}*/
 				else if(DepDoc.getDepType().equalsIgnoreCase((X_A_Asset_Dep.DEPTYPE_CorrecionMonetaria ))){
 					MDepreciationWorkfile workfile=MAsset.getWorkFile(jour.get_ValueAsInt("A_Asset_ID"));
+					//ininoles actualizacion de journal
+					DB.executeUpdate("UPDATE GL_Journal SET A_Asset_Cost = "+workfile.getA_Asset_Cost()+", A_Accumulated_Depr = "+workfile.getA_Accumulated_Depr()
+							+" WHERE GL_Journal_ID = "+jour.get_ID(), get_TrxName());
+					//ininoles end					
 					MAssetAcct group=new MAssetAcct(getCtx(), MAssetAcct.getAssetAcct_ID(jour.get_ValueAsInt("A_Asset_ID")),get_TrxName());								
 					
 					BigDecimal acum=DB.getSQLValueBD(get_TrxName(),  "select sum(AmtAcctCr) from gl_journalline where gl_journal_id="+jour.getGL_Journal_ID()
@@ -457,11 +465,19 @@ public class DepreAssetsGeminis extends SvrProcess
 				}
 				else if(DepDoc.getDepType().equalsIgnoreCase((X_A_Asset_Dep.DEPTYPE_Deteriodo))){
 					MDepreciationWorkfile workfile=MAsset.getWorkFile(jour.get_ValueAsInt("A_Asset_ID"));
+					//ininoles actualizacion de journal
+					DB.executeUpdate("UPDATE GL_Journal SET A_Asset_Cost = "+workfile.getA_Asset_Cost()+", A_Accumulated_Depr = "+workfile.getA_Accumulated_Depr()
+							+" WHERE GL_Journal_ID = "+jour.get_ID(), get_TrxName());
+					//ininoles end
 					workfile.setA_Asset_Cost(workfile.getA_Asset_Cost().subtract(jour.getTotalCr()));
 					workfile.save();
 				}
 				else if(DepDoc.getDepType().equalsIgnoreCase((X_A_Asset_Dep.DEPTYPE_VentaActivo))){
 					MDepreciationWorkfile workfile=MAsset.getWorkFile(jour.get_ValueAsInt("A_Asset_ID"));
+					//ininoles actualizacion de journal
+					DB.executeUpdate("UPDATE GL_Journal SET A_Asset_Cost = "+workfile.getA_Asset_Cost()+", A_Accumulated_Depr = "+workfile.getA_Accumulated_Depr()
+							+" WHERE GL_Journal_ID = "+jour.get_ID(), get_TrxName());
+					//ininoles end
 					workfile.setA_Calc_Accumulated_Depr(workfile.getA_Accumulated_Depr()); //guardo por si necesito volver al estado anterior
 					workfile.setA_Accumulated_Depr(workfile.getA_Asset_Cost() );
 					workfile.save();
