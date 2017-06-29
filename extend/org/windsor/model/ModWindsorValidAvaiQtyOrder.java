@@ -110,6 +110,61 @@ public class ModWindsorValidAvaiQtyOrder implements ModelValidator
 					if(qtyAvai == null)
 						qtyAvai = Env.ZERO;
 					//validaciones nuevas
+					//ininoles 27-06 nueva logica pedida por fernando
+					if(oLine.get_ValueAsInt("M_RequisitionLine_ID")>0)
+					{
+						//se revisa que no supere cantidad de solicitud
+						MRequisitionLine rLine = new MRequisitionLine(po.getCtx(), oLine.get_ValueAsInt("M_RequisitionLine_ID"), po.get_TrxName());							
+						//nuevo calculo para disponible
+						BigDecimal qtyUsed = DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM (QtyOrdered) FROM C_OrderLine col " +
+								" INNER JOIN C_Order co ON (col.C_Order_ID = co.C_Order_ID) " +
+								" WHERE co.DocStatus NOT IN ('VO') AND C_OrderLine_ID <> " +oLine.get_ID()+								
+								" AND M_RequisitionLine_ID = "+rLine.get_ID());
+						if(qtyUsed == null)
+							qtyUsed = Env.ZERO;
+						BigDecimal qtyAvarLine =  rLine.getQty().subtract(qtyUsed);							
+						if(qtyAvarLine.compareTo(oLine.getQtyOrdered())<0)
+							return "Error: Cantidad Supera Cantidad de Solicitud";
+						//se valida que sea de la misma direccion
+						if(rLine.getParent().get_ValueAsInt("C_Bpartner_Location_ID") != order.getC_BPartner_Location_ID())
+						{
+							if(!rLine.getParent().get_ValueAsBoolean("OverWriteRequisition"))
+								return "Error: Solicitud no es de distribución";
+						}
+					}
+					else
+					{
+						//se revisa si existe solicitud abierta
+						int ID_req = DB.getSQLValue(po.get_TrxName(), "SELECT MAX(mr.M_Requisition_ID) FROM M_RequisitionLine rl " +
+								" INNER JOIN M_Requisition mr ON (rl.M_Requisition_ID = mr.M_Requisition_ID) " +
+								" WHERE mr.DocStatus IN ('CO','CL') AND mr.C_BPartner_ID = "+order.getC_BPartner_ID()+
+								" AND mr.C_BPartner_Location_ID = "+order.getC_BPartner_Location_ID()+
+								" AND rl.M_Product_ID = "+oLine.getM_Product_ID()+" AND qty > qtyUsed");
+						//se revisa si existe solicitud de distribucion abierta
+						int ID_reqD = DB.getSQLValue(po.get_TrxName(), "SELECT MAX(mr.M_Requisition_ID) FROM M_RequisitionLine rl " +
+								" INNER JOIN M_Requisition mr ON (rl.M_Requisition_ID = mr.M_Requisition_ID) " +
+								" WHERE mr.DocStatus IN ('CO','CL') AND mr.C_BPartner_ID = "+order.getC_BPartner_ID()+
+								" AND mr.OverWriteRequisition = 'Y' "+
+								" AND rl.M_Product_ID = "+oLine.getM_Product_ID()+" AND qty > qtyUsed");
+						if(ID_req > 0)
+						{
+							MRequisition req = new MRequisition(po.getCtx(), ID_req, po.get_TrxName());
+							BigDecimal qtySol = DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(qty - qtyUsed) FROM M_RequisitionLine rl " +
+									" WHERE rl.M_Requisition_ID = "+ID_req+" AND rl.M_Product_ID = "+oLine.getM_Product_ID());								
+							return "ERROR: Debe usar solicitud abierta para este cliente. N°: "+req.getDocumentNo()+" con cantidad "+qtySol;
+						}else if (ID_reqD > 0)
+						{
+							MRequisition req = new MRequisition(po.getCtx(), ID_req, po.get_TrxName());
+							BigDecimal qtySol = DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(qty - qtyUsed) FROM M_RequisitionLine rl " +
+									" WHERE rl.M_Requisition_ID = "+ID_req+" AND rl.M_Product_ID = "+oLine.getM_Product_ID());
+							return "ERROR: Debe usar solicitud de distribución abierta para este cliente. N°: "+req.getDocumentNo()+" con cantidad "+qtySol;
+						}
+						if(qtyAvai.subtract(oLine.getQtyOrdered()).compareTo(Env.ZERO) < 0)
+							return "ERROR: Stock Insuficiente y NO Existen solicitudes abiertas";
+					}
+					
+					//logica antigua
+					/*
 					if(qtyAvai.subtract(oLine.getQtyOrdered()).compareTo(Env.ZERO) >= 0 && oLine.get_ValueAsInt("M_RequisitionLine_ID")<=0)
 						;//pasa siempre que tiene disponible y no viene de req
 					else
@@ -117,8 +172,7 @@ public class ModWindsorValidAvaiQtyOrder implements ModelValidator
 						if(oLine.get_ValueAsInt("M_RequisitionLine_ID")>0)
 						{
 							//se revisa que no supere cantidad de solicitud
-							MRequisitionLine rLine = new MRequisitionLine(po.getCtx(), oLine.get_ValueAsInt("M_RequisitionLine_ID"), po.get_TrxName());
-							//BigDecimal qtyAvarLine = rLine.getQty().subtract((BigDecimal)rLine.get_Value("qtyUsed"));
+							MRequisitionLine rLine = new MRequisitionLine(po.getCtx(), oLine.get_ValueAsInt("M_RequisitionLine_ID"), po.get_TrxName());							
 							//nuevo calculo para disponible
 							BigDecimal qtyUsed = DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM (QtyOrdered) FROM C_OrderLine col " +
 									" INNER JOIN C_Order co ON (col.C_Order_ID = co.C_Order_ID) " +
@@ -170,7 +224,7 @@ public class ModWindsorValidAvaiQtyOrder implements ModelValidator
 							}
 							
 						}
-					}
+					}*/
 				}
 			}
 		}
@@ -200,7 +254,7 @@ public class ModWindsorValidAvaiQtyOrder implements ModelValidator
 	{
 		log.info(po.get_TableName() + " Timing: "+timing);
 
-		/*if(timing == TIMING_BEFORE_PREPARE && po.get_Table_ID()== MOrder.Table_ID)  
+		if(timing == TIMING_BEFORE_PREPARE && po.get_Table_ID()== MOrder.Table_ID)  
 		{
 			MOrder order = (MOrder) po;
 			if(order.isSOTrx())
@@ -230,35 +284,64 @@ public class ModWindsorValidAvaiQtyOrder implements ModelValidator
 						if(qtyAvai == null)
 							qtyAvai = Env.ZERO;
 						//validaciones nuevas
-						if(qtyAvai.subtract(oLine.getQtyOrdered()).compareTo(Env.ZERO) > 0)
-							;//pasa siempre que tiene disponible
-						else
+						//ininoles 27-06 nueva logica pedida por fernando
+						if(oLine.get_ValueAsInt("M_RequisitionLine_ID")>0)
 						{
-							if(oLine.get_ValueAsInt("M_RequisitionLine_ID")>0)
-								;//si no tiene disponible pero si ya resevó con la solicitud
-							else
+							//si viene de solicitud ya tendra hecha las validaciones
+							/*//se revisa que no supere cantidad de solicitud
+							MRequisitionLine rLine = new MRequisitionLine(po.getCtx(), oLine.get_ValueAsInt("M_RequisitionLine_ID"), po.get_TrxName());							
+							//nuevo calculo para disponible
+							BigDecimal qtyUsed = DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM (QtyOrdered) FROM C_OrderLine col " +
+									" INNER JOIN C_Order co ON (col.C_Order_ID = co.C_Order_ID) " +
+									" WHERE co.DocStatus NOT IN ('VO') AND C_OrderLine_ID <> " +oLine.get_ID()+								
+									" AND M_RequisitionLine_ID = "+rLine.get_ID());
+							if(qtyUsed == null)
+								qtyUsed = Env.ZERO;
+							BigDecimal qtyAvarLine =  rLine.getQty().subtract(qtyUsed);							
+							if(qtyAvarLine.compareTo(oLine.getQtyOrdered())<0)
+								return "Error: Cantidad Supera Cantidad de Solicitud";
+							//se valida que sea de la misma direccion
+							if(rLine.getParent().get_ValueAsInt("C_Bpartner_Location_ID") != order.getC_BPartner_Location_ID())
 							{
-								//si no tiene disponible y si no tiene solicitud, se busca solicitud abierta si la ubiera
-								int ID_req = DB.getSQLValue(po.get_TrxName(), "SELECT MAX(M_Requisition_ID) FROM M_RequisitionLine rl " +
-										" INNER JOIN M_Requisition mr ON (rl.M_Requisition_ID = mr.M_Requisition_ID) " +
-										" WHERE mr.DocStatus IN ('CO','CL') AND mr.C_BPartner_ID = "+order.getC_BPartner_ID()+
-										" AND mr.C_BPartner_Location_ID = "+order.getC_BPartner_Location_ID()+
-										" AND rl.M_Product_ID = "+oLine.getM_Product_ID()+" AND qty > qtyUsed");
-								if(ID_req > 0)
-								{
-									MRequisition req = new MRequisition(po.getCtx(), ID_req, po.get_TrxName());
-									return "ERROR: Existe solicitud abierta para este cliente. N°:"+req.getDocumentNo();
-								}else
-								{
-									return "ERROR: No hay stock disponible ni solicitud asociada";
-								}
-								
+								if(!rLine.getParent().get_ValueAsBoolean("OverWriteRequisition"))
+									return "Error: Solicitud no es de distribución";
+							}*/
+							;
+						}
+						else
+						{							
+							//se revisa si existe solicitud abierta
+							int ID_req = DB.getSQLValue(po.get_TrxName(), "SELECT MAX(mr.M_Requisition_ID) FROM M_RequisitionLine rl " +
+									" INNER JOIN M_Requisition mr ON (rl.M_Requisition_ID = mr.M_Requisition_ID) " +
+									" WHERE mr.DocStatus IN ('CO','CL') AND mr.C_BPartner_ID = "+order.getC_BPartner_ID()+
+									" AND mr.C_BPartner_Location_ID = "+order.getC_BPartner_Location_ID()+
+									" AND rl.M_Product_ID = "+oLine.getM_Product_ID()+" AND qty > qtyUsed");
+							//se revisa si existe solicitud de distribucion abierta
+							int ID_reqD = DB.getSQLValue(po.get_TrxName(), "SELECT MAX(mr.M_Requisition_ID) FROM M_RequisitionLine rl " +
+									" INNER JOIN M_Requisition mr ON (rl.M_Requisition_ID = mr.M_Requisition_ID) " +
+									" WHERE mr.DocStatus IN ('CO','CL') AND mr.C_BPartner_ID = "+order.getC_BPartner_ID()+
+									" AND mr.OverWriteRequisition = 'Y' "+
+									" AND rl.M_Product_ID = "+oLine.getM_Product_ID()+" AND qty > qtyUsed");
+							if(ID_req > 0)
+							{
+								MRequisition req = new MRequisition(po.getCtx(), ID_req, po.get_TrxName());
+								BigDecimal qtySol = DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(qty - qtyUsed) FROM M_RequisitionLine rl " +
+										" WHERE rl.M_Requisition_ID = "+ID_req+" AND rl.M_Product_ID = "+oLine.getM_Product_ID());								
+								return "ERROR: Debe usar solicitud abierta para este cliente. N°: "+req.getDocumentNo()+" con cantidad "+qtySol;
+							}else if (ID_reqD > 0)
+							{
+								MRequisition req = new MRequisition(po.getCtx(), ID_req, po.get_TrxName());
+								BigDecimal qtySol = DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(qty - qtyUsed) FROM M_RequisitionLine rl " +
+										" WHERE rl.M_Requisition_ID = "+ID_req+" AND rl.M_Product_ID = "+oLine.getM_Product_ID());
+								return "ERROR: Debe usar solicitud de distribución abierta para este cliente. N°: "+req.getDocumentNo()+" con cantidad "+qtySol;
 							}
+							if(qtyAvai.subtract(oLine.getQtyOrdered()).compareTo(Env.ZERO) < 0)
+								return "ERROR: Stock Insuficiente y NO Existen solicitudes abiertas";
 						}
 					}
 				}
 			}
-		}*/
+		}
 		
 		return null;
 	}	//	docValidate

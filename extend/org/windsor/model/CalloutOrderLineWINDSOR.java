@@ -63,47 +63,50 @@ public class CalloutOrderLineWINDSOR extends CalloutEngine
     }
 	public String qtyDisponible (Properties ctx, int WindowNo, GridTab mTab, GridField mField, Object value)
 	{
-		PreparedStatement pstmt=null;
-		
-		Integer client_id=(Integer)mTab.getValue("AD_Client_ID");
-		Integer product_id=(Integer)mTab.getValue("M_Product_ID");
-		Integer disponible;
-		disponible=(Integer)0;
-		String resultStr = "";
-		if (client_id==1000000)
-		{
-			if(product_id!=null && product_id!=0 )
+		if(mTab.getValue("M_RequisitionLine_ID") == null)
+		{		
+			PreparedStatement pstmt=null;
+			
+			Integer client_id=(Integer)mTab.getValue("AD_Client_ID");
+			Integer product_id=(Integer)mTab.getValue("M_Product_ID");
+			Integer disponible;
+			disponible=(Integer)0;
+			String resultStr = "";
+			if (client_id==1000000)
 			{
-				String sql="SELECT qtyavailableofb(?,1000001)+qtyavailableofb(?,1000010) as suma FROM dual";
-				resultStr=" Producto:"+product_id;
-				try {
-					pstmt=DB.prepareStatement(sql,null);
-					pstmt.setInt(1,product_id);
-					pstmt.setInt(2,product_id);
-					ResultSet rs= pstmt.executeQuery();
-					if(rs.next())
-					{
-						disponible= rs.getInt("suma");     
-						resultStr=resultStr+" disponible: "+ disponible;
+				if(product_id!=null && product_id!=0 )
+				{
+					String sql="SELECT qtyavailableofb(?,1000001)+qtyavailableofb(?,1000010) as suma FROM dual";
+					resultStr=" Producto:"+product_id;
+					try {
+						pstmt=DB.prepareStatement(sql,null);
+						pstmt.setInt(1,product_id);
+						pstmt.setInt(2,product_id);
+						ResultSet rs= pstmt.executeQuery();
+						if(rs.next())
+						{
+							disponible= rs.getInt("suma");     
+							resultStr=resultStr+" disponible: "+ disponible;
+						}
+						BigDecimal qtyBD = (BigDecimal)mTab.getValue("QtyEntered");
+						Integer qty=qtyBD.intValue();
+						mTab.setValue("Disponible",disponible);
+						if(qty>disponible)
+						{
+							mTab.setValue("SINDISPONIBLE",'Y');
+						}
+						if(qty<=disponible)
+						{
+							mTab.setValue("SINDISPONIBLE",'N');
+						}
+						if(resultStr != null && resultStr.trim().length() > 3)
+							mTab.fireDataStatusEEvent (resultStr, "Validación de Stock", true);
+					} catch (Exception e) {
+						log.config("Error: "+e.toString());
 					}
-					BigDecimal qtyBD = (BigDecimal)mTab.getValue("QtyEntered");
-					Integer qty=qtyBD.intValue();
-					mTab.setValue("Disponible",disponible);
-					if(qty>disponible)
-					{
-						mTab.setValue("SINDISPONIBLE",'Y');
-					}
-					if(qty<=disponible)
-					{
-						mTab.setValue("SINDISPONIBLE",'N');
-					}
-					if(resultStr != null && resultStr.trim().length() > 3)
-						mTab.fireDataStatusEEvent (resultStr, "Validación de Stock", true);
-				} catch (Exception e) {
-					log.config("Error: "+e.toString());
-				}
-			} 
-		}   
+				} 
+			}   
+		}
 		return "";
 	}
 	public String qtyW (Properties ctx, int WindowNo, GridTab mTab, GridField mField, Object value)

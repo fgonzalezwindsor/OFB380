@@ -623,6 +623,20 @@ public class OFBForward {
 		}
 		return GenerateXML.equals("Y");
 	}
-
+	public static String PathFileSafePicking()
+	{
+		String ruta = "";
+		try 
+		{
+			ruta = DB.getSQLValueString(null, "Select MAX(Value) from AD_SysConfig where name='OFB_PathFileSafePicking' ");
+			if(ruta == null)	
+				ruta = "";
+		}
+		catch (Exception e)
+		{
+			ruta = "";
+		}
+		return ruta;
+	}
 }
 
