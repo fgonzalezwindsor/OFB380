@@ -85,9 +85,11 @@ public class ModWindsorValidAvaiQtyOrder implements ModelValidator
 		if((type == TYPE_BEFORE_NEW || type == TYPE_BEFORE_CHANGE)&& po.get_Table_ID()== MOrderLine.Table_ID)  
 		{
 			MOrderLine oLine = (MOrderLine) po;
-			MOrder order = oLine.getParent();			
-			if(order.isSOTrx() && (order.getDocStatus().compareTo("CO") != 0 && order.getDocStatus().compareTo("IP") != 0 
-					&& order.getDocStatus().compareTo("IN") != 0))
+			MOrder order = oLine.getParent();
+			//que valide en borrador e invalido antes solo lo hacia en borrador
+			if(order.isSOTrx() && (order.getDocStatus().compareTo("CO") != 0 && order.getDocStatus().compareTo("IP") != 0)
+					&& order.getC_DocTypeTarget().getDocSubTypeSO().compareTo("SO") == 0) 
+					//&& order.getDocStatus().compareTo("IN") != 0))
 			{
 				if(oLine.getM_Product_ID() > 0 && oLine.getM_Product().isStocked()
 						&& oLine.getM_Product().getProductType().compareTo("I") == 0)
@@ -226,6 +228,12 @@ public class ModWindsorValidAvaiQtyOrder implements ModelValidator
 						}
 					}*/
 				}
+			}
+			//validacion de devolucion
+			if(order.isSOTrx() && order.getC_DocTypeTarget().getDocSubTypeSO().compareTo("RM") == 0)
+			{
+				if(oLine.get_ValueAsInt("M_RequisitionLine_ID") > 0)
+					return "ERROR. Linea de devolución NO debe tener solicitud asociada";
 			}
 		}
 		

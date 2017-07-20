@@ -570,7 +570,7 @@ public class ExportDTEInvoiceFOLNGemTest extends SvrProcess
     				log.config(wsRespuesta);    				
     				if (urlPdf != null && urlPdf != "" && urlPdf != " ")
     				{
-    					urlPdf = urlPdf+"&Ced=3";
+    					urlPdf = urlPdf+"&Ced=1";
     					invoice.set_CustomColumn("URLXML",urlPdf);
     				}    				
     				invoice.set_CustomColumn("DescriptionFEL",wsRespuesta);

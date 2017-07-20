@@ -17,6 +17,7 @@
  *****************************************************************************/
 package org.tsm.process;
 
+import java.math.BigDecimal;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Timestamp;
@@ -26,6 +27,7 @@ import org.compiere.model.MCash;
 import org.compiere.process.ProcessInfoParameter;
 import org.compiere.process.SvrProcess;
 import org.compiere.util.DB;
+import org.compiere.util.Env;
 
 /**
  *	Replenishment Report
@@ -75,6 +77,7 @@ public class CompleteCCash extends SvrProcess
 	protected String doIt() throws Exception
 	{	
 		int canthead = 0;
+		int cantHeadVoided = 0;
 		String sql = "SELECT C_Cash_ID " +
 				" FROM C_Cash cc " +
 				" WHERE StatementDate BETWEEN ? AND ? " +
@@ -93,16 +96,29 @@ public class CompleteCCash extends SvrProcess
 			rs = pstmt.executeQuery();		
 			while (rs.next())
 			{
-				MCash cash = new MCash(getCtx(), rs.getInt("C_Cash_ID"), get_TrxName());
+				MCash cash = new MCash(getCtx(), rs.getInt("C_Cash_ID"), get_TrxName());				
 				//validacion solo completar fondos fijos
 				int cantFF = DB.getSQLValue(get_TrxName(), "SELECT COUNT(1) FROM C_CashLine" +
 						" WHERE IsActive = 'Y' AND CashType = 'R' AND C_Cash_ID="+cash.get_ID());
 				if(cantFF > 0)
 				{
-					cash.setDocStatus("DR");
-					cash.processIt("CO");
-					if(cash.save())
-						canthead++;
+					//si monto es 0 se anula
+					BigDecimal amtValid = DB.getSQLValueBD(get_TrxName(), "SELECT SUM(Amount) FROM C_CashLine " +
+							" WHERE IsActive = 'Y' AND C_Cash_ID="+cash.get_ID());
+					if(amtValid == null || amtValid.compareTo(Env.ZERO) <= 0)
+					{
+						cash.setDocStatus("DR");
+						cash.processIt("VO");
+						if(cash.save())
+							cantHeadVoided++;
+					}
+					else
+					{
+						cash.setDocStatus("DR");
+						cash.processIt("CO");
+						if(cash.save())
+							canthead++;
+					}
 				}
 			}	
 		}
@@ -115,6 +131,6 @@ public class CompleteCCash extends SvrProcess
 			rs.close ();	pstmt.close ();
 			pstmt = null;	rs = null;
 		}
-		return "Se han completado "+canthead+" fondos fijo";
+		return "Se han completado "+canthead+" fondos fijo. Se han anulado "+cantHeadVoided+" fondos fijos";
 	}	//	doIt
 }	//	Replenish

@@ -16,7 +16,7 @@
  *****************************************************************************/
 package org.windsor.model;
 
-import org.compiere.model.MBPartner;
+import java.math.BigDecimal;
 import org.compiere.model.MClient;
 import org.compiere.model.MRequisition;
 import org.compiere.model.MRequisitionLine;
@@ -25,25 +25,26 @@ import org.compiere.model.ModelValidator;
 import org.compiere.model.PO;
 import org.compiere.util.CLogger;
 import org.compiere.util.DB;
+import org.compiere.util.Env;
 
 /**
  *	Validator for company WINDSOR
  *
  *  @author Italo Niñoles
  */
-public class ModWindsorUniqueOpenReq implements ModelValidator
+public class ModWindsorValidSalesReq implements ModelValidator
 {
 	/**
 	 *	Constructor.
 	 *	The class is instantiated when logging in and client is selected/known
 	 */
-	public ModWindsorUniqueOpenReq ()
+	public ModWindsorValidSalesReq ()
 	{
 		super ();
 	}	//	MyValidator
 
 	/**	Logger			*/
-	private static CLogger log = CLogger.getCLogger(ModWindsorUniqueOpenReq.class);
+	private static CLogger log = CLogger.getCLogger(ModWindsorValidSalesReq.class);
 	/** Client			*/
 	private int		m_AD_Client_ID = -1;
 	
@@ -67,7 +68,7 @@ public class ModWindsorUniqueOpenReq implements ModelValidator
 		//	Tables to be monitored
 		engine.addModelChange(MRequisitionLine.Table_Name, this);
 		//	Documents to be monitored
-		engine.addDocValidate(MRequisition.Table_Name, this);
+		//engine.addDocValidate(MOrder.Table_Name, this);
 
 	}	//	initialize
 
@@ -79,29 +80,37 @@ public class ModWindsorUniqueOpenReq implements ModelValidator
 	{
 		log.info(po.get_TableName() + " Type: "+type);
 		
-
-		if((type == TYPE_BEFORE_CHANGE || type == TYPE_BEFORE_NEW) && po.get_Table_ID()== MRequisitionLine.Table_ID)  
+		if((type == TYPE_BEFORE_NEW || type == TYPE_BEFORE_CHANGE)&& po.get_Table_ID()== MRequisitionLine.Table_ID)  
 		{
-			MRequisitionLine reqLine = (MRequisitionLine) po;
-			MRequisition req = new MRequisition(po.getCtx(), reqLine.getM_Requisition_ID(), po.get_TrxName());
-			if(reqLine.getM_Product_ID() > 0 && reqLine.getM_Product().isStocked()
-					&& reqLine.getM_Product().getProductType().compareTo("I") == 0)
+			MRequisitionLine rLine = (MRequisitionLine) po;
+			MRequisition req = rLine.getParent();
+			if(req.isSOTrx()) 
 			{
-				int cant = DB.getSQLValue(po.get_TrxName(), "SELECT COUNT(*) FROM M_RequisitionLine rl " +
-						" INNER JOIN M_Requisition mr ON (rl.M_Requisition_ID = mr.M_Requisition_ID) " +
-						" WHERE mr.DocStatus IN ('CO','CL') AND mr.C_BPartner_ID = "+req.get_ValueAsInt("C_BPartner_ID") +
-						" AND rl.M_Product_ID = "+reqLine.getM_Product_ID()+" AND qty > qtyUsed " +
-						" AND M_RequisitionLine_ID <> "+reqLine.get_ID());
-				
-				if(cant > 0)
+				if(rLine.getM_Product_ID() > 0 && rLine.getM_Product().isStocked()
+						&& rLine.getM_Product().getProductType().compareTo("I") == 0)
 				{
-					MBPartner bPart = new MBPartner(po.getCtx(), req.get_ValueAsInt("C_BPartner_ID"), po.get_TrxName());
-					return "ERROR: Ya Existe una solicitud para el producto "+reqLine.getM_Product().getName()+
-					" y el socio de negocio "+bPart.getName();
+					BigDecimal qtyAvai = Env.ZERO; 
+					if(req.getAD_Client_ID() == 1000000)
+					{
+						qtyAvai= DB.getSQLValueBD(po.get_TrxName(), "SELECT qtyavailableofb(mp.M_Product_ID,1000001) FROM M_Product mp WHERE mp.M_Product_ID = "+rLine.getM_Product_ID());
+						if(qtyAvai == null)
+							qtyAvai = Env.ZERO;
+						BigDecimal aux = DB.getSQLValueBD(po.get_TrxName(), "SELECT qtyavailableofb(mp.M_Product_ID,1000010) FROM M_Product mp WHERE mp.M_Product_ID = "+rLine.getM_Product_ID());
+						if(aux == null)
+							aux = Env.ZERO;
+						qtyAvai = qtyAvai.add(aux);
+					}
+					else
+					{
+						qtyAvai= DB.getSQLValueBD(po.get_TrxName(), "SELECT bomqtyavailableofb(mp.M_Product_ID,"+req.getM_Warehouse_ID()+",0) FROM M_Product mp WHERE mp.M_Product_ID = "+rLine.getM_Product_ID());
+					}
+					if(qtyAvai == null)
+						qtyAvai = Env.ZERO;
+					if(rLine.getQty().compareTo(qtyAvai) > 0)
+						return "ERROR: Stock Insuficiente. Stock Disponible:"+qtyAvai.intValue();
 				}
 			}
 		}
-		
 		return null;
 	}	//	modelChange
 	
@@ -126,36 +135,6 @@ public class ModWindsorUniqueOpenReq implements ModelValidator
 	public String docValidate (PO po, int timing)
 	{
 		log.info(po.get_TableName() + " Timing: "+timing);
-
-		if(timing == TIMING_BEFORE_COMPLETE && po.get_Table_ID()== MRequisition.Table_ID)  
-		{
-			MRequisition req = (MRequisition) po;
-			if(req.getC_DocType().isSOTrx())
-			{
-				MRequisitionLine[] rLines = req.getLines();
-				for (int i = 0; i < rLines.length; i++)
-				{
-					MRequisitionLine rLine = rLines[i];
-					if(rLine.getM_Product_ID() > 0 && rLine.getM_Product().isStocked()
-							&& rLine.getM_Product().getProductType().compareTo("I") == 0)
-					{
-						int cant = DB.getSQLValue(po.get_TrxName(), "SELECT COUNT(*) FROM M_RequisitionLine rl " +
-								" INNER JOIN M_Requisition mr ON (rl.M_Requisition_ID = mr.M_Requisition_ID) " +
-								" WHERE mr.DocStatus IN ('CO','CL') AND mr.C_BPartner_ID = "+req.get_ValueAsInt("C_BPartner_ID") +
-								" AND rl.M_Product_ID = "+rLine.getM_Product_ID()+" AND qty > qtyUsed " +
-								" AND M_RequisitionLine_ID <> "+rLine.get_ID());
-						
-						if(cant > 0)
-						{
-							MBPartner bPart = new MBPartner(po.getCtx(), req.get_ValueAsInt("C_BPartner_ID"), po.get_TrxName());
-							return "ERROR: Ya Existe una solicitud para el producto "+rLine.getM_Product().getName()+
-							" y el socio de negocio "+bPart.getName();
-						}
-					}
-				}
-			}
-		}
-		
 		return null;
 	}	//	docValidate
 

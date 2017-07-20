@@ -638,5 +638,20 @@ public class OFBForward {
 		}
 		return ruta;
 	}
+	public static boolean UseCorrelativeAPForDocType()
+	{
+		String GenerateXML = "N";
+		try 
+		{
+			GenerateXML = DB.getSQLValueString(null, "Select Value from AD_SysConfig where name='OFB_UseCorrelativeAPForDocType'");
+			if(GenerateXML == null)	
+				GenerateXML = "N";
+		}
+		catch (Exception e)
+		{
+			GenerateXML = "N";
+		}
+		return GenerateXML.equals("Y");
+	}
 }
 

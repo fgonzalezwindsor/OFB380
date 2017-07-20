@@ -89,29 +89,44 @@ public class GenerateRefund extends SvrProcess
 		//String sqlHR = "SELECT pm.M_Movement_ID,pm.C_BPartner_ID,pm.movementdate,pm.AD_OrgRef_ID as AD_Org_ID," +
 				//ininoles se saca cantidad de dias de la HR
 				" (select MAX(extract(day from mml.tp_inicialhr)) from m_movementline mml where mml.m_movement_id =  pm.M_Movement_ID)- " +
-				" (select MIN(extract(day from mml.tp_inicialhr)) from m_movementline mml where mml.m_movement_id = pm.M_Movement_ID) + 1 " +
+				" (select MIN(extract(day from mml.tp_finalhr)) from m_movementline mml where mml.m_movement_id = pm.M_Movement_ID) + 1 " +
 				" as cantDays " +
 				//end
 				" FROM M_Movement pm " +
-				" WHERE pm.M_Movement_ID NOT IN (SELECT rLine.M_Movement_ID FROM TP_RefundLine rLine " +
+				/*" WHERE pm.M_Movement_ID NOT IN (SELECT rLine.M_Movement_ID FROM TP_RefundLine rLine " +
 				" INNER JOIN TP_Refund r ON (r.TP_Refund_ID = rLine.TP_Refund_ID) " +
 				" WHERE r.DocStatus IN ('CO','DR','IP') AND rLine.M_Movement_ID IS NOT NULL) " +
-				" AND pm.AD_Client_ID = "+Env.getAD_Client_ID(getCtx())+
-				" AND pm.MovementDate BETWEEN ? AND ? ";
+				" AND pm.AD_Client_ID = "+Env.getAD_Client_ID(getCtx())+*/
+				" WHERE pm.AD_Client_ID = "+Env.getAD_Client_ID(getCtx())+
+				//" AND pm.MovementDate BETWEEN ? AND ? ";
+				" AND " +
+				" (((select MIN(mml.tp_finalhr) from m_movementline mml where mml.m_movement_id = pm.M_Movement_ID)  > ? " +
+				" AND" +
+				" (select MIN(mml.tp_finalhr) from m_movementline mml where mml.m_movement_id = pm.M_Movement_ID)  < ?)" +
+				" OR " +
+				" (select MAX(mml.tp_inicialhr) from m_movementline mml where mml.m_movement_id =  pm.M_Movement_ID) < ? " +
+				" AND" +
+				" (select MAX(mml.tp_inicialhr) from m_movementline mml where mml.m_movement_id =  pm.M_Movement_ID) > ?) ";
 		if(p_Org_ID > 0)
 		{
 			sqlHR = sqlHR + " AND pm.AD_Org_ID = "+p_Org_ID+" AND pm.DocStatus IN ('CO','CL','DR')";
 			//sqlHR = sqlHR + " AND pm.AD_OrgRef_ID = "+p_Org_ID+" AND pm.DocStatus IN ('CO','CL','DR')";
 		}
-		sqlHR = sqlHR + " ORDER BY C_BPartner_ID, pm.movementdate";
+		sqlHR = sqlHR + " ORDER BY C_BPartner_ID, pm.movementdate, created";
 			
 		PreparedStatement pstmtHR = null;
 		ResultSet rsHR = null;
 		try
 		{
+			//seteamos variable to
+			p_DateTrxTo.setHours(23);
+			p_DateTrxTo.setMinutes(59);
+			p_DateTrxTo.setSeconds(59);
 			pstmtHR = DB.prepareStatement (sqlHR, get_TrxName());
 			pstmtHR.setTimestamp(1, p_DateTrxFrom);
 			pstmtHR.setTimestamp(2, p_DateTrxTo);
+			pstmtHR.setTimestamp(3, p_DateTrxTo);
+			pstmtHR.setTimestamp(4, p_DateTrxFrom);
 			rsHR = pstmtHR.executeQuery();		
 			int ID_BPartner = 0;
 			int ID_Org = 0;
@@ -149,47 +164,55 @@ public class GenerateRefund extends SvrProcess
 						amtRefund = Env.ZERO;
 					//buscamos viatico abierto existente
 					int ID_Viatico = DB.getSQLValue(get_TrxName(), "SELECT COALESCE(MAX(TP_Refund_ID),0)" +
-							" FROM TP_Refund WHERE DocStatus NOT IN ('CO','VO') " +
+							" FROM TP_Refund WHERE DocStatus NOT IN ('CO','VO') AND Type='01' " +
 							" AND C_BPartner_ID = "+ID_BPartner);
 					if(ID_Viatico > 0)//existe viatico abierto para conductor
-					{	
-						//generamos la linea del viatico
-						X_TP_RefundLine line = new X_TP_RefundLine(getCtx(), 0, get_TrxName());
-						line.setTP_Refund_ID(ID_Viatico);
-						line.setM_Movement_ID(rsHR.getInt("M_Movement_ID"));
-						line.setAD_Org_ID(rsHR.getInt("AD_Org_ID"));
-						//line.setDescription("Ingresado Automaticamente");
-						line.setDateTrx(rsHR.getTimestamp("MovementDate"));		
-						if(IsMultyDays)
-							line.setAmt(amtRefund);
-						else
+					{
+						//antes de generar la linea de viatico normal, hay que revisar que no exista otra linea con los mismo datos
+						int cantV = DB.getSQLValue(get_TrxName(), "SELECT COUNT(1) FROM TP_RefundLine rl" +
+								" INNER JOIN TP_Refund r ON (rl.TP_Refund_ID = r.TP_Refund_ID) " +
+								" WHERE r.Type = '01' AND r.C_BPartner_ID = "+ID_BPartner+" AND rl.DateTrx = ?",rsHR.getTimestamp("MovementDate"));
+						if(cantV < 1 && rsHR.getTimestamp("MovementDate").compareTo(p_DateTrxTo) <= 0
+								&& rsHR.getTimestamp("MovementDate").compareTo(p_DateTrxFrom) >= 0)
 						{
-							if(rsHR.getBigDecimal("cantDays") != null)
-								line.setAmt(amtRefund.multiply(rsHR.getBigDecimal("cantDays")));
-							else
-								line.setAmt(amtRefund);
+							//generamos la linea del viatico
+							X_TP_RefundLine line = new X_TP_RefundLine(getCtx(), 0, get_TrxName());
+							line.setTP_Refund_ID(ID_Viatico);
+							line.setM_Movement_ID(rsHR.getInt("M_Movement_ID"));
+							line.setAD_Org_ID(rsHR.getInt("AD_Org_ID"));
+							//line.setDescription("Ingresado Automaticamente");
+							line.setDateTrx(rsHR.getTimestamp("MovementDate"));						
+							line.setAmt(amtRefund);
+							line.save();
+							cantLine++;
 						}
-						line.save();
-						cantLine++;
 						if(IsMultyDays)
 						{	
 							if(rsHR.getInt("cantDays") > 0)
 							{
-								for(int a=0;a < rsHR.getInt("cantDays");a++)
-								{
-									Calendar calInicial = Calendar.getInstance();		
-									calInicial.setTimeInMillis(rsHR.getTimestamp("MovementDate").getTime());
+								Calendar calInicial = Calendar.getInstance();		
+								calInicial.setTimeInMillis(rsHR.getTimestamp("MovementDate").getTime());
+								for(int a=1;a < rsHR.getInt("cantDays");a++)
+								{	
 									calInicial.add(Calendar.DATE, 1);
-									//generamos la linea del viatico
-									X_TP_RefundLine line2 = new X_TP_RefundLine(getCtx(), 0, get_TrxName());
-									line2.setTP_Refund_ID(ID_Viatico);
-									line2.setM_Movement_ID(rsHR.getInt("M_Movement_ID"));
-									line2.setAD_Org_ID(rsHR.getInt("AD_Org_ID"));
-									//line2.setDescription("Ingresado Automaticamente");
-									line2.setDateTrx(new Timestamp(calInicial.getTimeInMillis()));
-									line2.setAmt(amtRefund);
-									line2.save();
-									cantLine++;
+									//antes de generar la linea de viatico normal, hay que revisar que no exista otra linea con los mismo datos 
+									int cantV2 = DB.getSQLValue(get_TrxName(), "SELECT COUNT(1) FROM TP_RefundLine rl" +
+											" INNER JOIN TP_Refund r ON (rl.TP_Refund_ID = r.TP_Refund_ID) " +
+											" WHERE r.Type = '01' AND r.C_BPartner_ID = "+ID_BPartner+" AND rl.DateTrx = ?",new Timestamp(calInicial.getTimeInMillis()));
+									if(cantV2 < 1  && (new Timestamp(calInicial.getTimeInMillis())).compareTo(p_DateTrxTo) <= 0
+											&& (new Timestamp(calInicial.getTimeInMillis())).compareTo(p_DateTrxFrom) >= 0)										
+									{
+										//generamos la linea del viatico
+										X_TP_RefundLine line2 = new X_TP_RefundLine(getCtx(), 0, get_TrxName());
+										line2.setTP_Refund_ID(ID_Viatico);
+										line2.setM_Movement_ID(rsHR.getInt("M_Movement_ID"));
+										line2.setAD_Org_ID(rsHR.getInt("AD_Org_ID"));
+										//line2.setDescription("Ingresado Automaticamente");
+										line2.setDateTrx(new Timestamp(calInicial.getTimeInMillis()));
+										line2.setAmt(amtRefund);
+										line2.save();
+										cantLine++;
+									}
 								}
 							}	
 						}
@@ -203,45 +226,54 @@ public class GenerateRefund extends SvrProcess
 						viatico.setC_BPartner_ID(ID_BPartner);						
 						viatico.setDescription("Generado Automaticamente");
 						viatico.setDocStatus("DR");
+						viatico.setType("01");
 						viatico.save();
 						canthead++;
 						//generamos la linea del viatico
-						X_TP_RefundLine line = new X_TP_RefundLine(getCtx(), 0, get_TrxName());
-						line.setTP_Refund_ID(viatico.get_ID());
-						line.setM_Movement_ID(rsHR.getInt("M_Movement_ID"));
-						line.setAD_Org_ID(rsHR.getInt("AD_Org_ID"));
-						//line.setDescription("Ingresado Automaticamente");
-						line.setDateTrx(rsHR.getTimestamp("MovementDate"));						
-						if(IsMultyDays)
-							line.setAmt(amtRefund);
-						else
+						//antes de generar la linea de viatico normal, hay que revisar que no exista otra linea con los mismo datos
+						int cantV = DB.getSQLValue(get_TrxName(), "SELECT COUNT(1) FROM TP_RefundLine rl" +
+								" INNER JOIN TP_Refund r ON (rl.TP_Refund_ID = r.TP_Refund_ID) " +
+								" WHERE r.C_BPartner_ID = "+ID_BPartner+" AND rl.DateTrx = ?",rsHR.getTimestamp("MovementDate"));
+						if(cantV < 1  && rsHR.getTimestamp("MovementDate").compareTo(p_DateTrxTo) <= 0
+								&& rsHR.getTimestamp("MovementDate").compareTo(p_DateTrxFrom) >= 0)
 						{
-							if(rsHR.getBigDecimal("cantDays") != null)
-								line.setAmt(amtRefund.multiply(rsHR.getBigDecimal("cantDays")));
-							else
-								line.setAmt(amtRefund);
+							X_TP_RefundLine line = new X_TP_RefundLine(getCtx(), 0, get_TrxName());
+							line.setTP_Refund_ID(viatico.get_ID());
+							line.setM_Movement_ID(rsHR.getInt("M_Movement_ID"));
+							line.setAD_Org_ID(rsHR.getInt("AD_Org_ID"));
+							//line.setDescription("Ingresado Automaticamente");
+							line.setDateTrx(rsHR.getTimestamp("MovementDate"));						
+							line.setAmt(amtRefund);
+							line.save();
+							cantLine++;
 						}
-						line.save();
-						cantLine++;
 						if(IsMultyDays)
 						{	
 							if(rsHR.getInt("cantDays") > 0)
 							{
-								for(int a=0;a < rsHR.getInt("cantDays");a++)
-								{
-									Calendar calInicial = Calendar.getInstance();		
-									calInicial.setTimeInMillis(rsHR.getTimestamp("MovementDate").getTime());
+								Calendar calInicial = Calendar.getInstance();		
+								calInicial.setTimeInMillis(rsHR.getTimestamp("MovementDate").getTime());
+								for(int a=1;a < rsHR.getInt("cantDays");a++)
+								{	
 									calInicial.add(Calendar.DATE, 1);
 									//generamos la linea del viatico
-									X_TP_RefundLine line2 = new X_TP_RefundLine(getCtx(), 0, get_TrxName());
-									line2.setTP_Refund_ID(viatico.get_ID());
-									line2.setM_Movement_ID(rsHR.getInt("M_Movement_ID"));
-									line2.setAD_Org_ID(rsHR.getInt("AD_Org_ID"));
-									//line2.setDescription("Ingresado Automaticamente");
-									line2.setDateTrx(new Timestamp(calInicial.getTimeInMillis()));
-									line2.setAmt(amtRefund);
-									line2.save();
-									cantLine++;
+									//antes de generar la linea de viatico normal, hay que revisar que no exista otra linea con los mismo datos 
+									int cantV2 = DB.getSQLValue(get_TrxName(), "SELECT COUNT(1) FROM TP_RefundLine rl" +
+											" INNER JOIN TP_Refund r ON (rl.TP_Refund_ID = r.TP_Refund_ID) " +
+											" WHERE r.Type = '01' AND r.C_BPartner_ID = "+ID_BPartner+" AND rl.DateTrx = ?",new Timestamp(calInicial.getTimeInMillis()));
+									if(cantV2 < 1  && (new Timestamp(calInicial.getTimeInMillis())).compareTo(p_DateTrxTo) <= 0
+											&& (new Timestamp(calInicial.getTimeInMillis())).compareTo(p_DateTrxFrom) >= 0)										
+									{
+										X_TP_RefundLine line2 = new X_TP_RefundLine(getCtx(), 0, get_TrxName());
+										line2.setTP_Refund_ID(viatico.get_ID());
+										line2.setM_Movement_ID(rsHR.getInt("M_Movement_ID"));
+										line2.setAD_Org_ID(rsHR.getInt("AD_Org_ID"));
+										//line2.setDescription("Ingresado Automaticamente");
+										line2.setDateTrx(new Timestamp(calInicial.getTimeInMillis()));
+										line2.setAmt(amtRefund);
+										line2.save();
+										cantLine++;
+									}
 								}
 							}	
 						}

@@ -45,3 +45,11 @@ $RECYCLE.BIN/
 Network Trash Folder
 Temporary Items
 .apdisk
+bin/org/windsor/process/UpdateSalesReqStock.class
+bin/org/andes/process/AndesFullProcessAllBank.class
+bin/org/compiere/apps/form/VAllocation2BpInv$1.class
+bin/org/compiere/apps/form/VAllocation2BpInv.class
+bin/org/ofb/process/UpdateCreditBP.class
+bin/org/tsm/process/ProcessRecruitmentEvaluation.class
+bin/org/windsor/model/ModWindsorUniqueOpenReqNOUSAR.class
+bin/org/windsor/model/ModWindsorValidSalesReq.class

@@ -138,6 +138,12 @@ public class ProcessPreMovement extends SvrProcess
 					qtyAsset = 0;				
 				if(cantLine != qtyAsset)
 					throw new AdempiereException("Cantidad de Lineas Distinta a Cantidad de Activos");
+				//validacion no incidencias
+				int cantIndBP = DB.getSQLValue(get_TrxName(),"SELECT COUNT(1) FROM RVOFB_Pre_M_MovementLine" +
+						" WHERE Pre_M_Movement_ID="+preMov.get_ID()+" AND A_Asset_ID > 0 OR C_Bpartner_ID > 0");
+				if(cantIndBP > 0)
+					throw new AdempiereException("ERROR: Hay incidencias en la disponibilidad");
+				
 				//validaciones socio de negocio
 				String sqlLine = "SELECT Pre_M_MovementLine_ID FROM Pre_M_MovementLine " +
 				" WHERE Pre_M_Movement_ID = "+preMov.get_ID();

@@ -146,7 +146,7 @@ public class ModTSMFondoFijo implements ModelValidator
 	public String docValidate (PO po, int timing)
 	{
 		log.info(po.get_TableName() + " Timing: "+timing);
-		if(timing == TIMING_BEFORE_COMPLETE && po.get_Table_ID()==MCash.Table_ID)  
+		/*if(timing == TIMING_BEFORE_COMPLETE && po.get_Table_ID()==MCash.Table_ID)  
 		{
 			MCash cash = (MCash) po;			
 			BigDecimal amt =  DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(amount) FROM C_CashLine" +
@@ -159,7 +159,7 @@ public class ModTSMFondoFijo implements ModelValidator
 				line.setCashType("R");
 				line.save();
 			}			
-		}		
+		}		*/
 		if(timing == TIMING_AFTER_COMPLETE && po.get_Table_ID()==MCash.Table_ID)  
 		{
 			MCash cash = (MCash) po;

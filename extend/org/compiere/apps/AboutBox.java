@@ -38,7 +38,7 @@ import org.compiere.util.Msg;
 /**
  *	About Dialog
  *
- *  @author 	Jorg Janke
+ *  @author 	Italo Niñoles
  *  @version 	$Id: AboutBox.java,v 1.2 2006/07/30 00:51:27 jjanke Exp $
  */
 public final class AboutBox extends CDialog implements ActionListener
@@ -47,7 +47,7 @@ public final class AboutBox extends CDialog implements ActionListener
 	 * 
 	 */
 	private static final long serialVersionUID = -5126987147443121045L;
-	public static final String OFBVersion="OFBConsulting 6.24.B";
+	public static final String OFBVersion="OFBConsulting 6.25.H";
 
 	/**
 	 *	Constructor for modal about dialog

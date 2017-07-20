@@ -87,13 +87,16 @@ public class ModTCUpdateCashShipLine implements ModelValidator
 				{
 					MBPartner bp = null;
 					bp = new MBPartner(po.getCtx(), ID_BPartner, po.get_TrxName());
-					int ID_Cash = DB.getSQLValue(po.get_TrxName(), "SELECT MAX(cc.C_Cash_ID) " +
-							" FROM C_Cash cc INNER JOIN C_CashBook cb ON (cc.C_CashBook_ID = cb.C_CashBook_ID) " +
-							" WHERE cc.DOcStatus IN ('DR','IP') AND cb.C_BPartner_ID = "+bp.get_ID());
-					if(ID_Cash > 0)
-						ioLine.set_CustomColumn("C_Cash_ID", ID_Cash);
-					else
-						return "No se puede guardar la lines si no hay un diario de efectivo abierto";
+					if(ioLine.get_ValueAsInt("C_Cash_ID") <= 0)
+					{	
+						int ID_Cash = DB.getSQLValue(po.get_TrxName(), "SELECT MAX(cc.C_Cash_ID) " +
+								" FROM C_Cash cc INNER JOIN C_CashBook cb ON (cc.C_CashBook_ID = cb.C_CashBook_ID) " +
+								" WHERE cc.DOcStatus IN ('DR','IP') AND cb.C_BPartner_ID = "+bp.get_ID());
+						if(ID_Cash > 0)
+							ioLine.set_CustomColumn("C_Cash_ID", ID_Cash);
+						else
+							return "No se puede guardar la lines si no hay un diario de efectivo abierto";
+					}
 				}				
 			}
 		}

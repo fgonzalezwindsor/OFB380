@@ -49,6 +49,7 @@ import org.compiere.util.Msg;
 import org.compiere.util.TimeUtil;
 import org.eevolution.model.MPPProductBOM;
 import org.eevolution.model.MPPProductBOMLine;
+import org.ofb.model.OFBForward;
 import org.ofb.process.ExportDTEInvoiceCG;
 import org.ofb.process.ExportDTEInvoiceCGBaskakow;
 import org.ofb.process.ExportDTEInvoiceCGGemV2;
@@ -2677,10 +2678,12 @@ public class MInvoice extends X_C_Invoice implements DocAction
 				{
 					String date1=getDateAcct().toString().substring(0,10);
 					String mysql="Select nvl(max(I.correlativo),0) FROM C_INVOICE I "
-							+" WHere i.AD_CLIENT_ID="+ getAD_Client_ID() +" ANd "
+							+" WHere i.AD_CLIENT_ID="+ getAD_Client_ID() +" AND "
 							+" TRIM(TO_Char(i.DATEacct,'mm'))= '"+ date1.substring(5,7)+"'"
 							+" AND	i.ISSOTRX='N' AND TRIM(TO_Char(i.DATEacct,'yyyy'))= '"+ date1.substring(0,4)+"'"
-							+" and i.DOCSTATUS IN ('CO','CL') and Isactive='Y' ";
+							+" AND i.DOCSTATUS IN ('CO','CL') and Isactive='Y' ";
+					if(OFBForward.UseCorrelativeAPForDocType())
+						mysql = mysql + "AND C_DocType_ID = "+getC_DocTypeTarget_ID();
 
 					int nextcorr=DB.getSQLValue("C_Invoice",mysql);
 					if(nextcorr==0)

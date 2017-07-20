@@ -114,7 +114,7 @@ public class GenerateCashJournalFF extends SvrProcess
 				{
 					//buscamos libro para ese BP
 					int ID_CashBook = DB.getSQLValue(get_TrxName(), "SELECT MAX(C_CashBook_ID) FROM C_CashBook " +
-							" WHERE IsActive = 'Y' AND C_BPartner_ID = "+ID_BPartner);
+							" WHERE IsActive = 'Y' AND TypeBook = 'FF' AND C_BPartner_ID = "+ID_BPartner);
 					if(ID_CashBook > 0)
 					{
 						//buscamos diario abierto existente

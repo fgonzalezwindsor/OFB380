@@ -91,6 +91,8 @@ public class ModUpdateQtyShipment implements ModelValidator
 		if((type == TYPE_BEFORE_NEW || type == TYPE_BEFORE_CHANGE )&& po.get_Table_ID()==MInOutLine.Table_ID) 
 		{	
 			MInOutLine shline = (MInOutLine)po;
+			if(shline.getM_InOut().isSOTrx() == false)
+				return null;
 			//revisar
 			MProduct prod = new MProduct(po.getCtx(),shline.getM_Product_ID(),po.get_TrxName());
 			
@@ -238,8 +240,8 @@ public class ModUpdateQtyShipment implements ModelValidator
 				}
 				else
 				{
-					shline.set_CustomColumn("a_asset3_id", 0);
-					shline.set_CustomColumn("a_asset2_id", 0);
+					shline.set_CustomColumn("A_Asset3_ID", 0);
+					shline.set_CustomColumn("A_Asset2_ID", 0);
 				}
 				
 			}

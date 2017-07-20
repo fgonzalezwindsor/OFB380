@@ -16,10 +16,18 @@
  *****************************************************************************/
 package org.tsm.process;
 
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.Timestamp;
+import java.util.logging.Level;
+
 import org.adempiere.exceptions.AdempiereException;
+import org.compiere.model.MMovement;
 import org.compiere.model.X_TP_Refund;
+import org.compiere.model.X_TP_RefundLine;
 import org.compiere.process.SvrProcess;
 import org.compiere.util.DB;
+
 /**
  *	
  *	
@@ -50,9 +58,14 @@ public class ProcessRefund extends SvrProcess
 			Boolean sig1 = viatico.get_ValueAsBoolean("Signature1");
 			Boolean sig2 = viatico.get_ValueAsBoolean("Signature2");
 			Boolean sig3 = viatico.get_ValueAsBoolean("Signature3");
-			Boolean sig4 = viatico.get_ValueAsBoolean("Signature4");
-			if(sig1 == false || sig2 == false || sig3 == false || sig4 == false)
-				throw new AdempiereException("Error: No se puede completar sin las firmas necesarias");						
+			if(viatico.getType().compareTo("01") == 0)
+			{
+				if(sig2 == false || sig3 == false)
+					throw new AdempiereException("Error: No se puede completar sin las firmas necesarias");
+			}
+			else if (viatico.getType().compareTo("02") == 0)
+				if(sig1 == false || sig2 == false || sig3 == false)
+					throw new AdempiereException("Error: No se puede completar sin las firmas necesarias");
 			if(viatico.getDocStatus().compareToIgnoreCase("DR")==0)
 			{	
 				if(viatico.get_ValueAsBoolean("overwrite"))
@@ -61,16 +74,66 @@ public class ProcessRefund extends SvrProcess
 					viatico.setProcessed(true);
 				}
 				else
-				{
-					int cantRep = DB.getSQLValue(get_TrxName(), "SELECT COALESCE(COUNT(1),0)FROM TP_RefundLine " +
-						" WHERE TP_Refund_ID="+viatico.get_ID()+" GROUP BY DateTrx HAVING COUNT(1) > 1");
-					if(cantRep > 0)
-						throw new AdempiereException("Error: Existe mas de una Hoja de Ruta para la misma Fecha");
-					else
+				{	
+					//validacion 2 viaticos normales existentes
+					if(viatico.getType().compareTo("01") == 0)
 					{
-						viatico.setDocStatus("CO");
-						viatico.setProcessed(true);
+						int cantV = DB.getSQLValue(get_TrxName(),"SELECT COUNT(1) FROM TP_Refund WHERE C_BPartner_ID = "+viatico.getC_BPartner_ID()+
+								" AND Type = '01' AND TP_Refund_ID <> "+viatico.get_ID()+" AND DateDoc = ?",viatico.getDateDoc());
+						if(cantV > 0)
+							throw new AdempiereException("ERROR: Ya existe mas de un viatico para la misma fecha");
+						int cantRep = DB.getSQLValue(get_TrxName(), "SELECT COALESCE(COUNT(1),0)FROM TP_RefundLine " +
+								" WHERE M_Movement_ID > 0 AND TP_Refund_ID="+viatico.get_ID()+" GROUP BY DateTrx HAVING COUNT(1) > 1");
+							if(cantRep > 0)
+								throw new AdempiereException("ERROR: Existe mas de una Hoja de Ruta para la misma Fecha");
 					}
+					//validaciones de linea
+					String sqlLine = "SELECT TP_RefundLine_ID FROM TP_RefundLine WHERE IsActive = 'Y'" +
+							" AND TP_Refund_ID = ?";
+					PreparedStatement pstmt = null;					
+
+					pstmt = DB.prepareStatement(sqlLine, get_TrxName());
+					pstmt.setInt(1, viatico.get_ID());
+					ResultSet rs = pstmt.executeQuery();
+					while(rs.next())
+					{
+						//validación misma linea mas de una vez
+						X_TP_RefundLine rLine = new X_TP_RefundLine (getCtx(),rs.getInt("TP_RefundLine_ID"),get_TrxName() );
+						
+						//validacion de fecha
+						if(rLine.getM_Movement_ID() > 0)
+						{
+							//MMovement mov = new MMovement(getCtx(), rLine.getM_Movement_ID(), get_TrxName());
+							//ininoles la comparacion se hace con los valores de las fecha de las lineas 
+							Timestamp MaxDate = DB.getSQLValueTS(get_TrxName(), "SELECT MAX(TP_InicialHR) FROM M_MovementLine WHERE M_Movement_ID = "+rLine.getM_Movement_ID());
+							Timestamp MinDate = DB.getSQLValueTS(get_TrxName(), "SELECT MIN(TP_FinalHR) FROM M_MovementLine WHERE M_Movement_ID = "+rLine.getM_Movement_ID());
+							MinDate.setHours(0);
+							MinDate.setMinutes(0);
+							MinDate.setSeconds(0);
+							if(rLine.getDateTrx().compareTo(MaxDate) > 0 
+									||rLine.getDateTrx().compareTo(MinDate) < 0)
+								throw new AdempiereException("ERROR: Fecha de HR no coincide con fecha de viatico");
+						}	
+						
+						if(viatico.getType().compareTo("02") == 0)
+						{
+							int cant = DB.getSQLValue(get_TrxName(), "SELECT COUNT(1) FROM TP_RefundLine" +
+								" WHERE IsActive = 'Y' AND TP_RefundLine_ID <> "+rLine.get_ID()+" AND M_Movement_ID = "+rLine.getM_Movement_ID()+
+								" AND TP_RefundAmt_ID = "+rLine.get_ValueAsInt("TP_RefundAmt_ID")+" AND DateTrx = ?",rLine.getDateTrx());
+							if (cant > 0)
+								throw new AdempiereException("ERROR: Existe una HR y concepto repetido");
+							//hr obligatoria
+							if(rLine.getM_Movement_ID() <=0 && rLine.get_ValueAsInt("TP_RefundAmt_ID") > 0)
+								throw new AdempiereException("ERROR: Concepto sin HR ingresada");
+															
+						}
+					}
+					rs.close();
+					pstmt.close();
+					pstmt = null;
+					
+					viatico.setDocStatus("CO");
+					viatico.setProcessed(true);
 				}
 			}
 			viatico.save();
