@@ -730,7 +730,9 @@ public class MInOutLine extends X_M_InOutLine
 				totalp=totalp.add(lines[i].getLineNetAmt());
 			}
 			
-			return (totalp.multiply(Env.ONEHUNDRED).divide(total, 0, BigDecimal.ROUND_HALF_UP));
+			//return (totalp.multiply(Env.ONEHUNDRED).divide(total, 0, BigDecimal.ROUND_HALF_UP));
+			//ininoles se agregan decimales para calculo mas exacto
+			return (totalp.multiply(Env.ONEHUNDRED).divide(total, 10, BigDecimal.ROUND_HALF_UP));
 		}
 		else if (MLandedCost.LANDEDCOSTDISTRIBUTION_Line.equals(CostDistribution))
 			return Env.ONE;
