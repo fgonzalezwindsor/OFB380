@@ -283,7 +283,7 @@ public class VHRActionNoticeTSM extends HRActionNoticeTSM implements FormPanel, 
 		//turno
 		fieldTSMWorkshift = new VComboBox(getWorkshiftTSM());
 		fieldTSMWorkshift.setReadWrite(false);
-		fieldTSMWorkshift.setMandatory(true);
+		fieldTSMWorkshift.setMandatory(false);
 		//organización
 		fieldTSMOrg.removeAllItems();		
 		for(KeyNamePair ppt : getOrgTSM())
@@ -499,13 +499,12 @@ public class VHRActionNoticeTSM extends HRActionNoticeTSM implements FormPanel, 
 		else if (e instanceof ActionEvent && e.getSource().equals(bOk))
 		{	//validacion de campos llenos
 			if( fieldTSMCmbType.getValue() == null || ((Integer)fieldTSMCmbType.getValue()).intValue() <= 0
-				|| fieldTSMDateTrx.getValue() == null
-				|| fieldTSMWorkshift.getValue() == null || ((Integer)fieldTSMWorkshift.getValue()).intValue() <= 0
+				|| fieldTSMDateTrx.getValue() == null				
 				|| fieldTSMOrg.getValue() == null || ((Integer)fieldTSMOrg.getValue()).intValue() <= 0
 				|| fieldTSMHRConceptTSM.getValue() == null || ((Integer)fieldTSMHRConceptTSM.getValue()).intValue() <= 0) 
 			{  // required fields
 				ADialog.error(m_WindowNo, this.mainPanel, Msg.translate(Env.getCtx(), "FillMandatory")
-						+ " Tipo, Fecha, Turno, Organización, Concepto");
+						+ " Tipo, Fecha, Organización, Concepto");
 			} 
 			else	// SAVE prebitacora
 				saveMovement();

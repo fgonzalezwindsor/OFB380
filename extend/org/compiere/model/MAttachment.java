@@ -43,6 +43,8 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
+import oracle.net.ano.Ano;
+
 import org.compiere.util.CLogger;
 import org.compiere.util.Env;
 import org.compiere.util.MimeType;
@@ -824,7 +826,7 @@ public class MAttachment extends X_AD_Attachment
 	{
 		if(isStoreAttachmentsOnFileSystem){
 			if (getTitle() == null || !getTitle().equals(XML)) {
-				setTitle (XML);
+				setTitle (XML);						
 			}
 		} else {
 			if (getTitle() == null || !getTitle().equals(ZIP)) {

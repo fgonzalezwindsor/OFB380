@@ -57,15 +57,15 @@ public class ProcessShipment extends SvrProcess
 				String newAction = "DR";
 				if(ship.getDocStatus().compareTo("DR") == 0)
 				{
-					newStatus = "IP";
-					newAction = "PR";
+					newStatus = "EC";
+					newAction = "EC";
 				}
 				else if(ship.getDocStatus().compareTo("IP") == 0)
 				{
 					newStatus = "EC";
 					newAction = "EC";
 				}
-				else if(ship.getDocStatus().compareTo("EC") == 0)
+				else if(ship.getDocStatus().compareTo("IP") == 0)
 				{
 					newStatus = "EV";
 					newAction = "EV";
@@ -92,6 +92,8 @@ public class ProcessShipment extends SvrProcess
 					{
 						if(newStatus.compareTo("CO")==0)
 						{
+							//@mfrojas Validar que cada viaje tenga al menos una guía
+							
 							ship.setDocStatus("DR");
 							ship.processIt(newStatus);							
 						}

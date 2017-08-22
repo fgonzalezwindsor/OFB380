@@ -119,7 +119,8 @@ public class GenerateCashJournalFF extends SvrProcess
 					{
 						//buscamos diario abierto existente
 						int ID_Cash = DB.getSQLValue(get_TrxName(), "SELECT COALESCE(MAX(C_Cash_ID),0)" +
-								" FROM C_Cash WHERE DocStatus NOT IN ('CO','VO') " +
+								//" FROM C_Cash WHERE DocStatus NOT IN ('CO','VO') " +
+								" FROM C_Cash WHERE DocStatus IN ('DR') " +
 								" AND C_CashBook_ID = "+ID_CashBook);
 						if(ID_Cash > 0)
 						{
@@ -139,6 +140,8 @@ public class GenerateCashJournalFF extends SvrProcess
 						{
 							//se genera diario
 							MCash cash = new MCash(new MCashBook(getCtx(), ID_CashBook, get_TrxName()),p_DateTrxTo);
+							/*MCash cash = new MCash(getCtx(), 0, get_TrxName());
+							cash.setC_CashBook_ID(ID_CashBook);*/
 							cash.setAD_Org_ID(rsHR.getInt("AD_Org_ID"));
 							cash.setName("Generado automaticamente. Fondo Fijo");
 							cash.saveEx();							

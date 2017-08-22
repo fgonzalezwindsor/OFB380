@@ -296,7 +296,8 @@ public class ModWindsorValidAvaiQtyOrder implements ModelValidator
 						if(oLine.get_ValueAsInt("M_RequisitionLine_ID")>0)
 						{
 							//si viene de solicitud ya tendra hecha las validaciones
-							/*//se revisa que no supere cantidad de solicitud
+							/*
+							//se revisa que no supere cantidad de solicitud
 							MRequisitionLine rLine = new MRequisitionLine(po.getCtx(), oLine.get_ValueAsInt("M_RequisitionLine_ID"), po.get_TrxName());							
 							//nuevo calculo para disponible
 							BigDecimal qtyUsed = DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM (QtyOrdered) FROM C_OrderLine col " +

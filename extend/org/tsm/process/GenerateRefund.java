@@ -90,7 +90,7 @@ public class GenerateRefund extends SvrProcess
 				//ininoles se saca cantidad de dias de la HR
 				" (select MAX(extract(day from mml.tp_inicialhr)) from m_movementline mml where mml.m_movement_id =  pm.M_Movement_ID)- " +
 				" (select MIN(extract(day from mml.tp_finalhr)) from m_movementline mml where mml.m_movement_id = pm.M_Movement_ID) + 1 " +
-				" as cantDays " +
+				" as cantDays , null as Pre_M_Movement_ID,pm.created" +
 				//end
 				" FROM M_Movement pm " +
 				/*" WHERE pm.M_Movement_ID NOT IN (SELECT rLine.M_Movement_ID FROM TP_RefundLine rLine " +
@@ -99,6 +99,7 @@ public class GenerateRefund extends SvrProcess
 				" AND pm.AD_Client_ID = "+Env.getAD_Client_ID(getCtx())+*/
 				" WHERE pm.AD_Client_ID = "+Env.getAD_Client_ID(getCtx())+
 				//" AND pm.MovementDate BETWEEN ? AND ? ";
+				" AND C_Bpartner_ID = 1002699" + //ininoles liea comenada solo usar para analisis en debug 
 				" AND " +
 				" (((select MIN(mml.tp_finalhr) from m_movementline mml where mml.m_movement_id = pm.M_Movement_ID)  > ? " +
 				" AND" +
@@ -112,7 +113,18 @@ public class GenerateRefund extends SvrProcess
 			sqlHR = sqlHR + " AND pm.AD_Org_ID = "+p_Org_ID+" AND pm.DocStatus IN ('CO','CL','DR')";
 			//sqlHR = sqlHR + " AND pm.AD_OrgRef_ID = "+p_Org_ID+" AND pm.DocStatus IN ('CO','CL','DR')";
 		}
-		sqlHR = sqlHR + " ORDER BY C_BPartner_ID, pm.movementdate, created";
+		//codigo de disponibilidades
+		MOrg orgH = new MOrg(getCtx(), p_Org_ID, get_TrxName());
+		Boolean IsMultyDaysH = orgH.get_ValueAsBoolean("IsMultipleDays");
+		if(IsMultyDaysH)
+		{
+			sqlHR = sqlHR + " UNION" +
+				" SELECT null,pml.C_Bpartner_ID,pm.movementDate,pm.AD_Org_ID,1,pm.Pre_M_Movement_ID,pm.created" +
+				" FROM Pre_M_Movement pm " +
+				" INNER JOIN Pre_M_MovementLine pml ON (pm.Pre_M_Movement_ID = pml.Pre_M_Movement_ID AND C_Bpartner_ID IS NOT NULL) " +
+				" WHERE pm.AD_Org_ID = "+p_Org_ID+" AND pm.movementDate BETWEEN ?  AND ? AND pm.DocStatus IN ('CO','CL')";	
+		}
+		sqlHR = sqlHR + " ORDER BY C_BPartner_ID, movementdate, created";
 			
 		PreparedStatement pstmtHR = null;
 		ResultSet rsHR = null;
@@ -127,6 +139,8 @@ public class GenerateRefund extends SvrProcess
 			pstmtHR.setTimestamp(2, p_DateTrxTo);
 			pstmtHR.setTimestamp(3, p_DateTrxTo);
 			pstmtHR.setTimestamp(4, p_DateTrxFrom);
+			pstmtHR.setTimestamp(5, p_DateTrxFrom);
+			pstmtHR.setTimestamp(6, p_DateTrxTo);
 			rsHR = pstmtHR.executeQuery();		
 			int ID_BPartner = 0;
 			int ID_Org = 0;
@@ -178,7 +192,10 @@ public class GenerateRefund extends SvrProcess
 							//generamos la linea del viatico
 							X_TP_RefundLine line = new X_TP_RefundLine(getCtx(), 0, get_TrxName());
 							line.setTP_Refund_ID(ID_Viatico);
-							line.setM_Movement_ID(rsHR.getInt("M_Movement_ID"));
+							if(rsHR.getInt("M_Movement_ID") > 0)
+								line.setM_Movement_ID(rsHR.getInt("M_Movement_ID"));
+							if(rsHR.getInt("Pre_M_Movement_ID") > 0)
+								line.set_CustomColumn("Pre_M_Movement_ID",rsHR.getInt("Pre_M_Movement_ID"));
 							line.setAD_Org_ID(rsHR.getInt("AD_Org_ID"));
 							//line.setDescription("Ingresado Automaticamente");
 							line.setDateTrx(rsHR.getTimestamp("MovementDate"));						
@@ -205,7 +222,10 @@ public class GenerateRefund extends SvrProcess
 										//generamos la linea del viatico
 										X_TP_RefundLine line2 = new X_TP_RefundLine(getCtx(), 0, get_TrxName());
 										line2.setTP_Refund_ID(ID_Viatico);
-										line2.setM_Movement_ID(rsHR.getInt("M_Movement_ID"));
+										if(rsHR.getInt("M_Movement_ID") > 0)
+											line2.setM_Movement_ID(rsHR.getInt("M_Movement_ID"));
+										if(rsHR.getInt("Pre_M_Movement_ID") > 0)
+											line2.set_CustomColumn("Pre_M_Movement_ID",rsHR.getInt("Pre_M_Movement_ID"));
 										line2.setAD_Org_ID(rsHR.getInt("AD_Org_ID"));
 										//line2.setDescription("Ingresado Automaticamente");
 										line2.setDateTrx(new Timestamp(calInicial.getTimeInMillis()));
@@ -239,7 +259,10 @@ public class GenerateRefund extends SvrProcess
 						{
 							X_TP_RefundLine line = new X_TP_RefundLine(getCtx(), 0, get_TrxName());
 							line.setTP_Refund_ID(viatico.get_ID());
-							line.setM_Movement_ID(rsHR.getInt("M_Movement_ID"));
+							if(rsHR.getInt("M_Movement_ID") > 0)
+								line.setM_Movement_ID(rsHR.getInt("M_Movement_ID"));
+							if(rsHR.getInt("Pre_M_Movement_ID") > 0)
+								line.set_CustomColumn("Pre_M_Movement_ID",rsHR.getInt("Pre_M_Movement_ID"));
 							line.setAD_Org_ID(rsHR.getInt("AD_Org_ID"));
 							//line.setDescription("Ingresado Automaticamente");
 							line.setDateTrx(rsHR.getTimestamp("MovementDate"));						
@@ -266,7 +289,10 @@ public class GenerateRefund extends SvrProcess
 									{
 										X_TP_RefundLine line2 = new X_TP_RefundLine(getCtx(), 0, get_TrxName());
 										line2.setTP_Refund_ID(viatico.get_ID());
-										line2.setM_Movement_ID(rsHR.getInt("M_Movement_ID"));
+										if(rsHR.getInt("M_Movement_ID") > 0)
+											line2.setM_Movement_ID(rsHR.getInt("M_Movement_ID"));
+										if(rsHR.getInt("Pre_M_Movement_ID") > 0)
+											line2.set_CustomColumn("Pre_M_Movement_ID",rsHR.getInt("Pre_M_Movement_ID"));
 										line2.setAD_Org_ID(rsHR.getInt("AD_Org_ID"));
 										//line2.setDescription("Ingresado Automaticamente");
 										line2.setDateTrx(new Timestamp(calInicial.getTimeInMillis()));

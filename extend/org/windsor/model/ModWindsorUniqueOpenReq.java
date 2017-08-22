@@ -16,7 +16,8 @@
  *****************************************************************************/
 package org.windsor.model;
 
-import org.compiere.model.MBPartner;
+import java.math.BigDecimal;
+
 import org.compiere.model.MClient;
 import org.compiere.model.MRequisition;
 import org.compiere.model.MRequisitionLine;
@@ -31,19 +32,19 @@ import org.compiere.util.DB;
  *
  *  @author Italo Niñoles
  */
-public class ModWindsorUniqueOpenReqNOUSAR implements ModelValidator
+public class ModWindsorUniqueOpenReq implements ModelValidator
 {
 	/**
 	 *	Constructor.
 	 *	The class is instantiated when logging in and client is selected/known
 	 */
-	public ModWindsorUniqueOpenReqNOUSAR ()
+	public ModWindsorUniqueOpenReq ()
 	{
 		super ();
 	}	//	MyValidator
 
 	/**	Logger			*/
-	private static CLogger log = CLogger.getCLogger(ModWindsorUniqueOpenReqNOUSAR.class);
+	private static CLogger log = CLogger.getCLogger(ModWindsorUniqueOpenReq.class);
 	/** Client			*/
 	private int		m_AD_Client_ID = -1;
 	
@@ -67,7 +68,7 @@ public class ModWindsorUniqueOpenReqNOUSAR implements ModelValidator
 		//	Tables to be monitored
 		engine.addModelChange(MRequisitionLine.Table_Name, this);
 		//	Documents to be monitored
-		engine.addDocValidate(MRequisition.Table_Name, this);
+		//engine.addDocValidate(MRequisition.Table_Name, this);
 
 	}	//	initialize
 
@@ -87,17 +88,28 @@ public class ModWindsorUniqueOpenReqNOUSAR implements ModelValidator
 			if(reqLine.getM_Product_ID() > 0 && reqLine.getM_Product().isStocked()
 					&& reqLine.getM_Product().getProductType().compareTo("I") == 0)
 			{
-				int cant = DB.getSQLValue(po.get_TrxName(), "SELECT COUNT(*) FROM M_RequisitionLine rl " +
+				//se revisa si existe solicitud abierta
+				int ID_req = DB.getSQLValue(po.get_TrxName(), "SELECT MAX(mr.M_Requisition_ID) FROM M_RequisitionLine rl " +
 						" INNER JOIN M_Requisition mr ON (rl.M_Requisition_ID = mr.M_Requisition_ID) " +
-						" WHERE mr.DocStatus IN ('CO','CL') AND mr.C_BPartner_ID = "+req.get_ValueAsInt("C_BPartner_ID") +
-						" AND rl.M_Product_ID = "+reqLine.getM_Product_ID()+" AND qty > qtyUsed " +
-						" AND M_RequisitionLine_ID <> "+reqLine.get_ID());
-				
-				if(cant > 0)
+						" WHERE mr.DocStatus IN ('CO','CL') AND mr.C_BPartner_ID = "+req.get_ValueAsInt("C_BPartner_ID")+
+						" AND mr.C_BPartner_Location_ID = "+req.get_ValueAsInt("C_BPartner_Location_ID")+
+						" AND rl.M_Product_ID = "+reqLine.getM_Product_ID()+" AND qty > qtyUsed");
+				//se revisa si existe solicitud de distribucion abierta
+				int ID_reqD = DB.getSQLValue(po.get_TrxName(), "SELECT MAX(mr.M_Requisition_ID) FROM M_RequisitionLine rl " +
+						" INNER JOIN M_Requisition mr ON (rl.M_Requisition_ID = mr.M_Requisition_ID) " +
+						" WHERE mr.DocStatus IN ('CO','CL') AND mr.C_BPartner_ID = "+req.get_ValueAsInt("C_BPartner_ID")+
+						" AND mr.OverWriteRequisition = 'Y' "+
+						" AND rl.M_Product_ID = "+reqLine.getM_Product_ID()+" AND qty > qtyUsed");
+				if(ID_req > 0)
 				{
-					MBPartner bPart = new MBPartner(po.getCtx(), req.get_ValueAsInt("C_BPartner_ID"), po.get_TrxName());
-					return "ERROR: Ya Existe una solicitud para el producto "+reqLine.getM_Product().getName()+
-					" y el socio de negocio "+bPart.getName();
+					BigDecimal qtySol = DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(qty - qtyUsed) FROM M_RequisitionLine rl " +
+							" WHERE rl.M_Requisition_ID = "+ID_req+" AND rl.M_Product_ID = "+reqLine.getM_Product_ID());								
+					return "ERROR: Debe usar solicitud abierta para este cliente. N°: "+req.getDocumentNo()+" con cantidad "+qtySol;
+				}else if (ID_reqD > 0)
+				{
+					BigDecimal qtySol = DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(qty - qtyUsed) FROM M_RequisitionLine rl " +
+							" WHERE rl.M_Requisition_ID = "+ID_req+" AND rl.M_Product_ID = "+reqLine.getM_Product_ID());
+					return "ERROR: Debe usar solicitud de distribución abierta para este cliente. N°: "+req.getDocumentNo()+" con cantidad "+qtySol;
 				}
 			}
 		}
@@ -127,7 +139,7 @@ public class ModWindsorUniqueOpenReqNOUSAR implements ModelValidator
 	{
 		log.info(po.get_TableName() + " Timing: "+timing);
 
-		if(timing == TIMING_BEFORE_COMPLETE && po.get_Table_ID()== MRequisition.Table_ID)  
+		/*if(timing == TIMING_BEFORE_COMPLETE && po.get_Table_ID()== MRequisition.Table_ID)  
 		{
 			MRequisition req = (MRequisition) po;
 			if(req.getC_DocType().isSOTrx())
@@ -154,7 +166,7 @@ public class ModWindsorUniqueOpenReqNOUSAR implements ModelValidator
 					}
 				}
 			}
-		}
+		}*/
 		
 		return null;
 	}	//	docValidate

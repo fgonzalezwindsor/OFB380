@@ -20,17 +20,17 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 import org.compiere.util.KeyNamePair;
 
-/** Generated Interface for TP_Refund
+/** Generated Interface for TP_RefundHeader
  *  @author Adempiere (generated) 
  *  @version Release 3.6.0LTS
  */
-public interface I_TP_Refund 
+public interface I_TP_RefundHeader 
 {
 
-    /** TableName=TP_Refund */
-    public static final String Table_Name = "TP_Refund";
+    /** TableName=TP_RefundHeader */
+    public static final String Table_Name = "TP_RefundHeader";
 
-    /** AD_Table_ID=1000136 */
+    /** AD_Table_ID=1000187 */
     public static final int Table_ID = MTable.getTable_ID(Table_Name);
 
     KeyNamePair Model = new KeyNamePair(Table_ID, Table_Name);
@@ -86,28 +86,6 @@ public interface I_TP_Refund
 
 	public I_C_BPartner getC_BPartner() throws RuntimeException;
 
-    /** Column name C_ProjectOFB_ID */
-    public static final String COLUMNNAME_C_ProjectOFB_ID = "C_ProjectOFB_ID";
-
-	/** Set C_ProjectOFB_ID	  */
-	public void setC_ProjectOFB_ID (int C_ProjectOFB_ID);
-
-	/** Get C_ProjectOFB_ID	  */
-	public int getC_ProjectOFB_ID();
-
-	public I_C_ProjectOFB getC_ProjectOFB() throws RuntimeException;
-
-    /** Column name C_ProjectOFB2_ID */
-    public static final String COLUMNNAME_C_ProjectOFB2_ID = "C_ProjectOFB2_ID";
-
-	/** Set C_ProjectOFB2_ID	  */
-	public void setC_ProjectOFB2_ID (int C_ProjectOFB2_ID);
-
-	/** Get C_ProjectOFB2_ID	  */
-	public int getC_ProjectOFB2_ID();
-
-	public I_C_ProjectOFB getC_ProjectOFB2() throws RuntimeException;
-
     /** Column name Comments */
     public static final String COLUMNNAME_Comments = "Comments";
 
@@ -137,31 +115,14 @@ public interface I_TP_Refund
 	  */
 	public int getCreatedBy();
 
-    /** Column name DateDoc */
-    public static final String COLUMNNAME_DateDoc = "DateDoc";
+    /** Column name DateEnd */
+    public static final String COLUMNNAME_DateEnd = "DateEnd";
 
-	/** Set Document Date.
-	  * Date of the Document
-	  */
-	public void setDateDoc (Timestamp DateDoc);
+	/** Set DateEnd	  */
+	public void setDateEnd (Timestamp DateEnd);
 
-	/** Get Document Date.
-	  * Date of the Document
-	  */
-	public Timestamp getDateDoc();
-
-    /** Column name DatePromised */
-    public static final String COLUMNNAME_DatePromised = "DatePromised";
-
-	/** Set Date Promised.
-	  * Date Order was promised
-	  */
-	public void setDatePromised (Timestamp DatePromised);
-
-	/** Get Date Promised.
-	  * Date Order was promised
-	  */
-	public Timestamp getDatePromised();
+	/** Get DateEnd	  */
+	public Timestamp getDateEnd();
 
     /** Column name Description */
     public static final String COLUMNNAME_Description = "Description";
@@ -188,6 +149,15 @@ public interface I_TP_Refund
 	  * The current status of the document
 	  */
 	public String getDocStatus();
+
+    /** Column name DocumentDate */
+    public static final String COLUMNNAME_DocumentDate = "DocumentDate";
+
+	/** Set DocumentDate	  */
+	public void setDocumentDate (Timestamp DocumentDate);
+
+	/** Get DocumentDate	  */
+	public Timestamp getDocumentDate();
 
     /** Column name DocumentNo */
     public static final String COLUMNNAME_DocumentNo = "DocumentNo";
@@ -255,24 +225,6 @@ public interface I_TP_Refund
 	/** Get Signature3	  */
 	public boolean isSignature3();
 
-    /** Column name Signature4 */
-    public static final String COLUMNNAME_Signature4 = "Signature4";
-
-	/** Set Signature4	  */
-	public void setSignature4 (boolean Signature4);
-
-	/** Get Signature4	  */
-	public boolean isSignature4();
-
-    /** Column name TP_Refund_ID */
-    public static final String COLUMNNAME_TP_Refund_ID = "TP_Refund_ID";
-
-	/** Set TP_Refund	  */
-	public void setTP_Refund_ID (int TP_Refund_ID);
-
-	/** Get TP_Refund	  */
-	public int getTP_Refund_ID();
-
     /** Column name TP_RefundHeader_ID */
     public static final String COLUMNNAME_TP_RefundHeader_ID = "TP_RefundHeader_ID";
 
@@ -281,8 +233,6 @@ public interface I_TP_Refund
 
 	/** Get TP_RefundHeader_ID	  */
 	public int getTP_RefundHeader_ID();
-
-	public I_TP_RefundHeader getTP_RefundHeader() throws RuntimeException;
 
     /** Column name Type */
     public static final String COLUMNNAME_Type = "Type";
@@ -312,13 +262,4 @@ public interface I_TP_Refund
 	  * User who updated this records
 	  */
 	public int getUpdatedBy();
-
-    /** Column name Workshift */
-    public static final String COLUMNNAME_Workshift = "Workshift";
-
-	/** Set Workshift	  */
-	public void setWorkshift (String Workshift);
-
-	/** Get Workshift	  */
-	public String getWorkshift();
 }

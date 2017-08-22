@@ -215,9 +215,6 @@ public class ProcessPaymentRequest extends SvrProcess
 					log.log(Level.SEVERE, "Payment Already Generated");
 					return "Pago ya generado";					
 				}
-					
-							
-				
 				//correlativo cheque
 				if(pr.getTenderType().equals(X_C_PaymentRequest.TENDERTYPE_Check))
 					if(pr.getCheckNo()==null || pr.getCheckNo().length()==0)
@@ -312,12 +309,7 @@ public class ProcessPaymentRequest extends SvrProcess
 								log.log(Level.SEVERE, "Allocation Line not written ");
 						}
 					}
-					
-
 				}
-				
-			   
-				
 			   if(requestType.equals(X_C_PaymentRequest.REQUESTTYPE_DesdeResolucion ))
 			   {
 				   /*X_C_PaymentRequestLine lines[]	= pr.getLines();

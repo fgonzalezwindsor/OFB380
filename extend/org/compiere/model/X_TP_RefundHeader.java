@@ -21,10 +21,10 @@ import java.sql.ResultSet;
 import java.sql.Timestamp;
 import java.util.Properties;
 
-/** Generated Model for TP_Refund
+/** Generated Model for TP_RefundHeader
  *  @author Adempiere (generated) 
  *  @version Release 3.6.0LTS - $Id$ */
-public class X_TP_Refund extends PO implements I_TP_Refund, I_Persistent 
+public class X_TP_RefundHeader extends PO implements I_TP_RefundHeader, I_Persistent 
 {
 
 	/**
@@ -33,20 +33,16 @@ public class X_TP_Refund extends PO implements I_TP_Refund, I_Persistent
 	private static final long serialVersionUID = 20170821L;
 
     /** Standard Constructor */
-    public X_TP_Refund (Properties ctx, int TP_Refund_ID, String trxName)
+    public X_TP_RefundHeader (Properties ctx, int TP_RefundHeader_ID, String trxName)
     {
-      super (ctx, TP_Refund_ID, trxName);
-      /** if (TP_Refund_ID == 0)
+      super (ctx, TP_RefundHeader_ID, trxName);
+      /** if (TP_RefundHeader_ID == 0)
         {
-			setC_BPartner_ID (0);
-			setDateDoc (new Timestamp( System.currentTimeMillis() ));
-			setTP_Refund_ID (0);
-			setType (null);
         } */
     }
 
     /** Load Constructor */
-    public X_TP_Refund (Properties ctx, ResultSet rs, String trxName)
+    public X_TP_RefundHeader (Properties ctx, ResultSet rs, String trxName)
     {
       super (ctx, rs, trxName);
     }
@@ -68,7 +64,7 @@ public class X_TP_Refund extends PO implements I_TP_Refund, I_Persistent
 
     public String toString()
     {
-      StringBuffer sb = new StringBuffer ("X_TP_Refund[")
+      StringBuffer sb = new StringBuffer ("X_TP_RefundHeader[")
         .append(get_ID()).append("]");
       return sb.toString();
     }
@@ -158,56 +154,6 @@ public class X_TP_Refund extends PO implements I_TP_Refund, I_Persistent
 		return ii.intValue();
 	}
 
-	public I_C_ProjectOFB getC_ProjectOFB() throws RuntimeException
-    {
-		return (I_C_ProjectOFB)MTable.get(getCtx(), I_C_ProjectOFB.Table_Name)
-			.getPO(getC_ProjectOFB_ID(), get_TrxName());	}
-
-	/** Set C_ProjectOFB_ID.
-		@param C_ProjectOFB_ID C_ProjectOFB_ID	  */
-	public void setC_ProjectOFB_ID (int C_ProjectOFB_ID)
-	{
-		if (C_ProjectOFB_ID < 1) 
-			set_Value (COLUMNNAME_C_ProjectOFB_ID, null);
-		else 
-			set_Value (COLUMNNAME_C_ProjectOFB_ID, Integer.valueOf(C_ProjectOFB_ID));
-	}
-
-	/** Get C_ProjectOFB_ID.
-		@return C_ProjectOFB_ID	  */
-	public int getC_ProjectOFB_ID () 
-	{
-		Integer ii = (Integer)get_Value(COLUMNNAME_C_ProjectOFB_ID);
-		if (ii == null)
-			 return 0;
-		return ii.intValue();
-	}
-
-	public I_C_ProjectOFB getC_ProjectOFB2() throws RuntimeException
-    {
-		return (I_C_ProjectOFB)MTable.get(getCtx(), I_C_ProjectOFB.Table_Name)
-			.getPO(getC_ProjectOFB2_ID(), get_TrxName());	}
-
-	/** Set C_ProjectOFB2_ID.
-		@param C_ProjectOFB2_ID C_ProjectOFB2_ID	  */
-	public void setC_ProjectOFB2_ID (int C_ProjectOFB2_ID)
-	{
-		if (C_ProjectOFB2_ID < 1) 
-			set_Value (COLUMNNAME_C_ProjectOFB2_ID, null);
-		else 
-			set_Value (COLUMNNAME_C_ProjectOFB2_ID, Integer.valueOf(C_ProjectOFB2_ID));
-	}
-
-	/** Get C_ProjectOFB2_ID.
-		@return C_ProjectOFB2_ID	  */
-	public int getC_ProjectOFB2_ID () 
-	{
-		Integer ii = (Integer)get_Value(COLUMNNAME_C_ProjectOFB2_ID);
-		if (ii == null)
-			 return 0;
-		return ii.intValue();
-	}
-
 	/** Set Comments.
 		@param Comments 
 		Comments or additional information
@@ -225,38 +171,18 @@ public class X_TP_Refund extends PO implements I_TP_Refund, I_Persistent
 		return (String)get_Value(COLUMNNAME_Comments);
 	}
 
-	/** Set Document Date.
-		@param DateDoc 
-		Date of the Document
-	  */
-	public void setDateDoc (Timestamp DateDoc)
+	/** Set DateEnd.
+		@param DateEnd DateEnd	  */
+	public void setDateEnd (Timestamp DateEnd)
 	{
-		set_Value (COLUMNNAME_DateDoc, DateDoc);
+		set_Value (COLUMNNAME_DateEnd, DateEnd);
 	}
 
-	/** Get Document Date.
-		@return Date of the Document
-	  */
-	public Timestamp getDateDoc () 
+	/** Get DateEnd.
+		@return DateEnd	  */
+	public Timestamp getDateEnd () 
 	{
-		return (Timestamp)get_Value(COLUMNNAME_DateDoc);
-	}
-
-	/** Set Date Promised.
-		@param DatePromised 
-		Date Order was promised
-	  */
-	public void setDatePromised (Timestamp DatePromised)
-	{
-		set_Value (COLUMNNAME_DatePromised, DatePromised);
-	}
-
-	/** Get Date Promised.
-		@return Date Order was promised
-	  */
-	public Timestamp getDatePromised () 
-	{
-		return (Timestamp)get_Value(COLUMNNAME_DatePromised);
+		return (Timestamp)get_Value(COLUMNNAME_DateEnd);
 	}
 
 	/** Set Description.
@@ -300,6 +226,20 @@ public class X_TP_Refund extends PO implements I_TP_Refund, I_Persistent
 	public String getDocStatus () 
 	{
 		return (String)get_Value(COLUMNNAME_DocStatus);
+	}
+
+	/** Set DocumentDate.
+		@param DocumentDate DocumentDate	  */
+	public void setDocumentDate (Timestamp DocumentDate)
+	{
+		set_Value (COLUMNNAME_DocumentDate, DocumentDate);
+	}
+
+	/** Get DocumentDate.
+		@return DocumentDate	  */
+	public Timestamp getDocumentDate () 
+	{
+		return (Timestamp)get_Value(COLUMNNAME_DocumentDate);
 	}
 
 	/** Set Document No.
@@ -406,52 +346,6 @@ public class X_TP_Refund extends PO implements I_TP_Refund, I_Persistent
 		return false;
 	}
 
-	/** Set Signature4.
-		@param Signature4 Signature4	  */
-	public void setSignature4 (boolean Signature4)
-	{
-		set_Value (COLUMNNAME_Signature4, Boolean.valueOf(Signature4));
-	}
-
-	/** Get Signature4.
-		@return Signature4	  */
-	public boolean isSignature4 () 
-	{
-		Object oo = get_Value(COLUMNNAME_Signature4);
-		if (oo != null) 
-		{
-			 if (oo instanceof Boolean) 
-				 return ((Boolean)oo).booleanValue(); 
-			return "Y".equals(oo);
-		}
-		return false;
-	}
-
-	/** Set TP_Refund.
-		@param TP_Refund_ID TP_Refund	  */
-	public void setTP_Refund_ID (int TP_Refund_ID)
-	{
-		if (TP_Refund_ID < 1) 
-			set_ValueNoCheck (COLUMNNAME_TP_Refund_ID, null);
-		else 
-			set_ValueNoCheck (COLUMNNAME_TP_Refund_ID, Integer.valueOf(TP_Refund_ID));
-	}
-
-	/** Get TP_Refund.
-		@return TP_Refund	  */
-	public int getTP_Refund_ID () 
-	{
-		Integer ii = (Integer)get_Value(COLUMNNAME_TP_Refund_ID);
-		if (ii == null)
-			 return 0;
-		return ii.intValue();
-	}
-
-	public I_TP_RefundHeader getTP_RefundHeader() throws RuntimeException
-    {
-		return (I_TP_RefundHeader)MTable.get(getCtx(), I_TP_RefundHeader.Table_Name)
-			.getPO(getTP_RefundHeader_ID(), get_TrxName());	}
-
 	/** Set TP_RefundHeader_ID.
 		@param TP_RefundHeader_ID TP_RefundHeader_ID	  */
 	public void setTP_RefundHeader_ID (int TP_RefundHeader_ID)
@@ -494,28 +388,5 @@ public class X_TP_Refund extends PO implements I_TP_Refund, I_Persistent
 	public String getType () 
 	{
 		return (String)get_Value(COLUMNNAME_Type);
-	}
-
-	/** Workshift AD_Reference_ID=1000053 */
-	public static final int WORKSHIFT_AD_Reference_ID=1000053;
-	/** Turno 1 = 30 */
-	public static final String WORKSHIFT_Turno1 = "30";
-	/** Turno 2 = 60 */
-	public static final String WORKSHIFT_Turno2 = "60";
-	/** Turno 3 = 90 */
-	public static final String WORKSHIFT_Turno3 = "90";
-	/** Set Workshift.
-		@param Workshift Workshift	  */
-	public void setWorkshift (String Workshift)
-	{
-
-		set_Value (COLUMNNAME_Workshift, Workshift);
-	}
-
-	/** Get Workshift.
-		@return Workshift	  */
-	public String getWorkshift () 
-	{
-		return (String)get_Value(COLUMNNAME_Workshift);
 	}
 }

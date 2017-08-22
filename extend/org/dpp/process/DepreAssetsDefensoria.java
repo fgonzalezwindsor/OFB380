@@ -68,7 +68,7 @@ public class DepreAssetsDefensoria extends SvrProcess
 		+" inner join A_Depreciation_Workfile wk on (a.a_asset_id=wk.a_asset_id)"
 		+" inner join a_asset_forecast fore on (a.a_asset_id=fore.a_asset_id)"
 		+" inner join c_period p on (fore.datedoc between p.startdate and p.enddate)"
-		+" where a.ad_client_id=? and p.c_period_id=? ";
+		+" where a.ad_client_id=? ";// and p.c_period_id=? ";
 		
 	
 	if(DepDoc.isSameYear()){
@@ -121,20 +121,21 @@ public class DepreAssetsDefensoria extends SvrProcess
 		ID_grupo = " a.a_asset_group_id="+DepDoc.getA_Asset_Group_ID();
 	
 	if(DepDoc.getDepType().equalsIgnoreCase((X_A_Asset_Dep.DEPTYPE_Depreciacion )))
-		sql+=" And fore.processed='N' and a.isinposession='Y' And "+ID_grupo;
+		sql+=" And p.c_period_id="+DepDoc.getC_Period_ID()+" And fore.processed='N' and a.isinposession='Y' And "+ID_grupo;
 	
 	if(DepDoc.getDepType().equalsIgnoreCase((X_A_Asset_Dep.DEPTYPE_CorrecionMonetaria )))
-		sql+=" And fore.Corrected='N' And a.isinposession='Y' And "+ID_grupo;
+		sql+=" And p.c_period_id="+DepDoc.getC_Period_ID()+" And fore.Corrected='N' And a.isinposession='Y' And "+ID_grupo;
 		//sql+=" And a.assetservicedate between ? and ? And fore.Corrected='N' And a.a_asset_group_id="+DepDoc.getA_Asset_Group_ID();
 	
 	if(DepDoc.getDepType().equalsIgnoreCase((X_A_Asset_Dep.DEPTYPE_Reevaluacion)) || DepDoc.getDepType().equalsIgnoreCase((X_A_Asset_Dep.DEPTYPE_Deteriodo)))
-		sql+= " And wk.a_asset_cost>wk.a_accumulated_depr+2 And "+ID_grupo+ " and a.isinposession="+ (DepDoc.isInPosession()?"'Y'":"'N'");
+		sql+= " And p.c_period_id="+DepDoc.getC_Period_ID()+" And wk.a_asset_cost>wk.a_accumulated_depr+2 And "+ID_grupo+ " and a.isinposession="+ (DepDoc.isInPosession()?"'Y'":"'N'");
 	
 	/*if (DepDoc.getDepType().equalsIgnoreCase(X_A_Asset_Dep.DEPTYPE_VentaActivo))
 		sql += " And a.A_Asset_ID=" + DepDoc.getA_Asset_ID();*/
 	
 	if(DepDoc.getDepType().equalsIgnoreCase(X_A_Asset_Dep.DEPTYPE_VentaActivo))
 	{
+		sql+=" And p.c_period_id="+DepDoc.getC_Period_ID();
 		int id_invoice = 0; 
 		try
 		{ 
@@ -176,6 +177,35 @@ public class DepreAssetsDefensoria extends SvrProcess
 		else
 			sql+= " And a.A_Asset_ID = 0";
 	}
+	if(DepDoc.getDepType().equalsIgnoreCase("VCP"))//baja consolidad para dpp
+	{
+		int id_invoice = 0;
+		//Se sobreescribira sql para no necesitar periodo
+		sql="select a.a_asset_id,a.name,a.value,acct.c_acctschema_id, acct.a_asset_acct, "
+			+" acct.a_depreciation_acct, fore.amount,fore.a_asset_forecast_id,p.c_period_id,p.name,"
+			+" acct.a_accumdepreciation_acct,acct.A_Disposal_Gain_Acct,wk.a_asset_cost,acct.A_Disposal_RevenueC_Acct,"
+			+" acct.A_Disposal_RevenueD_Acct,acct.A_Disposal_Loss_Acct, wk.a_accumulated_depr, acct.A_AssetComplement_Acct"
+			+" from a_asset a"
+			+" inner join a_asset_acct acct on (a.a_asset_id=acct.a_asset_id)"
+			+" inner join A_Depreciation_Workfile wk on (a.a_asset_id=wk.a_asset_id)"
+			+" inner join a_asset_forecast fore on (a.a_asset_id=fore.a_asset_id)"
+			+" where a.ad_client_id=? and fore.a_asset_forecast_ID = "
+			+" (SELECT MAX(fa.a_asset_forecast_ID) FROM a_asset_forecast fa " +
+			 "  WHERE fa.isactive = 'Y' AND fore.A_Asset_ID = a.A_Asset_ID) ";
+		try
+		{ 
+			id_invoice = DepDoc.get_ValueAsInt("C_Invoice_ID");
+		}
+		catch(Exception e)
+		{
+			id_invoice = 0;
+			log.log(Level.SEVERE, sql.toString(), e);			
+		}
+		if (id_invoice > 0)//solo traemos activos de la factura asociada
+			sql+= " And a.A_Asset_ID IN (SELECT DISTINCT(A_Asset_ID) FROM C_InvoiceLine WHERE C_Invoice_ID = "+DepDoc.get_ValueAsInt("C_Invoice_ID")+")" ;			
+		else
+			sql+= " And a.A_Asset_ID = 0";
+	}
 	log.config("SQL Activos: "+sql);
 	PreparedStatement pstmt = null;
 	
@@ -189,7 +219,7 @@ public class DepreAssetsDefensoria extends SvrProcess
 		{
 			pstmt = DB.prepareStatement(sql, get_TrxName());
 			pstmt.setInt(1, DepDoc.getAD_Client_ID());
-			pstmt.setInt(2, DepDoc.getC_Period_ID());			
+			//pstmt.setInt(2, DepDoc.getC_Period_ID());			
 			/*if(DepDoc.getDepType().equalsIgnoreCase((X_A_Asset_Dep.DEPTYPE_CorrecionMonetaria ))){
 				pstmt.setTimestamp(3, datefrom);
 				pstmt.setTimestamp(4, dateto);
@@ -198,7 +228,8 @@ public class DepreAssetsDefensoria extends SvrProcess
 			while (rs.next() )
 			{
 				int ID_Org = 0;
-				if(DepDoc.getDepType().equalsIgnoreCase("VCO") && DepDoc.getAD_Org_ID() < 1)//baja consolidad para dpp
+				if(DepDoc.getDepType().equalsIgnoreCase("VCO") || DepDoc.getDepType().equalsIgnoreCase("VCP")
+						&& DepDoc.getAD_Org_ID() < 1)//baja consolidad para dpp
 				{
 					MInvoice inv = new MInvoice(getCtx(), DepDoc.get_ValueAsInt("C_Invoice_ID"), get_TrxName());
 					ID_Org = inv.getAD_Org_ID();
@@ -424,7 +455,8 @@ public class DepreAssetsDefensoria extends SvrProcess
 					line4.setAD_Org_ID(assetTemp.get_ValueAsInt("AD_OrgRef_ID"));
 					line4.save();
 				}
-				else if(DepDoc.getDepType().equalsIgnoreCase("VCO"))//venta consolidada DPP
+				else if(DepDoc.getDepType().equalsIgnoreCase("VCO")
+						|| DepDoc.getDepType().equalsIgnoreCase("VCP"))//venta consolidada DPP
 				{ //venta activo
 					BigDecimal newAmountCost = new BigDecimal(0.0);
 					BigDecimal newAmountDep = new BigDecimal(0.0);
@@ -491,7 +523,8 @@ public class DepreAssetsDefensoria extends SvrProcess
 		DepDoc.save();
 	}	
 	else if (DepDoc.getDocStatus().equals("IP")  && !DepDoc.isVoid() && DepDoc.getDepType().equalsIgnoreCase("ANC")== false
-				&& DepDoc.getDepType().equalsIgnoreCase("VCO")== false)
+				&& DepDoc.getDepType().equalsIgnoreCase("VCO")== false
+				&& DepDoc.getDepType().equalsIgnoreCase("VCP")== false)
 	{	
 		log.info("IP");
 		
@@ -636,7 +669,8 @@ public class DepreAssetsDefensoria extends SvrProcess
 		DepDoc.setProcessed(true);
 		DepDoc.save();
 	}
-	else if (DepDoc.getDocStatus().equals("IP")  && !DepDoc.isVoid() && DepDoc.getDepType().equalsIgnoreCase("VCO")== true)
+	else if (DepDoc.getDocStatus().equals("IP")  && !DepDoc.isVoid() && (DepDoc.getDepType().equalsIgnoreCase("VCO")
+			|| DepDoc.getDepType().equalsIgnoreCase("VCP")))
 	{
 		//primero realizamos venta(baja) de activos contables
 		log.info("IP, Baja consolidad activos contables");		

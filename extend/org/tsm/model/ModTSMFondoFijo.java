@@ -20,14 +20,13 @@ import java.math.BigDecimal;
 
 import org.compiere.model.MCash;
 import org.compiere.model.MCashBook;
-import org.compiere.model.MCashLine;
 import org.compiere.model.MClient;
 import org.compiere.model.ModelValidationEngine;
 import org.compiere.model.ModelValidator;
 import org.compiere.model.PO;
 import org.compiere.model.X_C_PaymentRequestLine;
 import org.compiere.model.X_DM_Document;
-import org.compiere.model.X_TP_Refund;
+import org.compiere.model.X_TP_RefundHeader;
 import org.compiere.util.CLogger;
 import org.compiere.util.DB;
 import org.compiere.util.Env;
@@ -71,7 +70,8 @@ public class ModTSMFondoFijo implements ModelValidator
 		}
 
 		//	Tables to be monitored
-		engine.addModelChange(X_TP_Refund.Table_Name, this);
+		//engine.addModelChange(X_TP_Refund.Table_Name, this);
+		engine.addModelChange(X_TP_RefundHeader.Table_Name, this);
 		engine.addModelChange(X_C_PaymentRequestLine.Table_Name, this);
 		//	Documents to be monitored
 		engine.addDocValidate(MCash.Table_Name, this);
@@ -88,7 +88,7 @@ public class ModTSMFondoFijo implements ModelValidator
 	{
 		log.info(po.get_TableName() + " Type: "+type);
 		
-		if(type == TYPE_BEFORE_CHANGE && po.get_Table_ID()==X_TP_Refund.Table_ID
+		/*if(type == TYPE_BEFORE_CHANGE && po.get_Table_ID()==X_TP_Refund.Table_ID
 				&& po.is_ValueChanged("DocStatus"))  
 		{
 			X_TP_Refund refund = (X_TP_Refund) po;
@@ -112,9 +112,38 @@ public class ModTSMFondoFijo implements ModelValidator
 				doc.setDocStatus("CO");
 				doc.setProcessed(true);
 				doc.saveEx();
-				refund.set_CustomColumn("DM_Document_ID",doc.get_ID());
+				//refund.set_CustomColumn("DM_Document_ID",doc.get_ID());
+			}			
+		}*/
+		if(type == TYPE_BEFORE_CHANGE && po.get_Table_ID()==X_TP_RefundHeader.Table_ID
+				&& po.is_ValueChanged("DocStatus"))  
+		{
+			X_TP_RefundHeader refundHead = (X_TP_RefundHeader) po;
+			BigDecimal amt =  DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(amt) FROM TP_RefundLine rl" +
+					" INNER JOIN TP_Refund rf ON (rl.TP_Refund_ID = rf.TP_Refund_ID) " +
+					" WHERE rl.IsActive = 'Y' AND rf.TP_RefundHeader_ID ="+refundHead.get_ID());
+			if(amt != null && amt.compareTo(Env.ZERO) > 0)
+			{
+				//generacion de resolucion
+				X_DM_Document doc = new X_DM_Document(po.getCtx(), 0, po.get_TrxName());
+				doc.setAD_Org_ID(refundHead.getAD_Org_ID());
+				doc.set_CustomColumn("C_BPartner_ID",refundHead.getC_BPartner_ID());
+				doc.setAmt(amt);
+				//doc.setDescription("Generado desde viatico "+refund.getDocumentNo());
+				String desc = DB.getSQLValueString(po.get_TrxName(), "SELECT rlt.name FROM AD_Ref_List rl " +
+						" INNER JOIN AD_Ref_List_Trl rlt ON (rl.AD_Ref_List_ID = rlt.AD_Ref_List_ID AND AD_Language='es_CL') " +
+						" WHERE AD_Reference_ID=1000092 AND rl.VALUE = '"+refundHead.getType()+"'");
+				if(desc != null && desc.trim().length() > 3)
+					doc.setDescription("Tipo: "+desc);
+				doc.set_CustomColumn("TP_RefundHeader_ID", refundHead.get_ID());
+				doc.setDateTrx(refundHead.getDateEnd());
+				doc.setDocStatus("CO");
+				doc.setProcessed(true);
+				doc.saveEx();
+				//refund.set_CustomColumn("DM_Document_ID",doc.get_ID());
 			}			
 		}
+		
 		if((type == TYPE_AFTER_CHANGE || type == TYPE_AFTER_NEW || type == TYPE_AFTER_DELETE )
 				&& po.get_Table_ID()==X_C_PaymentRequestLine.Table_ID)  
 		{
