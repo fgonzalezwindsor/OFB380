@@ -93,6 +93,9 @@ public class ModUpdateQtyShipment implements ModelValidator
 			MInOutLine shline = (MInOutLine)po;
 			if(shline.getM_InOut().isSOTrx() == false)
 				return null;
+			//revisar si el documento ya está completo
+			if(shline.getM_InOut().getDocStatus().compareTo("CO")==0)
+				return null;
 			//revisar
 			MProduct prod = new MProduct(po.getCtx(),shline.getM_Product_ID(),po.get_TrxName());
 			

@@ -70,13 +70,18 @@ public class GenerateInternalUse extends SvrProcess
 				{
 					inv = new MInventory(getCtx(), 0, get_TrxName());
 					inv.setAD_Org_ID(rs.getInt("AD_Org_ID"));					
-					inv.setC_DocType_ID(1000064);
+					//inv.setC_DocType_ID(1000064);
+					inv.setC_DocType_ID(1000023);
 					inv.setDescription("Generado automaticamente. - "+rs.getString("Description"));
 					inv.setDocStatus("DR");
 					inv.setM_Warehouse_ID(rs.getInt("M_Warehouse_ID"));
 					//inv.setDocumentNo(rs.getString("DocumentNo"));
 					inv.set_CustomColumn("DocNo", rs.getString("DocumentNo"));
-					SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+
+					//SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+					//Se cambia formato fecha a fecha-hora
+					SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
+
 				    Date parsedDate = dateFormat.parse(rs.getString("DateTrx"));
 				    Timestamp dateDoc = new java.sql.Timestamp(parsedDate.getTime());
 				    log.config("datedoc "+dateDoc);
@@ -98,7 +103,11 @@ public class GenerateInternalUse extends SvrProcess
 				if(qty == null)
 					qty = Env.ZERO;
 				if(rs.getString("Transaction_Type").compareTo("S") == 0)
-					qty = qty.negate();								
+					qty = qty.negate();	
+				
+				//mfrojas se vuelve a cambiar el signo al original.
+				//qty = qty.negate();
+				qty = qty.abs(); //debe ser positivo
 				MInventoryLine line  = new MInventoryLine(getCtx(), 0, get_TrxName());
 				line.setM_Inventory_ID (inv.get_ID());		//	Parent
 				line.setAD_Org_ID(inv.getAD_Org_ID());
@@ -106,12 +115,28 @@ public class GenerateInternalUse extends SvrProcess
 				line.setM_Product_ID (ID_Prod);	
 				line.setQtyInternalUse(qty);
 				line.setC_Charge_ID(ID_Charge);
+				line.set_CustomColumn("Odometro", rs.getBigDecimal("Odometro"));
+				int ID_Partner = DB.getSQLValue(get_TrxName(), "SELECT C_Bpartner_ID from C_BPartner where value like '"+rs.getString("BPartnerValue")+"'");
+				line.set_CustomColumn("C_BPartnerC_ID", ID_Partner);
+				
+				//obtener bien
+				int ID_Act = DB.getSQLValue(get_TrxName(),"SELECT A_Asset_ID FROM A_Asset where value like '"+rs.getString("Equipo")+"'");
+				line.set_CustomColumn("A_Asset2_ID", ID_Act);
+				
+				line.set_CustomColumn("origen", rs.getString("origen"));
+				
+				//mfrojas setear conjunto de atributos, igual al max del producto.
+				int att = DB.getSQLValue(get_TrxName(), "SELECT max(M_Attributesetinstance_id) from m_storage where m_product_id = "+ID_Prod);
+				line.setM_AttributeSetInstance_ID(att);
+				
 				line.save();				
 				LastInv = rs.getString("DocumentNo");
 				
 				if(rs.getString("I_InventoryXML_ID") != null)
 					ID_movXML = ID_movXML+","+rs.getString("I_InventoryXML_ID");									
-			}					
+			}
+			inv.processIt("CO");
+			inv.save();
 			log.config("Se han generado "+cant+" consumos ");
 			//actualizamos registros procesados
 			DB.executeUpdate("UPDATE I_InventoryXML SET processed = 'Y' WHERE I_InventoryXML_ID IN ("+ID_movXML+")",get_TrxName());

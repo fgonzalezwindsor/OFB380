@@ -27,7 +27,6 @@ import org.compiere.util.CLogger;
 import org.compiere.util.DB;
 import org.compiere.util.Env;
 import org.compiere.util.Msg;
-import org.jboss.remoting.samples.transporter.serialization.Order;
 import org.ofb.model.OFBForward;
 
 /**
@@ -837,6 +836,19 @@ public class MOrderLine extends X_C_OrderLine
 		
 		if(OFBForward.NoValidationLineOrderRep())
 			log.config("Sin validacion linea repetida");
+		else if(OFBForward.ValidationLineOrderRepWindsor())
+		{
+			if(get_ValueAsInt("M_RequisitionLine_ID") > 0)
+				existe=DB.getSQLValue(null,"select count(1) from c_orderline where C_OrderLine_ID<>"+getC_OrderLine_ID()+ desc + sub+
+						" and M_Product_ID="+getM_Product_ID() +" and AD_Org_ID="+getAD_Org_ID() +" " +
+						" AND M_RequisitionLine_ID > 0 AND C_Order_ID="+getC_Order_ID() + prom,getDatePromised());
+			else
+				existe=DB.getSQLValue(null,"select count(1) from c_orderline where C_OrderLine_ID<>"+getC_OrderLine_ID()+ desc + sub+
+						" and M_Product_ID="+getM_Product_ID() +" and AD_Org_ID="+getAD_Org_ID() +" " +
+						" AND M_RequisitionLine_ID IS NULL AND C_Order_ID="+getC_Order_ID() + prom,getDatePromised());
+			if(existe > 0)
+				log.saveError("Error", "Ya existe una linea con este Producto y misma informacion");
+		}
 		else
 		{
 			if(existe>0 && !MClient.get(getCtx()).getName().equals("Red Educacional Pedro de Valdivia")) //omitir cliente colegios PDV y Mutual
@@ -1180,7 +1192,7 @@ public class MOrderLine extends X_C_OrderLine
 			MRequisitionLine line=new MRequisitionLine(getCtx(),get_ValueAsInt("M_RequisitionLine_ID"), get_TrxName());
 			String sqlUpRL = "SELECT SUM(QTYENTERED) FROM C_OrderLine col " +
 					"INNER JOIN C_Order co ON (col.C_Order_ID = co.C_Order_ID) " +
-					" WHERE M_RequisitionLine_ID = "+get_ValueAsInt("M_RequisitionLine_ID")+" AND co.DocStatus IN ('DR','IP','CO','CL')";
+					" WHERE M_RequisitionLine_ID = "+get_ValueAsInt("M_RequisitionLine_ID")+" AND co.DocStatus IN ('DR','IP','CO','CL','IN')";
 			BigDecimal amt = DB.getSQLValueBD(get_TrxName(), sqlUpRL);
 			if (amt == null)
 				amt = Env.ZERO;	
@@ -1211,7 +1223,7 @@ public class MOrderLine extends X_C_OrderLine
 			MRequisitionLine line=new MRequisitionLine(getCtx(),get_ValueAsInt("M_RequisitionLine_ID"), get_TrxName());
 			String sqlUpRL = "SELECT SUM(QTYENTERED) FROM C_OrderLine col " +
 			"INNER JOIN C_Order co ON (col.C_Order_ID = co.C_Order_ID) " +
-			" WHERE M_RequisitionLine_ID = "+get_ValueAsInt("M_RequisitionLine_ID")+" AND co.DocStatus IN ('DR','IP','CO','CL')";
+			" WHERE M_RequisitionLine_ID = "+get_ValueAsInt("M_RequisitionLine_ID")+" AND co.DocStatus IN ('DR','IP','CO','CL','IN')";
 			BigDecimal amt = DB.getSQLValueBD(get_TrxName(), sqlUpRL);
 			if (amt == null)
 				amt = Env.ZERO;			

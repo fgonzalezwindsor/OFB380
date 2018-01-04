@@ -260,7 +260,7 @@ public class GenerateInvoiceSalesBlumos extends SvrProcess {
 							inv.setC_BPartner_Location_ID(ord.getC_BPartner_Location_ID());
 							String sqlvalidatedoc = "SELECT count(1) from c_invoice where issotrx='Y' and c_bpartner_id = "+ord.getC_BPartner_ID()+" and documentno like '"+rs.getString("numero_nf")+"'";
 							log.config(sqlvalidatedoc);
-							int counter = DB.getSQLValue(get_TrxName(), sqlvalidatedoc);
+							//int counter = DB.getSQLValue(get_TrxName(), sqlvalidatedoc);
 							/*if(counter == 0)
 								inv.setDocumentNo(rs.getString("numero_nf"));
 							else

@@ -30,7 +30,7 @@ import org.compiere.util.DB;
 import org.compiere.util.Env;
 
 /**
- *	CopyFromJobStandar
+ *	
  *	
  */
 public class GenerateMargin extends SvrProcess
@@ -125,14 +125,14 @@ public class GenerateMargin extends SvrProcess
 				//calculamos $/Litro
 				BigDecimal pLitro = Env.ZERO;
 				if(marg.getqty_sales().compareTo(Env.ZERO) != 0)
-					pLitro = marg.gettotal().divide(marg.getqty_sales(),RoundingMode.HALF_EVEN);
+					pLitro = marg.gettotal().divide(marg.getqty_sales(),2,RoundingMode.HALF_EVEN);
 				marg.settotal_purchases2(pLitro);				
 				//seteo costo final
 				marg.setcosto_final(marg.getinv_final().multiply(marg.getprecio_final()).setScale(0, RoundingMode.HALF_EVEN));
 				//calculo de %sobre ventas
 				BigDecimal sobre_ventas = Env.ZERO;
 				if(marg.gettotal_sales2().compareTo(Env.ZERO) != 0)
-					sobre_ventas = marg.gettotal().multiply(Env.ONEHUNDRED).divide(marg.gettotal_sales2(),RoundingMode.HALF_EVEN);
+					sobre_ventas = marg.gettotal().multiply(Env.ONEHUNDRED).divide(marg.gettotal_sales2(),10,RoundingMode.HALF_EVEN);
 				if(sobre_ventas != null)
 					marg.setporcent(sobre_ventas);
 				else
@@ -152,6 +152,199 @@ public class GenerateMargin extends SvrProcess
 			pstmt = null;
 			rs = null;	
 		}
+		commitEx();
+		//etapa 2 se calculan costos de bencina 95
+		//ininoles el costo solo sera la suma de los costos totales 93 y 97
+		String sqlB95 = "SELECT C_Margin_ID FROM C_Margin WHERE AD_Org_ID = 1000000 " +
+				" AND M_Product_ID=1002270 AND C_MarginHeader_ID = "+head.get_ID(); // solo sucursal maipu y bencina 95
+		PreparedStatement pstmtB95 = null;
+		ResultSet rsB95 = null;
+		try
+		{
+			pstmtB95 = DB.prepareStatement (sqlB95, get_TrxName());
+			rsB95 = pstmtB95.executeQuery ();			
+			while (rsB95.next ())
+			{
+				BigDecimal cost95 = DB.getSQLValueBD(get_TrxName(), "SELECT SUM(qty_cost) FROM C_Margin" +
+						" WHERE AD_Org_ID = 1000000 AND M_product_ID IN (1002269,1002272) " +
+						" AND C_MarginHeader_ID="+head.get_ID());
+				X_C_Margin margB95 = new X_C_Margin(getCtx(), rsB95.getInt("C_Margin_ID"), get_TrxName());
+				if(cost95 != null)
+				{
+					//margB95.setqty_cost(cost95.multiply(margB95.getqty_sales()).setScale(0, RoundingMode.HALF_EVEN));
+					margB95.setqty_cost(cost95.setScale(0, RoundingMode.HALF_EVEN));
+				}
+				margB95.save(get_TrxName());
+				//
+			}
+		}
+		catch (Exception e)
+		{
+			log.log(Level.SEVERE, e.getMessage(), e);
+		}
+		finally
+		{
+			pstmtB95.close();
+			rsB95.close();	
+			pstmtB95 = null;
+			rsB95 = null;	
+		}
+		commitEx();
+		//calculo de Transferencias positivas
+		String sqlTr = "SELECT C_Margin_ID FROM C_Margin WHERE C_MarginHeader_ID = "+head.get_ID();
+		PreparedStatement pstmtTr = null;
+		ResultSet rsTr = null;
+		try
+		{
+			pstmtTr = DB.prepareStatement (sqlTr, get_TrxName());
+			rsTr = pstmtTr.executeQuery ();			
+			while (rsTr.next ())
+			{
+				X_C_Margin margTr = new X_C_Margin(getCtx(), rsTr.getInt("C_Margin_ID"), get_TrxName());
+				//se busca cantidad por cada movimiento
+				String sqlTrD = "SELECT ml.MovementQty,mlo.AD_Org_ID FROM M_movementLine ml" +
+						" INNER JOIN M_Movement mm ON (ml.M_Movement_ID = mm.M_Movement_ID) " +
+						" INNER JOIN M_Locator mlo ON (ml.M_Locator_ID = mlo.M_Locator_ID) " +
+						" INNER JOIN M_Locator mlot ON (ml.M_LocatorTo_ID = mlot.M_Locator_ID)" +
+						" WHERE mlot.AD_Org_ID <> mlo.AD_Org_ID " +
+						" AND mlot.AD_Org_ID = " +margTr.getAD_Org_ID()+
+						" AND ml.M_Product_ID= " +margTr.getM_Product_ID()+
+						" AND mm.movementdate BETWEEN ? AND ?";				
+				PreparedStatement pstmtTrD = null;
+				ResultSet rsTrD = null;
+				pstmtTrD = DB.prepareStatement (sqlTrD, get_TrxName());
+				pstmtTrD.setTimestamp(1,head.getC_Period().getStartDate());
+				pstmtTrD.setTimestamp(2,head.getC_Period().getEndDate());
+				rsTrD = pstmtTrD.executeQuery ();			
+				BigDecimal costTr = Env.ZERO;
+				BigDecimal costTrVal = Env.ZERO;
+				while (rsTrD.next ())
+				{
+					//se busca costo flota origen por
+					costTr = costTr.add(rsTrD.getBigDecimal("MovementQty"));
+					BigDecimal costOr = DB.getSQLValueBD(get_TrxName(), "SELECT precio_final FROM C_Margin " +
+							" WHERE AD_Org_ID = "+rsTrD.getInt("AD_Org_ID")+" AND M_product_ID = "+margTr.getM_Product_ID()+
+							" AND C_MarginHeader_ID="+head.get_ID());
+					costTrVal = costTrVal.add(costOr.multiply(rsTrD.getBigDecimal("MovementQty")));
+										
+				}
+				margTr.set_CustomColumn("Transference", costTr);
+				margTr.set_CustomColumn("TransferenceAmtReal", costTrVal.setScale(0, RoundingMode.HALF_EVEN));
+				margTr.saveEx(get_TrxName());
+				pstmtTrD.close();
+				rsTrD.close();	
+				pstmtTrD = null;
+				rsTrD = null;
+				//
+			}			
+		}
+		catch (Exception e)
+		{
+			log.log(Level.SEVERE, e.getMessage(), e);
+		}
+		finally
+		{
+			pstmtTr.close();
+			rsTr.close();	
+			pstmtTr = null;
+			rsTr = null;
+		}
+		commitEx();
+		//calculo de Transferencias negativas
+		String sqlTrN = "SELECT C_Margin_ID FROM C_Margin WHERE C_MarginHeader_ID = "+head.get_ID();
+		PreparedStatement pstmtTrN = null;
+		ResultSet rsTrN = null;
+		try
+		{
+			pstmtTrN = DB.prepareStatement (sqlTrN, get_TrxName());
+			rsTrN = pstmtTrN.executeQuery ();			
+			while (rsTrN.next ())
+			{
+				X_C_Margin margTr = new X_C_Margin(getCtx(), rsTrN.getInt("C_Margin_ID"), get_TrxName());
+				//se busca cantidad por cada movimiento
+				String sqlTrD = "SELECT ml.MovementQty*-1 as MovementQty,mlo.AD_Org_ID FROM M_movementLine ml" +
+						" INNER JOIN M_Movement mm ON (ml.M_Movement_ID = mm.M_Movement_ID) " +
+						" INNER JOIN M_Locator mlo ON (ml.M_Locator_ID = mlo.M_Locator_ID) " +
+						" INNER JOIN M_Locator mlot ON (ml.M_LocatorTo_ID = mlot.M_Locator_ID)" +
+						" WHERE mlot.AD_Org_ID <> mlo.AD_Org_ID " +
+						" AND mlo.AD_Org_ID = " +margTr.getAD_Org_ID()+
+						" AND ml.M_Product_ID= " +margTr.getM_Product_ID()+
+						" AND mm.movementdate BETWEEN ? AND ?";				
+				PreparedStatement pstmtTrD = null;
+				ResultSet rsTrD = null;
+				pstmtTrD = DB.prepareStatement (sqlTrD, get_TrxName());
+				pstmtTrD.setTimestamp(1,head.getC_Period().getStartDate());
+				pstmtTrD.setTimestamp(2,head.getC_Period().getEndDate());
+				rsTrD = pstmtTrD.executeQuery ();			
+				BigDecimal costTrAmt = (BigDecimal)margTr.get_Value("TransferenceAmtReal");
+				BigDecimal costTr = (BigDecimal)margTr.get_Value("Transference");
+				if(costTr == null)
+					costTr = Env.ZERO;
+				while (rsTrD.next ())
+				{
+					//se busca costo flota origen por
+					costTr = costTr.add(rsTrD.getBigDecimal("MovementQty"));
+					BigDecimal costOr = DB.getSQLValueBD(get_TrxName(), "SELECT precio_final FROM C_Margin " +
+							" WHERE AD_Org_ID = "+rsTrD.getInt("AD_Org_ID")+" AND M_product_ID = "+margTr.getM_Product_ID()+
+							" AND C_MarginHeader_ID="+head.get_ID());				 
+					costTrAmt = costTrAmt.add(costOr.multiply(rsTrD.getBigDecimal("MovementQty")));										
+				}
+				margTr.set_CustomColumn("Transference", costTr);
+				margTr.set_CustomColumn("TransferenceAmtReal", costTrAmt.setScale(0, RoundingMode.HALF_EVEN));
+				margTr.saveEx(get_TrxName());
+				pstmtTrD.close();
+				rsTrD.close();	
+				pstmtTrD = null;
+				rsTrD = null;
+				//
+			}			
+		}
+		catch (Exception e)
+		{
+			log.log(Level.SEVERE, e.getMessage(), e);
+		}
+		finally
+		{
+			pstmtTrN.close();
+			rsTrN.close();	
+			pstmtTrN = null;
+			rsTrN = null;
+		}
+		commitEx();
+		//valorizacion rapida
+		String sqlTrV = "SELECT C_Margin_ID FROM C_Margin WHERE Transference <> 0 AND C_MarginHeader_ID = "+head.get_ID();
+		PreparedStatement pstmtTrV = null;
+		ResultSet rsTrV = null;
+		try
+		{
+			pstmtTrV = DB.prepareStatement (sqlTrV, get_TrxName());
+			rsTrV = pstmtTrV.executeQuery();			
+			while(rsTrV.next())
+			{
+				X_C_Margin margTr = new X_C_Margin(getCtx(), rsTrV.getInt("C_Margin_ID"), get_TrxName());
+				//se busca monto de cantidad menor(se asume que la cantidad menor es porque entrego gasolina)
+				BigDecimal costOr = DB.getSQLValueBD(get_TrxName(), "SELECT MIN(precio_final) FROM C_Margin" +
+						" WHERE M_product_ID = "+margTr.getM_Product_ID()+"AND C_MarginHeader_ID = "+head.get_ID()+
+						" AND transference = (SELECT MIN(transference) FROM C_Margin WHERE M_product_ID = "+margTr.getM_Product_ID()+"" +
+						" AND C_MarginHeader_ID = "+head.get_ID()+" AND transference IS NOT NULL)");				 
+				margTr.set_CustomColumn("TransferenceAmt", costOr.multiply((BigDecimal)margTr.get_Value("Transference")).setScale(0, RoundingMode.HALF_EVEN));
+				margTr.setqty_cost(margTr.getqty_cost().add(costOr.multiply((BigDecimal)margTr.get_Value("Transference"))));
+				margTr.settotal(margTr.gettotal_sales2().subtract(margTr.getqty_cost()));
+				margTr.saveEx(get_TrxName());
+			}			
+		}
+		catch (Exception e)
+		{
+			log.log(Level.SEVERE, e.getMessage(), e);
+		}
+		finally
+		{
+			pstmtTrV.close();
+			rsTrV.close();	
+			pstmtTrV = null;
+			rsTrV = null;
+		}
+		commitEx();		
 		return "OK";
 	}	//	doIt
 }	//	Replenish

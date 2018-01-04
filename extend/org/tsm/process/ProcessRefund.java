@@ -135,8 +135,6 @@ public class ProcessRefund extends SvrProcess
 						if (cantRepLine > 0)
 							throw new AdempiereException("ERROR: Ya existe un viatico por hoja de ruta para la misma fecha y conductor");
 					}
-				
-					
 					if(viatico.getType().compareTo("02") == 0)
 					{
 						int cant = DB.getSQLValue(get_TrxName(), "SELECT COUNT(1) FROM TP_RefundLine" +

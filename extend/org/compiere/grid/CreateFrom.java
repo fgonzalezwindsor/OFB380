@@ -31,6 +31,7 @@ import org.compiere.util.DB;
 import org.compiere.util.DisplayType;
 import org.compiere.util.Env;
 import org.compiere.util.KeyNamePair;
+import org.ofb.model.OFBForward;
 
 public abstract class CreateFrom implements ICreateFrom
 {
@@ -171,20 +172,32 @@ public abstract class CreateFrom implements ICreateFrom
 
 		Vector<Vector<Object>> data = new Vector<Vector<Object>>();
 		StringBuffer sql = new StringBuffer("SELECT ");
-				 if(forInvoice) //faaguilar OFB
-					 	//ininoles, se agrega validacion que no tome cantidades de facturas nulas
-					    //sql.append("l.QtyOrdered-SUM(COALESCE(invl.QTYINVOICED,0))," ); //faaguilar OFB
-					 	sql.append("l.QtyOrdered - (COALESCE((SELECT SUM(invl.QTYINVOICED)FROM C_Invoiceline invl "+
-					 			"INNER JOIN C_Invoice cinv ON (cinv.C_Invoice_ID = invl.C_Invoice_ID) "+
-					 			"WHERE cinv.DocStatus not in ('VO') AND invl.C_OrderLine_ID = l.C_OrderLine_ID "+
-					 			"),0)) as qty," ); //ininoles OFB
-					 	else //faaguilar OFB
-					    sql.append("l.QtyOrdered-SUM(COALESCE(inout.QTYENTERED,0))," ); //faaguilar OFB
+		 if(forInvoice) //faaguilar OFB
+			 	//ininoles, se agrega validacion que no tome cantidades de facturas nulas
+			    //sql.append("l.QtyOrdered-SUM(COALESCE(invl.QTYINVOICED,0))," ); //faaguilar OFB
+			 	sql.append("l.QtyOrdered - (COALESCE((SELECT SUM(invl.QTYINVOICED)FROM C_Invoiceline invl "+
+			 			"INNER JOIN C_Invoice cinv ON (cinv.C_Invoice_ID = invl.C_Invoice_ID) "+
+			 			"WHERE cinv.DocStatus not in ('VO') AND invl.C_OrderLine_ID = l.C_OrderLine_ID "+
+			 			"),0)) as qty," ); //ininoles OFB
+		 	else //faaguilar OFB
+		    sql.append("l.QtyOrdered-SUM(COALESCE(inout.QTYENTERED,0))," ); //faaguilar OFB
 			/** faaguilar OFB original code commented
 			 * + "l.QtyOrdered-SUM(COALESCE(m.Qty,0)),"	*/		//	1
 			sql.append( "CASE WHEN l.QtyOrdered=0 THEN 0 ELSE l.QtyEntered/l.QtyOrdered END,"	//	2
 			+ " l.C_UOM_ID,COALESCE(uom.UOMSymbol,uom.Name),"			//	3..4
-			+ " COALESCE(l.M_Product_ID,0),COALESCE(p.Name,c.Name),po.VendorProductNo,"	//	5..7
+			+ " COALESCE(l.M_Product_ID,0),");
+			if(OFBForward.UseInfoProductTCInvoice())
+			{
+				sql.append("(COALESCE(p.Name,c.Name)||'-'||(select  bploc.name||'-'||mp.name||'-'|| col.line  from c_orderline col   inner join c_order co on (co.c_order_id = col.c_order_id)" +
+						" inner join m_product mp on (mp.m_product_id = col.m_product_id)" +
+						" inner join c_bpartner_location bploc on (bploc.c_bpartner_location_id = col.c_bpartner_location3_id)" +
+						" where col.c_orderline_id = l.C_OrderLine_ID)) as name2," );
+			}
+			else
+			{
+				sql.append(" COALESCE(p.Name,c.Name)," );
+			}
+			sql.append(" po.VendorProductNo,"	//	5..7
 			+ " l.C_OrderLine_ID,l.Line "								//	8..9
 			//faaguilar OFB begin
 			+ ",l.datepromised,w.name,l.dateinvoiced,l.dateordered "
@@ -215,9 +228,13 @@ public abstract class CreateFrom implements ICreateFrom
 		sql.append(" WHERE l.C_Order_ID=? "			//	#1
 			+ "GROUP BY l.QtyOrdered,CASE WHEN l.QtyOrdered=0 THEN 0 ELSE l.QtyEntered/l.QtyOrdered END, "
 			+ "l.C_UOM_ID,COALESCE(uom.UOMSymbol,uom.Name),po.VendorProductNo, "
-				+ "l.M_Product_ID,COALESCE(p.Name,c.Name), l.Line,l.C_OrderLine_ID "
+				+ "l.M_Product_ID,");
+		if(OFBForward.UseInfoProductTCInvoice())
+			sql.append("name2, ");
+		else
+			sql.append("COALESCE(p.Name,c.Name),");
 				//faaguilar OFB begin
-				+",l.datepromised, w.name,l.dateinvoiced, l.dateordered "
+		sql.append(" l.Line,l.C_OrderLine_ID,l.datepromised, w.name,l.dateinvoiced, l.dateordered "
 				//faaguilar OFB end
 			+ "ORDER BY l.Line");
 		//

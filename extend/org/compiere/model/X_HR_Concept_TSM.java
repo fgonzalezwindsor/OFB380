@@ -19,7 +19,6 @@ package org.compiere.model;
 
 import java.sql.ResultSet;
 import java.util.Properties;
-import org.compiere.util.KeyNamePair;
 
 /** Generated Model for HR_Concept_TSM
  *  @author Adempiere (generated) 
@@ -30,7 +29,7 @@ public class X_HR_Concept_TSM extends PO implements I_HR_Concept_TSM, I_Persiste
 	/**
 	 *
 	 */
-	private static final long serialVersionUID = 20160303L;
+	private static final long serialVersionUID = 20170907L;
 
     /** Standard Constructor */
     public X_HR_Concept_TSM (Properties ctx, int HR_Concept_TSM_ID, String trxName)
@@ -38,8 +37,11 @@ public class X_HR_Concept_TSM extends PO implements I_HR_Concept_TSM, I_Persiste
       super (ctx, HR_Concept_TSM_ID, trxName);
       /** if (HR_Concept_TSM_ID == 0)
         {
+			setAcronym (null);
 			setHR_Concept_TSM_ID (0);
 			setName (null);
+			setOwner (null);
+			setValue (null);
         } */
     }
 
@@ -70,6 +72,20 @@ public class X_HR_Concept_TSM extends PO implements I_HR_Concept_TSM, I_Persiste
         .append(get_ID()).append("]");
       return sb.toString();
     }
+
+	/** Set Acronym.
+		@param Acronym Acronym	  */
+	public void setAcronym (String Acronym)
+	{
+		set_Value (COLUMNNAME_Acronym, Acronym);
+	}
+
+	/** Get Acronym.
+		@return Acronym	  */
+	public String getAcronym () 
+	{
+		return (String)get_Value(COLUMNNAME_Acronym);
+	}
 
 	/** Set Description.
 		@param Description 
@@ -125,13 +141,26 @@ public class X_HR_Concept_TSM extends PO implements I_HR_Concept_TSM, I_Persiste
 		return (String)get_Value(COLUMNNAME_Name);
 	}
 
-    /** Get Record ID/ColumnName
-        @return ID/ColumnName pair
-      */
-    public KeyNamePair getKeyNamePair() 
-    {
-        return new KeyNamePair(get_ID(), getName());
-    }
+	/** Owner AD_Reference_ID=1000155 */
+	public static final int OWNER_AD_Reference_ID=1000155;
+	/** Operaciones = Operaciones */
+	public static final String OWNER_Operaciones = "Operaciones";
+	/** Recursos Humanos = RR.HH */
+	public static final String OWNER_RecursosHumanos = "RR.HH";
+	/** Set Owner.
+		@param Owner Owner	  */
+	public void setOwner (String Owner)
+	{
+
+		set_Value (COLUMNNAME_Owner, Owner);
+	}
+
+	/** Get Owner.
+		@return Owner	  */
+	public String getOwner () 
+	{
+		return (String)get_Value(COLUMNNAME_Owner);
+	}
 
 	/** Set Search Key.
 		@param Value 

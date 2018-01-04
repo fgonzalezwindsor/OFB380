@@ -151,6 +151,35 @@ public class ExportDTEInvoiceFOLCGGem extends SvrProcess
             org.w3c.dom.Text venc = document.createTextNode(invoice.getDateInvoiced().toString().substring(0, 10));
             FchVenc.appendChild(venc);
             IdDoc.appendChild(FchVenc);
+            //nuevo campo tipo de transaccion venta ininoles
+            Element TpoTranVenta = document.createElement("TpoTranVenta");
+            org.w3c.dom.Text TpoTranVentaTxt = document.createTextNode(invoice.get_ValueAsString("TipoTranVenta"));
+            TpoTranVenta.appendChild(TpoTranVentaTxt);
+            IdDoc.appendChild(TpoTranVenta);
+            /*
+            //nuevo campo tipo de transaccion compra ininoles
+            Element TpoTranCompra = document.createElement("TpoTranCompra");
+            org.w3c.dom.Text TpoTranCompraTxt = document.createTextNode(invoice.get_ValueAsString("TipoTranCompra"));
+            TpoTranVenta.appendChild(TpoTranCompraTxt);
+            IdDoc.appendChild(TpoTranCompra);
+            //nuevo campo forma pago ininoles
+            String formaPago = "1";
+            if(invoice.getC_PaymentTerm().getNetDays() > 0)
+            	formaPago = "2";
+            int cantLineFP = DB.getSQLValue(invoice.get_TrxName(), "SELECT COUNT(1) FROM C_PaySchedule " +
+            		" WHERE IsActive = 'Y' AND C_PaymentTerm_ID = "+invoice.getC_PaymentTerm_ID());
+            if(cantLineFP > 0)
+            	formaPago = "2";
+            MPaymentTerm pTerm = new MPaymentTerm(invoice.getCtx(), invoice.getC_PaymentTerm_ID(), invoice.get_TrxName());
+            if(pTerm.get_ValueAsBoolean("IsFree"))
+            	formaPago = "3";
+
+            Element FmaPago = document.createElement("FmaPago");
+            org.w3c.dom.Text FmaPagoTxt = document.createTextNode(formaPago);
+            TpoTranVenta.appendChild(FmaPagoTxt);
+            IdDoc.appendChild(FmaPago);
+            //end
+            */
             Element Emisor = document.createElement("Emisor");
             Encabezado.appendChild(Emisor);
             mylog = "Emisor";
@@ -715,10 +744,10 @@ public class ExportDTEInvoiceFOLCGGem extends SvrProcess
     			try
     			{				
     				final CXFConnector wsc = new CXFConnector();					
-    				wsc.setSoapAction("http://clientes.dtefacturaenlinea.cl/WsFEL/wsFEL.php/SolicitarSesion");
+    				wsc.setSoapAction("http://clientes2.dtefacturaenlinea.cl/WsFEL/wsFEL.php/SolicitarSesion");
     				wsc.setRequest(request);
     				wsc.setBinding(SOAPBinding.SOAP11HTTP_BINDING);
-    				wsc.setEndpointAddress("http://clientes.dtefacturaenlinea.cl/WsFEL/wsFEL.php");
+    				wsc.setEndpointAddress("http://clientes2.dtefacturaenlinea.cl/WsFEL/wsFEL.php");
     				wsc.setServiceName("DTElectronico");
     				wsc.setPortName("DTElectronicoPort");
     				wsc.setTargetNS("/var/www//WsTest/");
@@ -785,10 +814,10 @@ public class ExportDTEInvoiceFOLCGGem extends SvrProcess
     			try
     			{				
     				final CXFConnector wsc = new CXFConnector();					
-    				wsc.setSoapAction("http://clientes.dtefacturaenlinea.cl/WsFEL/wsFEL.php/EnviarDTE");
+    				wsc.setSoapAction("http://clientes2.dtefacturaenlinea.cl/WsFEL/wsFEL.php/EnviarDTE");
     				wsc.setRequest(request);
     				wsc.setBinding(SOAPBinding.SOAP11HTTP_BINDING);
-    				wsc.setEndpointAddress("http://clientes.dtefacturaenlinea.cl/WsFEL/wsFEL.php");
+    				wsc.setEndpointAddress("http://clientes2.dtefacturaenlinea.cl/WsFEL/wsFEL.php");
     				wsc.setServiceName("DTElectronico");
     				wsc.setPortName("DTElectronicoPort");
     				wsc.setTargetNS("/var/www//WsTest/");    				

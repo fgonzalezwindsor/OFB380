@@ -162,6 +162,35 @@ public class ExportDTEInvoiceFOLNGem extends SvrProcess
             org.w3c.dom.Text venc = document.createTextNode(invoice.getDateInvoiced().toString().substring(0, 10));
             FchVenc.appendChild(venc);
             IdDoc.appendChild(FchVenc);
+            /*
+            //nuevo campo tipo de transaccion venta ininoles
+            Element TpoTranVenta = document.createElement("TpoTranVenta");
+            org.w3c.dom.Text TpoTranVentaTxt = document.createTextNode(invoice.get_ValueAsString("TipoTranVenta"));
+            TpoTranVenta.appendChild(TpoTranVentaTxt);
+            IdDoc.appendChild(TpoTranVenta);
+            //nuevo campo tipo de transaccion compra ininoles
+            Element TpoTranCompra = document.createElement("TpoTranCompra");
+            org.w3c.dom.Text TpoTranCompraTxt = document.createTextNode(invoice.get_ValueAsString("TipoTranCompra"));
+            TpoTranVenta.appendChild(TpoTranCompraTxt);
+            IdDoc.appendChild(TpoTranCompra);
+          //nuevo campo forma pago ininoles
+            String formaPago = "1";
+            if(invoice.getC_PaymentTerm().getNetDays() > 0)
+            	formaPago = "2";
+            int cantLineFP = DB.getSQLValue(invoice.get_TrxName(), "SELECT COUNT(1) FROM C_PaySchedule " +
+            		" WHERE IsActive = 'Y' AND C_PaymentTerm_ID = "+invoice.getC_PaymentTerm_ID());
+            if(cantLineFP > 0)
+            	formaPago = "2";
+            MPaymentTerm pTerm = new MPaymentTerm(invoice.getCtx(), invoice.getC_PaymentTerm_ID(), invoice.get_TrxName());
+            if(pTerm.get_ValueAsBoolean("IsFree"))
+            	formaPago = "3";
+
+            Element FmaPago = document.createElement("FmaPago");
+            org.w3c.dom.Text FmaPagoTxt = document.createTextNode(formaPago);
+            TpoTranVenta.appendChild(FmaPagoTxt);
+            IdDoc.appendChild(FmaPago);
+            //end
+            */
             Element Emisor = document.createElement("Emisor");
             Encabezado.appendChild(Emisor);
             mylog = "Emisor";
@@ -428,7 +457,8 @@ public class ExportDTEInvoiceFOLNGem extends SvrProcess
                 Referencia.appendChild(FchRef);
                 
                 Element CodRef = document.createElement("CodRef");
-                org.w3c.dom.Text codref = document.createTextNode(Integer.toString(tipo_Ref));
+                //org.w3c.dom.Text codref = document.createTextNode(Integer.toString(tipo_Ref));
+                org.w3c.dom.Text codref = document.createTextNode(invoice.get_ValueAsString("CodRef"));                
                 CodRef.appendChild(codref);
                 Referencia.appendChild(CodRef);                
             }
@@ -438,7 +468,7 @@ public class ExportDTEInvoiceFOLNGem extends SvrProcess
             String sqlDN = "Select o.DocumentNo FROM C_Order o INNER JOIN C_Invoice i ON (o.C_Order_ID = i.C_Order_ID) WHERE i.C_Invoice_ID= ?";
             String docNoRef = DB.getSQLValueString(get_TrxName(), sqlDN, invoice.get_ID()); 
             
-            /*if (docNoRef != null)
+            if (docNoRef != null)
             {
             	Element Referencia2 = document.createElement("Referencia");
                 Documento.appendChild(Referencia2);
@@ -473,21 +503,21 @@ public class ExportDTEInvoiceFOLNGem extends SvrProcess
                 org.w3c.dom.Text codref2 = document.createTextNode(invoice.get_ValueAsString("CodRef"));
                 CodRef2.appendChild(codref2);
                 Referencia2.appendChild(CodRef2);
-            }*/
+            }
             
             //end ininoles
             //creamos nuevo concatenado de string ininoles
             String strDesc= " ";
             if(invoice.getDescription() != null && invoice.getDescription().trim().length() > 0)
-            	strDesc = strDesc + invoice.getDescription();
+            	strDesc = strDesc + invoice.getDescription()+". ";
             BigDecimal mulRate = (BigDecimal)invoice.get_Value("MultiplyRate");
             if(mulRate != null && mulRate.compareTo(Env.ZERO) > 0)
-            	strDesc = strDesc +". Tipo de Cambio:"+mulRate.toString();
+            	strDesc = strDesc + "Tipo de Cambio:"+mulRate.toString()+". ";
             if(invoice.getAD_User_ID() > 0)
-            	strDesc = strDesc +". Contacto:"+invoice.getAD_User().getName();
+            	strDesc = strDesc + "Contacto:"+invoice.getAD_User().getName()+". ";
             //ininoles se agrega HES
             if (docNoRef != null && docNoRef.trim().length() > 0)
-            	strDesc = strDesc + ". HES:"+docNoRef;
+            	strDesc = strDesc + "HES:"+docNoRef+". ";
             if (strDesc != null && strDesc != "" && strDesc != " ")
             {            
 	            mylog = "Adicional";
@@ -610,10 +640,7 @@ public class ExportDTEInvoiceFOLNGem extends SvrProcess
         {
             log.severe((new StringBuilder()).append("CreateXML: ").append(mylog).append("--").append(e.getMessage()).toString());
             return (new StringBuilder()).append("CreateXML: ").append(mylog).append("--").append(e.getMessage()).toString();
-        }       
-        
-    
-        
+        }    
         return "XML CG Generated "+ wsRespuesta;
     }	
         

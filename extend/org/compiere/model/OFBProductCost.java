@@ -197,7 +197,8 @@ public class OFBProductCost {
 				log.config("journal");
 				MJournalLine line = new MJournalLine(ctx,detail.get_ValueAsInt("GL_JournalLine_ID"),detail.get_TrxName());
 				journal = line.getParent();
-				if(journal.getDescription().toUpperCase().indexOf("INICIAL")<0)
+				//ininoles se agrega validacion para diarios sin descripcion 05-09-2017
+				if(journal.getDescription() != null && journal.getDescription().toUpperCase().indexOf("INICIAL")<0)
 					cost.add(detail.getAmt().setScale(4, BigDecimal.ROUND_HALF_UP), detail.getQty());//ininoles 4 decimales
 					
 			}
@@ -219,7 +220,7 @@ public class OFBProductCost {
 			
 			BigDecimal TemCost;
 			
-			if(journal !=null && journal.getDescription().toUpperCase().indexOf("INICIAL")>=0)
+			if(journal !=null && journal.getDescription() != null && journal.getDescription().toUpperCase().indexOf("INICIAL")>=0)
 			{
 				log.config("journal inicial");
 				TemCost = detail.getAmt();

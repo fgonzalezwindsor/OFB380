@@ -85,7 +85,9 @@ public class ModPAAcctCustomTax implements ModelValidator
 				MInvoice inv = new MInvoice(po.getCtx(), fLine.getRecord_ID(), po.get_TrxName());
 
 				if(inv.getC_DocType().getDocBaseType().compareTo("API") == 0
-						|| inv.getC_DocType().getDocBaseType().compareTo("ARI") == 0) //ininoles ahora es para compra y venta
+						|| inv.getC_DocType().getDocBaseType().compareTo("ARI") == 0  //ininoles ahora es para compra y venta
+						|| inv.getC_DocType().getDocBaseType().compareTo("APC") == 0
+						|| inv.getC_DocType().getDocBaseType().compareTo("ARC") == 0) // se agregan notas de credito
 				{
 					//validamos que la linea sea de impuesto
 					BigDecimal amtIVA = DB.getSQLValueBD(po.get_TrxName(),"SELECT ROUND(COALESCE(SUM(IVATaxAmt),0)) FROM C_InvoiceLine WHERE IsActive = 'Y' AND C_Invoice_ID = "+fLine.getRecord_ID());

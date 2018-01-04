@@ -30,7 +30,7 @@ public interface I_HR_Concept_TSM
     /** TableName=HR_Concept_TSM */
     public static final String Table_Name = "HR_Concept_TSM";
 
-    /** AD_Table_ID=1000102 */
+    /** AD_Table_ID=1000109 */
     public static final int Table_ID = MTable.getTable_ID(Table_Name);
 
     KeyNamePair Model = new KeyNamePair(Table_ID, Table_Name);
@@ -40,6 +40,15 @@ public interface I_HR_Concept_TSM
     BigDecimal accessLevel = BigDecimal.valueOf(3);
 
     /** Load Meta Data */
+
+    /** Column name Acronym */
+    public static final String COLUMNNAME_Acronym = "Acronym";
+
+	/** Set Acronym	  */
+	public void setAcronym (String Acronym);
+
+	/** Get Acronym	  */
+	public String getAcronym();
 
     /** Column name AD_Client_ID */
     public static final String COLUMNNAME_AD_Client_ID = "AD_Client_ID";
@@ -125,6 +134,15 @@ public interface I_HR_Concept_TSM
 	  * Alphanumeric identifier of the entity
 	  */
 	public String getName();
+
+    /** Column name Owner */
+    public static final String COLUMNNAME_Owner = "Owner";
+
+	/** Set Owner	  */
+	public void setOwner (String Owner);
+
+	/** Get Owner	  */
+	public String getOwner();
 
     /** Column name Updated */
     public static final String COLUMNNAME_Updated = "Updated";

@@ -17,7 +17,6 @@
 package org.tsm.model;
 
 import org.compiere.model.MClient;
-import org.compiere.model.MPaymentRequestLine;
 import org.compiere.model.ModelValidationEngine;
 import org.compiere.model.ModelValidator;
 import org.compiere.model.PO;

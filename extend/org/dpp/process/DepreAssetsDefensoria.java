@@ -182,16 +182,18 @@ public class DepreAssetsDefensoria extends SvrProcess
 		int id_invoice = 0;
 		//Se sobreescribira sql para no necesitar periodo
 		sql="select a.a_asset_id,a.name,a.value,acct.c_acctschema_id, acct.a_asset_acct, "
-			+" acct.a_depreciation_acct, fore.amount,fore.a_asset_forecast_id,p.c_period_id,p.name,"
+			+" acct.a_depreciation_acct,"
+			//+" fore.amount,fore.a_asset_forecast_id,p.c_period_id,p.name,"
 			+" acct.a_accumdepreciation_acct,acct.A_Disposal_Gain_Acct,wk.a_asset_cost,acct.A_Disposal_RevenueC_Acct,"
 			+" acct.A_Disposal_RevenueD_Acct,acct.A_Disposal_Loss_Acct, wk.a_accumulated_depr, acct.A_AssetComplement_Acct"
 			+" from a_asset a"
 			+" inner join a_asset_acct acct on (a.a_asset_id=acct.a_asset_id)"
 			+" inner join A_Depreciation_Workfile wk on (a.a_asset_id=wk.a_asset_id)"
-			+" inner join a_asset_forecast fore on (a.a_asset_id=fore.a_asset_id)"
-			+" where a.ad_client_id=? and fore.a_asset_forecast_ID = "
-			+" (SELECT MAX(fa.a_asset_forecast_ID) FROM a_asset_forecast fa " +
-			 "  WHERE fa.isactive = 'Y' AND fore.A_Asset_ID = a.A_Asset_ID) ";
+			//+" inner join a_asset_forecast fore on (a.a_asset_id=fore.a_asset_id)"
+			+" where a.ad_client_id=? ";
+			//and fore.a_asset_forecast_ID = ";
+			/*+" (SELECT MAX(fa.a_asset_forecast_ID) FROM a_asset_forecast fa " +
+			 "  WHERE fa.isactive = 'Y' AND fore.A_Asset_ID = a.A_Asset_ID) ";*/
 		try
 		{ 
 			id_invoice = DepDoc.get_ValueAsInt("C_Invoice_ID");
@@ -261,7 +263,8 @@ public class DepreAssetsDefensoria extends SvrProcess
 				journal.setGL_Category_ID(MGLCategory.getDefault(m_ctx, MGLCategory.CATEGORYTYPE_Document).getGL_Category_ID() );
 				journal.setC_ConversionType_ID(114);
 				journal.set_ValueOfColumn("A_Asset_ID", rs.getInt("a_asset_id"));
-				journal.set_ValueOfColumn("A_Asset_Forecast_ID",rs.getInt("a_asset_forecast_id")); 
+				if(!DepDoc.getDepType().equalsIgnoreCase("VCP"))//baja para activos sin planificacion
+						journal.set_ValueOfColumn("A_Asset_Forecast_ID",rs.getInt("a_asset_forecast_id")); 
 				journal.save();
 				//ininoles se setea org con campo OrgRef de Activo
 				journal.setAD_Org_ID(assetTemp.get_ValueAsInt("AD_OrgRef_ID"));
@@ -611,7 +614,7 @@ public class DepreAssetsDefensoria extends SvrProcess
 		 DepDoc.setProcessed(true);
 		 DepDoc.save();
 		 
-		 boolean assetadvise="Y".equals(DB.getSQLValueString(get_TrxName(), "select assetadvise from ad_client where ad_client_id="+getAD_Client_ID()));
+		 //boolean assetadvise="Y".equals(DB.getSQLValueString(get_TrxName(), "select assetadvise from ad_client where ad_client_id="+getAD_Client_ID()));
 //		 if(DepDoc.getDepType().equalsIgnoreCase((X_A_Asset_Dep.DEPTYPE_CorrecionMonetaria )) && assetadvise)
 //			 org.compiere.OFBapp.ADialog.warn(2, new org.compiere.OFBapp.ConfirmPanel(), "No Olvide Replanificar el Activo luego de correr la correccion Monetaria");
 		 

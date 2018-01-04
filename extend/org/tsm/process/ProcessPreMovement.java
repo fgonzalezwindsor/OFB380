@@ -28,6 +28,7 @@ import org.adempiere.exceptions.AdempiereException;
 import org.compiere.model.X_HR_Prebitacora;
 import org.compiere.model.X_Pre_M_Movement;
 import org.compiere.model.X_Pre_M_MovementLine;
+import org.compiere.process.ProcessInfoParameter;
 import org.compiere.process.SvrProcess;
 import org.compiere.util.DB;
 
@@ -41,10 +42,24 @@ public class ProcessPreMovement extends SvrProcess
 	 *  Prepare - e.g., get Parameters.
 	 */
 	private int p_Order_ID;
+	private String p_Action;
 		
 	protected void prepare()
 	{	
 		p_Order_ID = getRecord_ID();
+		ProcessInfoParameter[] para = getParameter();
+		for (int i = 0; i < para.length; i++)
+		{
+			String name = para[i].getParameterName();
+			if (para[i].getParameter() == null)
+				;			
+			else if (name.equals("DocAction"))
+			{
+				p_Action = (String)para[i].getParameter();
+			}
+			else
+				log.log(Level.SEVERE, "Unknown Parameter: " + name);
+		}
 	}	//	prepare
 
 	/**
@@ -54,9 +69,11 @@ public class ProcessPreMovement extends SvrProcess
 	 */
 	protected String doIt() throws Exception
 	{	
+		if (p_Action == null)
+			p_Action = "CO";
 		X_Pre_M_Movement preMov = new X_Pre_M_Movement(getCtx(), p_Order_ID, get_TrxName());		
 		//procesamos por primera vez para traer lineas
-		if(preMov.getDocStatus().compareTo("DR") == 0)
+		if(preMov.getDocStatus().compareTo("DR") == 0 && p_Action.compareTo("CO") == 0)
 		{
 			int cant = 0;			
 			/*String sql = "SELECT A_Asset_ID,A_AssetRampla_ID, C_BpartnerRef_ID FROM A_Asset " +
@@ -75,10 +92,10 @@ public class ProcessPreMovement extends SvrProcess
 			//ininoles nuevo sql de activos y choferes
 			String sql = " SELECT A_Asset_ID,A_AssetRampla_ID, C_BpartnerRef_ID FROM A_Asset" +
 					" WHERE IsActive = 'Y' AND A_Asset_ID NOT IN (SELECT A_AssetRampla_ID FROM A_Asset WHERE IsActive = 'Y' AND A_AssetRampla_ID IS NOT NULL)" +
-					" AND AD_OrgRef_ID = "+preMov.getAD_Org_ID() +
+					" AND AD_OrgRef_ID = "+preMov.getAD_Org_ID() + " AND A_Asset_Type_ID IN ('01','02')"+
 					" UNION" +
 					" SELECT null,null,C_Bpartner_ID FROM C_Bpartner" +
-					" WHERE IsActive = 'Y' AND AD_OrgRef_ID = "+preMov.getAD_Org_ID() +
+					" WHERE IsActive = 'Y' AND IsUnlinked <> 'Y' AND AD_OrgRef_ID = "+preMov.getAD_Org_ID() +
 					" AND C_Bpartner_ID NOT IN (SELECT C_BpartnerRef_ID FROM A_Asset WHERE IsActive = 'Y' AND C_BpartnerRef_ID IS NOT NULL)";
 			
 			PreparedStatement pstmt = null;
@@ -148,7 +165,8 @@ public class ProcessPreMovement extends SvrProcess
 			return "Se han agregado "+cant+" lineas a la disponibilidad";
 		}
 		//validamos para completar
-		else if(preMov.getDocStatus().compareTo("IP") == 0 || preMov.getDocStatus().compareTo("WC") ==0)
+		else if(p_Action.compareTo("CO") == 0 && 
+				(preMov.getDocStatus().compareTo("IP") == 0 || preMov.getDocStatus().compareTo("WC") ==0))
 		{
 			boolean overWrite = false;
 			overWrite = preMov.get_ValueAsBoolean("OverWrite");
@@ -185,16 +203,16 @@ public class ProcessPreMovement extends SvrProcess
 				//validacion sera contra el total de activos/bp analizarla bien al terminar todo
 				int cantBP = DB.getSQLValue(get_TrxName(),"SELECT COUNT(1) FROM C_Bpartner " +						
 						" WHERE IsActive = 'Y' AND AD_OrgRef_ID = "+preMov.getAD_Org_ID()+
-						" AND C_BPartner_ID NOT IN (SELECT C_BPartner_ID FROM Pre_M_MovementLine WHERE C_BPartner_ID IS NOT NULL AND IsActive = 'Y' " +
+						" AND C_BPartner_ID NOT IN (SELECT C_BPartner_ID FROM Pre_M_MovementLine WHERE C_BPartner_ID IS NOT NULL " +
 						" AND Pre_M_Movement_ID ="+preMov.get_ID()+")");
 				if(cantBP > 0)
 					throw new AdempiereException("ERROR: No estan en la disponibilidad "+cantBP+" conductores");
 				
 				int cantAset = DB.getSQLValue(get_TrxName(),"SELECT COUNT(1) FROM A_Asset " +
-						" WHERE IsActive = 'Y' AND AD_OrgRef_ID = "+preMov.getAD_Org_ID()+
-						" AND A_Asset_ID NOT IN (SELECT A_Asset_ID FROM Pre_M_MovementLine WHERE A_Asset_ID IS NOT NULL AND IsActive = 'Y' " +
+						" WHERE IsActive = 'Y' AND A_Asset_Type_ID IN ('01','02') AND AD_OrgRef_ID = "+preMov.getAD_Org_ID()+
+						" AND A_Asset_ID NOT IN (SELECT A_Asset_ID FROM Pre_M_MovementLine WHERE A_Asset_ID IS NOT NULL " +
 						" AND Pre_M_Movement_ID ="+preMov.get_ID()+") " +
-						" AND A_Asset_ID NOT IN (SELECT A_AssetRef_ID FROM Pre_M_MovementLine WHERE A_Asset_ID IS NOT NULL AND IsActive = 'Y' " +
+						" AND A_Asset_ID NOT IN (SELECT A_AssetRef_ID FROM Pre_M_MovementLine WHERE A_Asset_ID IS NOT NULL " +
 						" AND Pre_M_Movement_ID ="+preMov.get_ID()+")");
 				if(cantAset > 0)
 					throw new AdempiereException("ERROR: No estan en la disponibilidad "+cantAset+" activos");
@@ -265,15 +283,15 @@ public class ProcessPreMovement extends SvrProcess
 						}
 						//validaciones de socio de negocio
 						//String turno = pMovLine.get_ValueAsString("Workshift");
-						String turno = preMov.get_ValueAsString("Workshift");
+						/*String turno = preMov.get_ValueAsString("Workshift");
 						if(turno == null)
-							turno = "30";
-						if(pMovLine.getC_BPartner_ID() > 0)
-						{
+							turno = "30";*/
+						/*if(pMovLine.getC_BPartner_ID() > 0)
+						{*/
 							//validacion 6 dias seguidos trabajados		
-							Timestamp dateTo = preMov.getMovementDate();
+							//Timestamp dateTo = preMov.getMovementDate();
 							//calculamos 6 dias atras
-							Calendar calCalendario = Calendar.getInstance();
+							/*Calendar calCalendario = Calendar.getInstance();
 					        calCalendario.setTimeInMillis(dateTo.getTime());
 					        int cantDaysAgo = 6;
 					        if(turno.compareTo("30")==0)
@@ -288,20 +306,21 @@ public class ProcessPreMovement extends SvrProcess
 									" INNER JOIN Pre_M_Movement pm ON (pml.Pre_M_Movement_ID = pm.Pre_M_Movement_ID)" +
 									" WHERE pml.IsActive = 'Y' AND pm.DocStatus IN ('CO') AND pml.C_Bpartner_ID = "+pMovLine.getC_BPartner_ID()+
 									" AND pm.movementdate BETWEEN ? AND ? ", dateFrom,dateTo);
-							if(cantDays >= cantDaysAgo)
+							if(cantDays > cantDaysAgo)
 							{
 								throw new AdempiereException("Mas de "+cantDaysAgo+" dias Trabajados. Conductor: "+pMovLine.getC_BPartner().getName());
-							}
+							}*/
 							
 							//validación  
-							int cantSunday = DB.getSQLValue(get_TrxName(), "SELECT COUNT(DISTINCT(pm.Pre_M_Movement_ID))" +
+							/*int cantSunday = DB.getSQLValue(get_TrxName(), "SELECT COUNT(DISTINCT(pm.Pre_M_Movement_ID))" +
 									" FROM Pre_M_MovementLine pml " +
 									" INNER JOIN Pre_M_Movement pm ON (pml.Pre_M_Movement_ID = pm.Pre_M_Movement_ID)" +
 									" WHERE pml.IsActive = 'Y' AND pm.DocStatus IN ('CO') AND to_char(movementdate, 'd') = '1'");
 							
 							if(cantSunday > 2)
 								throw new AdempiereException("Mas de 2 domingos Trabajados. Conductor: "+pMovLine.getC_BPartner().getName());
-						}
+							*/
+						//}
 					}
 				}
 				
@@ -335,6 +354,13 @@ public class ProcessPreMovement extends SvrProcess
 		        }
 			}			
 			return "Procesado";			
+		}
+		else if (p_Action.compareTo("VO") == 0)
+		{
+			preMov.setDocStatus("VO");
+			preMov.setProcessed(true);
+			preMov.save();
+			return "Anulado";
 		}
 		else
 			return "Procesado";		

@@ -16,6 +16,7 @@
  *****************************************************************************/
 package org.tsm.process;
 
+import java.sql.PreparedStatement;
 import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.logging.*;
@@ -29,7 +30,7 @@ import org.compiere.util.*;
 /**
  *	
  *	
- *  @author Fabian Aguilar faaguilar
+ *  @author ininoles
  *  @version $Id: ProcessOT.java,v 1.2 2008/06/12 00:51:01  $
  */
 public class ProcessRequestOT extends SvrProcess
@@ -80,16 +81,7 @@ public class ProcessRequestOT extends SvrProcess
 		{
 			if(P_DocAction.equals("PR"))
 			{
-				ROT.setProcessed(true);			
-				ROT.setDocStatus("WC");
-				ROT.save();
-				return "Confirmado";
-			}
-			else if(P_DocAction.equals("CO"))
-			{
-				ROT.setProcessed(true);			
-				ROT.setDocStatus("CO");
-				ROT.save();
+				//ahora se crearan los incidentes al procesar la primera vez y luego al completar se actualizaran
 				//se crear registros de incidencias
 				//generamos demas registros dependiendo de los dias
 				Calendar calCalendario = Calendar.getInstance();		
@@ -100,7 +92,7 @@ public class ProcessRequestOT extends SvrProcess
 					long dif = dateEnd.getTime()-dateStart.getTime();
 					dif = dif/(1000*60*60*24);
 					calCalendario.setTimeInMillis(dateStart.getTime());				
-					if(dif > 0)
+					if(dif >= 0)
 					{
 						dif++;
 						X_HR_Prebitacora prebitacoraSub = null;
@@ -108,7 +100,7 @@ public class ProcessRequestOT extends SvrProcess
 				        //calCalendario.setTimeInMillis(prebitacora.getDateTrx().getTime());			
 						while(dif > 0)
 						{
-							//ininoles antes de guardar nueva prebitacora se valida que no sea sabado o domingo
+							//ininoles antes de guardar nueva prebitacora(incidente) se valida que no sea sabado o domingo
 							prebitacoraSub = new X_HR_Prebitacora(Env.getCtx(),0,null);
 							MAsset asset = new MAsset(getCtx(), ROT.getA_Asset_ID(), get_TrxName());
 							if(asset.get_ValueAsInt("AD_OrgRef_ID") > 0)
@@ -125,6 +117,84 @@ public class ProcessRequestOT extends SvrProcess
 							prebitacoraSub.setDateTrx(new Timestamp(calCalendario.getTimeInMillis()));	
 							prebitacoraSub.set_CustomColumn("MP_OT_Request_ID", ROT.get_ID());
 							prebitacoraSub.saveEx();
+							//calculamos nueva fecha sumandole 1 dia
+							calCalendario.add(Calendar.DATE,1);
+							dif--;
+						}
+					}				
+				}
+				ROT.setProcessed(true);			
+				ROT.setDocStatus("WC");
+				ROT.save();
+				return "Confirmado";
+			}
+			else if(P_DocAction.equals("CO"))
+			{
+				ROT.setProcessed(true);			
+				ROT.setDocStatus("CO");
+				ROT.save();
+				//se borran relaciones a tablas de disponibilidad
+				PreparedStatement pstmtDRe1 = null;				
+				String sqlDelRe1 = "UPDATE Pre_M_MovementLine SET HR_Concept_TSM_ID = null, HR_Prebitacora_ID = null " +
+						" WHERE HR_Prebitacora_ID IN " +
+						" (SELECT HR_Prebitacora_ID FROM HR_Prebitacora WHERE MP_OT_Request_ID = "+ROT.get_ID()+
+						" AND (DateTrx < ? OR DateTrx > ?))";
+				pstmtDRe1 = DB.prepareStatement(sqlDelRe1, get_TrxName());
+				pstmtDRe1.setTimestamp(1, ROT.getDateDoc());
+				pstmtDRe1.setTimestamp(2, (Timestamp)ROT.get_Value("DateEnd"));
+				pstmtDRe1.executeUpdate();
+				//se borran incidentes fuera de los nuevos rangos de la solicitud de OT		
+				PreparedStatement pstmtD1 = null;				
+				String sqlDel1 = "DELETE FROM HR_Prebitacora WHERE MP_OT_Request_ID = "+ROT.get_ID()+
+				 " AND (DateTrx < ? OR DateTrx > ?)";
+				pstmtD1 = DB.prepareStatement(sqlDel1, get_TrxName());
+				pstmtD1.setTimestamp(1, ROT.getDateDoc());
+				pstmtD1.setTimestamp(2, (Timestamp)ROT.get_Value("DateEnd"));
+				pstmtD1.executeUpdate();
+				//fin borrado
+				
+				//se crear nuevos registros de incidencias
+				//generamos demas registros dependiendo de los dias
+				Calendar calCalendario = Calendar.getInstance();		
+				Timestamp dateStart = ROT.getDateDoc();
+				if((Timestamp)ROT.get_Value("DateEnd")!= null)
+				{
+					Timestamp dateEnd = (Timestamp)ROT.get_Value("DateEnd");
+					long dif = dateEnd.getTime()-dateStart.getTime();
+					dif = dif/(1000*60*60*24);
+					calCalendario.setTimeInMillis(dateStart.getTime());				
+					if(dif >= 0)
+					{
+						dif++;
+						X_HR_Prebitacora prebitacoraSub = null;
+						//obtenemos fecha en calendario			
+				        //calCalendario.setTimeInMillis(prebitacora.getDateTrx().getTime());			
+						while(dif > 0)
+						{
+							//ininoles antes de guardar nueva prebitacora(incidente) se valida que no sea sabado o domingo
+							//antes de generar los incidentes se valida que no exista previamente
+							int exist = DB.getSQLValue(get_TrxName(), "SELECT COUNT(1) FROM HR_Prebitacora " +
+									" WHERE MP_OT_Request_ID="+ROT.get_ID()+" AND DateTrx = ?",new Timestamp(calCalendario.getTimeInMillis()));
+							//si no existe se crea  registro
+							if(exist < 1)
+							{
+								prebitacoraSub = new X_HR_Prebitacora(Env.getCtx(),0,null);
+								MAsset asset = new MAsset(getCtx(), ROT.getA_Asset_ID(), get_TrxName());
+								if(asset.get_ValueAsInt("AD_OrgRef_ID") > 0)
+									prebitacoraSub.setAD_Org_ID(asset.get_ValueAsInt("AD_OrgRef_ID"));
+								else
+									prebitacoraSub.setAD_Org_ID(asset.getAD_Org_ID());
+								prebitacoraSub.setColumnType("A");
+								prebitacoraSub.setA_Asset_ID(ROT.getA_Asset_ID());
+								//prebitacoraSub.setC_BPartner_ID(prebitacora.getC_BPartner_ID());				
+								//prebitacoraSub.setWorkshift(prebitacora.getWorkshift());
+								prebitacoraSub.setHR_Concept_TSM_ID(1000011);
+								prebitacoraSub.setProcessed(false);
+								prebitacoraSub.setIsActive(true);				
+								prebitacoraSub.setDateTrx(new Timestamp(calCalendario.getTimeInMillis()));	
+								prebitacoraSub.set_CustomColumn("MP_OT_Request_ID", ROT.get_ID());
+								prebitacoraSub.saveEx();
+							}
 							//calculamos nueva fecha sumandole 1 dia
 							calCalendario.add(Calendar.DATE,1);
 							dif--;

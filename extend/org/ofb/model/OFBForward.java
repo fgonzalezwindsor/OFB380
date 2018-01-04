@@ -653,5 +653,80 @@ public class OFBForward {
 		}
 		return GenerateXML.equals("Y");
 	}
+	public static boolean AlwaysInvoiceTaxCalculate()
+	{
+		String GenerateXML = "N";
+		try 
+		{
+			GenerateXML = DB.getSQLValueString(null, "Select Value from AD_SysConfig where name='OFB_AlwaysInvoiceTaxCalculate'");
+			if(GenerateXML == null)	
+				GenerateXML = "N";
+		}
+		catch (Exception e)
+		{
+			GenerateXML = "N";
+		}
+		return GenerateXML.equals("Y");
+	}
+	public static boolean AllocationUseActualDate()
+	{
+		String GenerateXML = "N";
+		try 
+		{
+			GenerateXML = DB.getSQLValueString(null, "Select Value from AD_SysConfig where name='OFB_AllocationUseActualDate'");
+			if(GenerateXML == null)	
+				GenerateXML = "N";
+		}
+		catch (Exception e)
+		{
+			GenerateXML = "N";
+		}
+		return GenerateXML.equals("Y");
+	}
+	public static boolean ValidationLineOrderRepWindsor()
+	{
+		String validLine = "N";
+		try 
+		{
+			validLine = DB.getSQLValueString(null, "Select Value from AD_SysConfig where name='OFB_NoValidationLineOrder'");
+			if(validLine == null)	
+				validLine = "N";
+		}
+		catch (Exception e)
+		{
+			validLine = "N";
+		}
+		return validLine.equals("Y");
+	}
+	public static boolean UseOnlyCashForBBalance()
+	{
+		String validLine = "N";
+		try 
+		{
+			validLine = DB.getSQLValueString(null, "Select Value from AD_SysConfig where name='OFB_UseOnlyCashForBBalance'");
+			if(validLine == null)	
+				validLine = "N";
+		}
+		catch (Exception e)
+		{
+			validLine = "N";
+		}
+		return validLine.equals("Y");
+	}
+	public static boolean UseInfoProductTCInvoice()
+	{
+		String validLine = "N";
+		try 
+		{
+			validLine = DB.getSQLValueString(null, "Select Value from AD_SysConfig where name='OFB_UseInfoProductTCInvoice'");
+			if(validLine == null)	
+				validLine = "N";
+		}
+		catch (Exception e)
+		{
+			validLine = "N";
+		}
+		return validLine.equals("Y");
+	}
 }
 

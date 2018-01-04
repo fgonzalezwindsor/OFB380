@@ -34,6 +34,7 @@ import org.compiere.util.DisplayType;
 import org.compiere.util.Env;
 import org.compiere.util.Msg;
 import org.compiere.util.TimeUtil;
+import org.ofb.model.OFBForward;
 
 /**
  *	Cash Journal Model
@@ -331,6 +332,10 @@ public class MCash extends X_C_Cash implements DocAction
 
 		//MCash oldCash= MCash.get (getCtx(), getAD_Org_ID(),tmsFecha, getC_Currency_ID(),get_TrxName());
         MCash oldCash=MCash.getDuplicate(getCtx(), getAD_Org_ID(),tmsFecha, getC_CashBook_ID(),get_TrxName(),getC_Cash_ID());
+        //Se sobreescribe diario para que solo tome el ID del diario sin fecha ni org 
+        if(OFBForward.UseOnlyCashForBBalance())
+        	oldCash=MCash.getDuplicate(getCtx(),getC_CashBook_ID(),get_TrxName(),getC_Cash_ID());
+        
         if(oldCash==null)
         setBeginningBalance(Env.ZERO);
         else
@@ -1077,5 +1082,53 @@ public class MCash extends X_C_Cash implements DocAction
 		
 		
 	}	//	get
+	/** faaguilar OFB method for cash duplicate NO ORG
+	 * 	Get Cash Journal for CashBook and date
+	 *	@param ctx context
+	 *	@param AD_Client_ID client
+	 *	@param dateAcct date
+	 *	@param trxName transaction
+	 *	@return cash
+	 */
+	public static MCash getDuplicate (Properties ctx, 
+		int CashBook_ID, String trxName, int C_Cash_ID)
+	{
+		MCash retValue = null;
+		//	Existing Journal
+		String sql = "SELECT * FROM C_Cash c "
+			+ "WHERE c.C_CashBook_ID=?"			 //	#3
+			+ " AND c.DocStatus IN ('DR','CO')"
+			+ " AND c.C_CASH_ID!="+C_Cash_ID
+			+ " Order BY c.StatementDate Desc,c.created Desc";
+		PreparedStatement pstmt = null;
+		try
+		{
+			pstmt = DB.prepareStatement (sql, trxName);			
+			pstmt.setInt (1, CashBook_ID);
+			ResultSet rs = pstmt.executeQuery ();
+			if (rs.next ())
+				retValue = new MCash (ctx, rs, trxName);
+			rs.close ();
+			pstmt.close ();
+			pstmt = null;
+		}
+		catch (Exception e)
+		{
+			s_log.log(Level.SEVERE, sql, e);
+		}
+		try
+		{
+			if (pstmt != null)
+				pstmt.close ();
+			pstmt = null;
+		}
+		catch (Exception e)
+		{
+			pstmt = null;
+		}
+		
+		
+			return retValue;
+	}
 	
 }	//	MCash

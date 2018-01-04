@@ -80,6 +80,7 @@ public class ModTSMUpdatePreMovLine implements ModelValidator
 		if((type == TYPE_BEFORE_CHANGE || type == TYPE_BEFORE_NEW) && po.get_Table_ID()==X_Pre_M_MovementLine.Table_ID) 
 		{	
 			X_Pre_M_MovementLine pmLine = (X_Pre_M_MovementLine)po;
+			//incidencia socio de negocio
 			if(pmLine.getC_BPartner_ID() > 0)
 			{
 				int ID_preBitacora = DB.getSQLValue(po.get_TrxName(), "SELECT MAX(HR_Prebitacora_ID) FROM HR_Prebitacora  " +
@@ -89,9 +90,40 @@ public class ModTSMUpdatePreMovLine implements ModelValidator
 					X_HR_Prebitacora preBitacora = new X_HR_Prebitacora(po.getCtx(), ID_preBitacora, po.get_TrxName());
 					pmLine.set_CustomColumn("HR_PrebitacoraRef_ID", ID_preBitacora);
 					pmLine.set_CustomColumn("HR_Concept_TSMBP_ID", preBitacora.getHR_Concept_TSM_ID());
-					if(preBitacora.getHR_Concept_TSM().getDescription() != null && 
-							preBitacora.getHR_Concept_TSM().getDescription().trim().length() > 0)
-						pmLine.set_CustomColumn("Workshift",preBitacora.getHR_Concept_TSM().getDescription().trim());
+					if(preBitacora.getHR_Concept_TSM().getAcronym() != null 
+							&& preBitacora.getHR_Concept_TSM().getDescription().trim().length() > 0
+							&& type == TYPE_BEFORE_NEW)
+						pmLine.set_CustomColumn("WorkshiftBP",preBitacora.getHR_Concept_TSM().getAcronym().trim());
+				}
+				else
+				{
+					pmLine.set_CustomColumn("HR_PrebitacoraRef_ID", null);					
+					pmLine.set_CustomColumn("HR_Concept_TSMBP_ID",null);
+					if(type == TYPE_BEFORE_NEW)
+						pmLine.set_CustomColumn("WorkshiftBP",null);
+				}
+			}
+			//incidencia tracto
+			if(pmLine.getA_Asset_ID() > 0)
+			{
+				int ID_preBitacora = DB.getSQLValue(po.get_TrxName(), "SELECT MAX(HR_Prebitacora_ID) FROM HR_Prebitacora  " +
+						" WHERE A_Asset_ID = "+pmLine.getA_Asset_ID()+" AND DateTrx = ?",pmLine.getPre_M_Movement().getMovementDate());
+				if(ID_preBitacora > 0)
+				{
+					X_HR_Prebitacora preBitacora = new X_HR_Prebitacora(po.getCtx(), ID_preBitacora, po.get_TrxName());
+					pmLine.set_CustomColumn("HR_Prebitacora_ID", ID_preBitacora);
+					pmLine.set_CustomColumn("HR_Concept_TSM_ID", preBitacora.getHR_Concept_TSM_ID());
+					if(preBitacora.getHR_Concept_TSM().getAcronym() != null 
+							&& preBitacora.getHR_Concept_TSM().getDescription().trim().length() > 0
+							&& type == TYPE_BEFORE_NEW)
+						pmLine.set_CustomColumn("Workshift",preBitacora.getHR_Concept_TSM().getAcronym().trim());
+				}
+				else
+				{
+					pmLine.set_CustomColumn("HR_Prebitacora_ID", null);
+					pmLine.set_CustomColumn("HR_Concept_TSM_ID",null);
+					if(type == TYPE_BEFORE_NEW)
+						pmLine.set_CustomColumn("Workshift",null);
 				}
 			}
 		}		

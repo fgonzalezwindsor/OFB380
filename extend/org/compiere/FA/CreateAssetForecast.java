@@ -11,6 +11,7 @@ import org.compiere.model.MAssetChange;
 import org.compiere.model.MDepreciationWorkfile;
 import org.compiere.model.X_A_Asset_Forecast;
 import org.compiere.model.X_A_Asset;
+import org.compiere.model.X_A_Depreciation_Workfile;
 import org.compiere.process.*;
 import org.compiere.util.DB;
 import org.compiere.util.Env;
@@ -106,11 +107,12 @@ public class CreateAssetForecast extends SvrProcess{
 		//SalvageAmt=change.getAssetValueAmt().multiply(SalvageAmt);
 		//ininoles se cambia que campo A_Salvage_Value no sea porcentaje sino monto
 		BigDecimal SalvageAmt =acct.getA_Salvage_Value();
-		BigDecimal Currentamt=change.getAssetValueAmt();
+		BigDecimal Currentamt=change.getAssetValueAmt();		
 		//Currentamt=Currentamt.subtract(Env.ONE);ininoles
 		
 		if(!acct.get_ValueAsBoolean("IsByYear")) //faaguilar por mes
-			for(int i=1;i<(acct.getA_Period_End()+1) ;i++){
+			for(int i=1;i<(acct.getA_Period_End()+1) ;i++)
+			{
 				X_A_Asset_Forecast fore=new X_A_Asset_Forecast (Env.getCtx(),0,trxName);
 				fore.setA_Asset_ID(asset.getA_Asset_ID());
 				fore.setAD_Org_ID(asset.getAD_Org_ID());

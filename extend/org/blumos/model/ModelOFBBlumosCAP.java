@@ -16,29 +16,13 @@
  *****************************************************************************/
 package org.blumos.model;
 
-import java.math.BigDecimal;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.util.logging.Level;
-
-import javax.swing.JOptionPane;
-
 import org.compiere.model.MClient;
 import org.compiere.model.MInvoice;
-import org.compiere.model.MProject;
 import org.compiere.model.ModelValidationEngine;
 import org.compiere.model.ModelValidator;
 import org.compiere.model.PO;
-import org.compiere.model.X_C_PaymentRequest;
-import org.compiere.model.X_C_PaymentRequestLine;
-import org.compiere.model.X_DM_Document;
-import org.compiere.model.X_DM_DocumentLine;
-import org.compiere.model.X_MP_AssetMeter_Log;
 import org.compiere.util.CLogger;
 import org.compiere.util.DB;
-import org.compiere.util.Env;
-import org.compiere.model.MProduct;
-
 
 /**
  *	Validator for company Sismode

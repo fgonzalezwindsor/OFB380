@@ -39,6 +39,7 @@ import org.compiere.util.DisplayType;
 import org.compiere.util.Env;
 import org.compiere.util.KeyNamePair;
 import org.compiere.util.Msg;
+import org.ofb.model.OFBForward;
 
 /**
  *  Create Invoice Transactions from PO Orders or Receipt
@@ -198,7 +199,19 @@ public class CreateFromInvoice extends CreateFrom
 			//+ "l.MovementQty-SUM(NVL(mi.Qty, 0)), l.QtyEntered/l.MovementQty," faaguilar OFB codigo original comentado
 				+ "l.MovementQty-SUM(NVL(invl.QtyInvoiced, 0)), l.QtyEntered/l.MovementQty," //faaguilar OFB nuevas cantidades
 			+ " l.C_UOM_ID, COALESCE(uom.UOMSymbol, uom.Name),"			//  3..4
-			+ " l.M_Product_ID, p.Name, po.VendorProductNo, l.M_InOutLine_ID, l.Line,"        //  5..9
+			+ " l.M_Product_ID,");
+		if(OFBForward.UseInfoProductTCInvoice())
+		{
+			sql.append("(p.Name||'-'||(select  bploc.name||'-'||mp.name||'-'|| col.line  from c_orderline col   inner join c_order co on (co.c_order_id = col.c_order_id)" +
+					" inner join m_product mp on (mp.m_product_id = col.m_product_id)" +
+					" inner join c_bpartner_location bploc on (bploc.c_bpartner_location_id = col.c_bpartner_location3_id)" +
+					" where col.c_orderline_id = l.C_OrderLine_ID)) as name," );
+		}
+		else
+		{
+			sql.append(" p.Name," );
+		}
+		sql.append(" po.VendorProductNo, l.M_InOutLine_ID, l.Line,"        //  5..9
 			+ " l.C_OrderLine_ID " //  10
 			+ " FROM M_InOutLine l "
 			);
@@ -215,10 +228,12 @@ public class CreateFromInvoice extends CreateFrom
 			.append(" LEFT OUTER JOIN C_InvoiceLine invl ON (invl.M_InOutLine_ID=l.M_InOutLine_ID)") //faaguilar OFB para comparar con la cantidades facturadas ya
 			
 			.append(" WHERE l.M_InOut_ID=? AND l.MovementQty<>0 ")
+			//.append(" AND l.MovementQty-SUM(NVL(invl.QtyInvoiced, 0)) > 0 ")
 			.append("GROUP BY l.MovementQty, l.QtyEntered/l.MovementQty, "
 				+ "l.C_UOM_ID, COALESCE(uom.UOMSymbol, uom.Name), "
 				+ "l.M_Product_ID, p.Name, po.VendorProductNo, l.M_InOutLine_ID, l.Line, l.C_OrderLine_ID ")
-			.append("ORDER BY l.Line");
+			.append(" HAVING l.MovementQty-SUM(COALESCE(invl.QtyInvoiced, 0)) > 0 ")
+			.append(" ORDER BY l.Line");
 
 		try
 		{

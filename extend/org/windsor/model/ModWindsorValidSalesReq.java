@@ -87,7 +87,8 @@ public class ModWindsorValidSalesReq implements ModelValidator
 			if(req.isSOTrx()) 
 			{
 				if(rLine.getM_Product_ID() > 0 && rLine.getM_Product().isStocked()
-						&& rLine.getM_Product().getProductType().compareTo("I") == 0)
+						&& rLine.getM_Product().getProductType().compareTo("I") == 0
+						&& rLine.getAD_Client_ID() == 1000000)
 				{
 					BigDecimal qtyAvai = Env.ZERO; 
 					if(req.getAD_Client_ID() == 1000000)

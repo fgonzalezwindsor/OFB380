@@ -653,6 +653,28 @@ public class ProcessCriticalDateProc extends SvrProcess
 					bPartCD.save();
 					cdLine.set_CustomColumn("Processed",true);
 					cdLine.save();
+					//se crea registro en incidencias
+					X_C_CriticalDateConcept cpt = new X_C_CriticalDateConcept(getCtx(),cdLine.getC_CriticalDateConcept_ID(),get_TrxName());
+					if(cpt.get_ValueAsBoolean("genPreB"))
+					{
+						X_HR_Prebitacora prebitacoraSub = null;
+						prebitacoraSub = new X_HR_Prebitacora(Env.getCtx(),0,null);
+						MBPartner bpIn = new MBPartner(getCtx(), cdLine.getC_BPartner_ID(), get_TrxName());					
+						if(bpIn.get_ValueAsInt("AD_OrgRef_ID") > 0)
+							prebitacoraSub.setAD_Org_ID(bpIn.get_ValueAsInt("AD_OrgRef_ID"));
+						else
+							prebitacoraSub.setAD_Org_ID(bpIn.getAD_Org_ID());
+						prebitacoraSub.setColumnType("B");					
+						prebitacoraSub.setC_BPartner_ID(bpIn.getC_BPartner_ID());				
+						//prebitacoraSub.setWorkshift(prebitacora.getWorkshift());
+						prebitacoraSub.setHR_Concept_TSM_ID(1000005);
+						prebitacoraSub.setProcessed(false);
+						prebitacoraSub.setIsActive(true);				
+						prebitacoraSub.setDateTrx(pro.getDateTrx());	
+						prebitacoraSub.set_CustomColumn("C_CriticalDateProcessLine_ID",cdLine.get_ID());
+						prebitacoraSub.saveEx();
+					}  
+					//ininoles end
 				}
 				pro.set_CustomColumn("Processed",true);
 				pro.setDocStatus("CO");
@@ -766,7 +788,28 @@ public class ProcessCriticalDateProc extends SvrProcess
 							if(cdLine.get_ValueAsString("StatusDesc") != null && cdLine.get_ValueAsString("StatusDesc") != "")
 								BPCDate.set_CustomColumn("StatusDesc", cdLine.get_ValueAsString("StatusDesc"));
 						}
-						BPCDate.save();
+						BPCDate.save();						
+						X_C_CriticalDateConcept cpt = new X_C_CriticalDateConcept(getCtx(),cdLine.getC_CriticalDateConcept_ID(),get_TrxName());
+						if(cpt.get_ValueAsBoolean("genPreB"))
+						{
+							X_HR_Prebitacora prebitacoraSub = null;
+							prebitacoraSub = new X_HR_Prebitacora(Env.getCtx(),0,null);
+							MBPartner bpIn = new MBPartner(getCtx(), cdLine.getC_BPartner_ID(), get_TrxName());					
+							if(bpIn.get_ValueAsInt("AD_OrgRef_ID") > 0)
+								prebitacoraSub.setAD_Org_ID(bpIn.get_ValueAsInt("AD_OrgRef_ID"));
+							else
+								prebitacoraSub.setAD_Org_ID(bpIn.getAD_Org_ID());
+							prebitacoraSub.setColumnType("B");					
+							prebitacoraSub.setC_BPartner_ID(bpIn.getC_BPartner_ID());				
+							//prebitacoraSub.setWorkshift(prebitacora.getWorkshift());
+							prebitacoraSub.setHR_Concept_TSM_ID(1000005);
+							prebitacoraSub.setProcessed(false);
+							prebitacoraSub.setIsActive(true);				
+							prebitacoraSub.setDateTrx(pro.getDateTrx());	
+							prebitacoraSub.set_CustomColumn("C_CriticalDateProcessLine_ID",cdLine.get_ID());
+							prebitacoraSub.setdays(Env.ONE);
+							prebitacoraSub.saveEx();
+						}  
 					}					
 				}				
 				pro.set_CustomColumn("Processed",true);

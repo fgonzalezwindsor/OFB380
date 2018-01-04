@@ -8,7 +8,6 @@ import java.util.logging.Level;
 
 import org.compiere.model.MInvoice;
 import org.compiere.model.MInvoiceLine;
-import org.compiere.model.MBPartner;
 import org.compiere.process.SvrProcess;
 import org.compiere.util.DB;
 import org.compiere.util.Env;
@@ -86,7 +85,7 @@ public class GeneratePurchaseInvoice extends SvrProcess {
 						inv.set_CustomColumn("EMITIR_DTE", "Y");
 						inv.save();
 					}
-					boolean flag = false;
+					//boolean flag = false;
 					inv = new MInvoice(getCtx(), 0, get_TrxName());
 					inv.setAD_Org_ID(1000023);
 
@@ -258,7 +257,7 @@ public class GeneratePurchaseInvoice extends SvrProcess {
 					cant++;
 				}		
 				//generacion de detalle
-				boolean flagLine = false;
+				//boolean flagLine = false;
 				MInvoiceLine line = new MInvoiceLine(inv);
 				
 				String sqlst = "SELECT max(m_product_Id) from m_product where value like '%"+rs.getString("codigo_mp")+"%'";

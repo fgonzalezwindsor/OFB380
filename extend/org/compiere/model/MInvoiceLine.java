@@ -882,8 +882,9 @@ public class MInvoiceLine extends X_C_InvoiceLine
 		//	Calculations & Rounding
 		setLineNetAmt();
 		// TaxAmt recalculations should be done if the TaxAmt is zero
-		// or this is an Invoice(Customer) - teo_sarca, globalqss [ 1686773 ]
-		if (getTaxAmt().compareTo(Env.ZERO) == 0 || is_ValueChanged("C_Tax_ID") || is_ValueChanged("PriceActual") || is_ValueChanged("QtyInvoiced") || is_ValueChanged("QtyEntered"))//faaguilar OFB del m_IsSOTrx ||
+		// or this is an Invoice(Customer) - teo_sarca, globalqss [ 1686773 ]		
+		if (getTaxAmt().compareTo(Env.ZERO) == 0 || is_ValueChanged("C_Tax_ID") || is_ValueChanged("PriceActual") 
+				|| is_ValueChanged("QtyInvoiced") || is_ValueChanged("QtyEntered"))//faaguilar OFB del m_IsSOTrx ||
 		{
 			//ininoles nueva validacion para poder colocar lineas solo con impuesto y que no borre al guardar.
 			if (getTaxAmt().compareTo(Env.ZERO) != 0 && getPriceEntered().compareTo(Env.ZERO) == 0 && getPriceList().compareTo(Env.ZERO) == 0)

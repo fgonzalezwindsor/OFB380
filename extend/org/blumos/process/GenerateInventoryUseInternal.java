@@ -33,9 +33,6 @@ import org.compiere.process.SvrProcess;
 import org.compiere.util.DB;
 import org.compiere.util.Env;
 import org.compiere.model.MCostDetail;
-import org.compiere.model.MStorage;
-
-
 /**
  *  @author Italo Niñoles
  */
@@ -237,7 +234,7 @@ public class GenerateInventoryUseInternal extends SvrProcess
 				//@mfrojas se agrega actualización a m_storage para que no haya problemas de stock (por revisar!)
 				String sqlstorage = "SELECT count(1) from m_storage where ad_client_id = 1000005 and m_product_id = "+ID_Prod+" and M_AttributesetInstance_ID = 1059402 and m_locator_id = "+ID_Loc;
 				log.config("sql storage "+sqlstorage);
-				int storage = DB.getSQLValue(get_TrxName(), sqlstorage);
+				//int storage = DB.getSQLValue(get_TrxName(), sqlstorage);
 /*				if(storage > 0)
 					DB.executeUpdate("Update m_storage set qtyonhand = 500 where ad_client_id = 1000005 and m_product_id = "+ID_Prod+" and M_Attributesetinstance_id = 1059402 and m_locator_id = "+ID_Loc,get_TrxName());
 				else

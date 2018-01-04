@@ -140,13 +140,22 @@ public class AndesFullProcessAllBank extends SvrProcess
 				flagBCI = true;
 			}else if (a < 4)//banco santander1
 			{
+				/*
 				pCuenta = 0;
 				pSaldoC = 4;
 				pSaldoD = 3;
 				pRet1d = 2;
 				pRetMas1d = -1;
 				pRetOtro = 1;
-				pTotal = 4;
+				pTotal = 4;*/
+				//nuevo orden santander
+				pCuenta = 0;
+				pSaldoC = 4;
+				pSaldoD = 3;
+				pRet1d = 2;
+				pRetMas1d = -1;
+				pRetOtro = 1;
+				pTotal = 4;				
 			}else if (a < 5)//banco santander2
 			{
 				pCuenta = 0;
@@ -353,11 +362,11 @@ public class AndesFullProcessAllBank extends SvrProcess
 			    		else
 			    			bal.setAvailableBalance(Env.ZERO);
 			    		if (pRet1d >= 0)
-			    			bal.setRetention((BigDecimal) decimalFormat.parse(datos.get(x)[pRet1d].replace("$","").replace("\"","").trim()));
+			    			bal.setRetention((BigDecimal) decimalFormat.parse(datos.get(x)[pRet1d].replace("$","").replace("\"","").replace("Sin información","0").replace("Sin informacion","0").trim()));
 			    		else
 			    			bal.setRetention(Env.ZERO);
 			    		if (pRetMas1d >= 0)
-		    				bal.setRetention1((BigDecimal) decimalFormat.parse(datos.get(x)[pRetMas1d].replace("$","").replace("\"","").trim()));
+		    				bal.setRetention1((BigDecimal) decimalFormat.parse(datos.get(x)[pRetMas1d].replace("$","").replace("\"","").replace("Sin información","0").replace("Sin informacion","0").trim()));
 			    		else
 			    			bal.setRetention1(Env.ZERO);
 			    		if (pRetOtro >= 0)

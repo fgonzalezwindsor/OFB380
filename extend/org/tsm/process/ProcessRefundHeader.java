@@ -72,6 +72,10 @@ public class ProcessRefundHeader extends SvrProcess
 			{
 				viaticoHeader.setDocStatus("CO");
 				viaticoHeader.setProcessed(true);
+				//se procesan lineas
+				DB.executeUpdate("UPDATE TP_Refund SET Processed = 'Y' WHERE TP_RefundHeader_ID = "+viaticoHeader.get_ID(), get_TrxName());
+				DB.executeUpdate("UPDATE TP_RefundLine SET Processed = 'Y' WHERE TP_Refund_ID IN " +
+							" (SELECT TP_Refund_ID FROM TP_Refund WHERE TP_RefundHeader_ID = "+viaticoHeader.get_ID()+")", get_TrxName());				
 			}
 			else
 			{	
@@ -95,6 +99,11 @@ public class ProcessRefundHeader extends SvrProcess
 				{
 					viaticoHeader.setDocStatus("CO");
 					viaticoHeader.setProcessed(true);
+					//se procesan lineas
+					/*DB.executeUpdate("UPDATE TP_Refund SET Processed = 'Y' WHERE TP_RefundHeader_ID = "+viaticoHeader.get_ID(), get_TrxName());
+					DB.executeUpdate("UPDATE TP_RefundLine SET Processed = 'Y' WHERE TP_Refund_ID IN " +
+							"	(SELECT TP_Refund_ID FROM TP_Refund WHERE TP_RefundHeader_ID = "+viaticoHeader.get_ID()+")", get_TrxName());
+							*/
 				}			
 			}
 			viaticoHeader.save();
@@ -111,10 +120,12 @@ public class ProcessRefundHeader extends SvrProcess
 					" AND Type = '01' AND TP_Refund_ID <> "+viatico.get_ID()+" AND DateDoc = ?",viatico.getDateDoc());
 			if(cantV > 0)
 				throw new AdempiereException("ERROR: Ya existe mas de un viatico para la misma fecha");
-			int cantRep = DB.getSQLValue(get_TrxName(), "SELECT COALESCE(COUNT(1),0)FROM TP_RefundLine " +
-					" WHERE M_Movement_ID > 0 AND TP_Refund_ID="+viatico.get_ID()+" GROUP BY DateTrx HAVING COUNT(1) > 1");
-				if(cantRep > 0)
-					throw new AdempiereException("ERROR: Existe mas de una Hoja de Ruta para la misma Fecha");
+			/*
+				int cantRep = DB.getSQLValue(get_TrxName(), "SELECT COALESCE(COUNT(1),0)FROM TP_RefundLine " +
+						" WHERE M_Movement_ID > 0 AND TP_Refund_ID="+viatico.get_ID()+" GROUP BY DateTrx HAVING COUNT(1) > 1");
+					if(cantRep > 0)
+						throw new AdempiereException("ERROR: Existe mas de una Hoja de Ruta para la misma Fecha");
+			*/
 		}
 		//validaciones de linea
 		String sqlLine = "SELECT TP_RefundLine_ID FROM TP_RefundLine WHERE IsActive = 'Y'" +
@@ -190,6 +201,7 @@ public class ProcessRefundHeader extends SvrProcess
 			viatico.setDocStatus("CO");
 			viatico.setProcessed(true);
 			viatico.save(get_TrxName());
+			DB.executeUpdate("UPDATE TP_RefundLine SET Processed = 'Y' WHERE TP_Refund_ID = "+viatico.get_ID(), get_TrxName());
 		}
 	}
 }

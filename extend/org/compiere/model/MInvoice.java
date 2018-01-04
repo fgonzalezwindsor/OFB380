@@ -59,7 +59,6 @@ import org.ofb.process.ExportDTEInvoiceFOLCGGem;
 import org.ofb.process.ExportDTEInvoiceFOLNGem;
 import org.ofb.process.ExportDTEInvoiceFOLPA;
 import org.ofb.process.ExportDTEInvoiceFOLQDC;
-import org.ofb.process.ExportDTEInvoiceFOLQDC_Old;
 import org.ofb.process.ExportDTEInvoiceITSA;
 import org.ofb.process.ExportDTEInvoiceNBaskakow;
 import org.ofb.process.ExportDTEInvoiceNGem;

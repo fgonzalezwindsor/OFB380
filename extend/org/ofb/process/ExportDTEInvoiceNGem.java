@@ -121,6 +121,12 @@ public class ExportDTEInvoiceNGem extends SvrProcess
             FchVenc.appendChild(venc);
             IdDoc.appendChild(FchVenc);
             
+            //nuevo campo tipo de transaccion venta ininoles
+            Element TpoTranVenta = document.createElement("TpoTranVenta");
+            org.w3c.dom.Text TpoTranVentaTxt = document.createTextNode(invoice.get_ValueAsString("TipoTranVenta"));
+            TpoTranVenta.appendChild(TpoTranVentaTxt);
+            IdDoc.appendChild(TpoTranVenta);
+            
             //ininoles nuevo campo termino de pago
            /* MPaymentTerm pterm = new MPaymentTerm(getCtx(), invoice.getC_PaymentTerm_ID(), get_TrxName());
             Element PayTerm = document.createElement("PayTerm");

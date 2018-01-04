@@ -584,6 +584,21 @@ public class Doc_Invoice extends Doc
 			if (serviceAmt.signum() != 0)
 				fact.createLine(null, MAccount.get(getCtx(), receivablesServices_ID),
 					getC_Currency_ID(), null, serviceAmt);
+			
+			//ininoles se agrega linea de impuesto especifico para PA
+			if(OFBForward.UpdateIVAPA())
+			{
+				BigDecimal amtIVA = DB.getSQLValueBD("C_Invoice_ID","SELECT ROUND(COALESCE(SUM(IVATaxAmt),0)) FROM C_InvoiceLine cil " +
+					" INNER JOIN C_Tax ct ON (cil.C_Tax_ID = ct.C_Tax_ID)" +
+					" WHERE cil.IsActive = 'Y' AND IsTaxExempt = 'N' AND C_Invoice_ID = "+invoice.get_ID());
+				if(amtIVA == null)
+					amtIVA = Env.ZERO;
+				BigDecimal oTax = invoice.getGrandTotal().subtract(invoice.getTotalLines()).subtract(amtIVA);
+				int customTAx = getValidCombination_ID (Doc.ACCTTYPE_ImpuestoEspecificoCombustible, as);
+				fact.createLine(null, MAccount.get(getCtx(), customTAx),
+						getC_Currency_ID(),oTax,null);
+				
+			}
 		}
 		
 		//  ** API
@@ -813,6 +828,19 @@ public class Doc_Invoice extends Doc
 			if (serviceAmt.signum() != 0)
 				fact.createLine(null, MAccount.get(getCtx(), payablesServices_ID),
 					getC_Currency_ID(), serviceAmt, null);
+			if(OFBForward.UpdateIVAPA())
+			{
+				BigDecimal amtIVA = DB.getSQLValueBD("C_Invoice_ID","SELECT ROUND(COALESCE(SUM(IVATaxAmt),0)) FROM C_InvoiceLine cil " +
+					" INNER JOIN C_Tax ct ON (cil.C_Tax_ID = ct.C_Tax_ID)" +
+					" WHERE cil.IsActive = 'Y' AND IsTaxExempt = 'N' AND C_Invoice_ID = "+invoice.get_ID());
+				if(amtIVA == null)
+					amtIVA = Env.ZERO;
+				BigDecimal oTax = invoice.getGrandTotal().subtract(invoice.getTotalLines()).subtract(amtIVA);
+				int customTAx = getValidCombination_ID (Doc.ACCTTYPE_ImpuestoEspecificoCombustible, as);
+				fact.createLine(null, MAccount.get(getCtx(), customTAx),
+						getC_Currency_ID(),null,oTax);
+				
+			}
 		}
 	//  ARB begin faaguilar OFB
 		else if (getDocumentType().equals(DOCTYPE_AR_Boleta))

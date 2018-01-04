@@ -100,7 +100,7 @@ public class GenerateRefundHeader extends SvrProcess
 				" AND pm.AD_Client_ID = "+Env.getAD_Client_ID(getCtx())+*/
 				" WHERE pm.AD_Client_ID = "+Env.getAD_Client_ID(getCtx())+
 				//" AND pm.MovementDate BETWEEN ? AND ? ";
-				" AND C_Bpartner_ID = 1002699" + //ininoles liea comenada solo usar para analisis en debug 
+				//" AND C_Bpartner_ID = 1002699" + //ininoles liea comenada solo usar para analisis en debug 
 				" AND " +
 				" (((select MIN(mml.tp_finalhr) from m_movementline mml where mml.m_movement_id = pm.M_Movement_ID)  > ? " +
 				" AND" +
@@ -123,7 +123,8 @@ public class GenerateRefundHeader extends SvrProcess
 				" SELECT null,pml.C_Bpartner_ID,pm.movementDate,pm.AD_Org_ID,1,pm.Pre_M_Movement_ID,pm.created" +
 				" FROM Pre_M_Movement pm " +
 				" INNER JOIN Pre_M_MovementLine pml ON (pm.Pre_M_Movement_ID = pml.Pre_M_Movement_ID AND C_Bpartner_ID IS NOT NULL) " +
-				" WHERE pm.AD_Org_ID = "+p_Org_ID+" AND pm.movementDate BETWEEN ?  AND ? AND pm.DocStatus IN ('CO','CL')";	
+				" WHERE pm.AD_Org_ID = "+p_Org_ID+" AND pm.movementDate BETWEEN ?  AND ? AND pm.DocStatus IN ('CO','CL')" +
+				" AND pml.WorkShiftBP IN ('FZ','TS','TN')";	
 		}
 		sqlHR = sqlHR + " ORDER BY C_BPartner_ID, movementdate, created";
 			
@@ -140,8 +141,11 @@ public class GenerateRefundHeader extends SvrProcess
 			pstmtHR.setTimestamp(2, p_DateTrxTo);
 			pstmtHR.setTimestamp(3, p_DateTrxTo);
 			pstmtHR.setTimestamp(4, p_DateTrxFrom);
-			pstmtHR.setTimestamp(5, p_DateTrxFrom);
-			pstmtHR.setTimestamp(6, p_DateTrxTo);
+			if(IsMultyDaysH)
+			{
+				pstmtHR.setTimestamp(5, p_DateTrxFrom);
+				pstmtHR.setTimestamp(6, p_DateTrxTo);
+			}
 			rsHR = pstmtHR.executeQuery();		
 			int ID_BPartner = 0;
 			int ID_Org = 0;
@@ -178,14 +182,14 @@ public class GenerateRefundHeader extends SvrProcess
 					else
 						amtRefund = Env.ZERO;
 					//buscamos viatico abierto existente cabecera para esa org
-					int ID_HeadViatico = DB.getSQLValue(get_TrxName(), "SELECT COALESCE(MAX(TP_RefundHead_ID),0)" +
-							" FROM TP_RefundHead WHERE DocStatus NOT IN ('CO','VO') AND Type='01' " +
+					int ID_HeadViatico = DB.getSQLValue(get_TrxName(), "SELECT COALESCE(MAX(TP_RefundHeader_ID),0)" +
+							" FROM TP_RefundHeader WHERE DocStatus NOT IN ('CO','VO') AND Type='01' " +
 							" AND AD_Org_ID = "+ID_Org);
 					if(ID_HeadViatico > 0)
 					{
 						int ID_Viatico = DB.getSQLValue(get_TrxName(), "SELECT COALESCE(MAX(TP_Refund_ID),0)" +
 								" FROM TP_Refund WHERE DocStatus NOT IN ('CO','VO') AND Type='01' " +
-								" AND C_BPartner_ID = "+ID_BPartner);
+								" AND C_BPartner_ID = "+ID_BPartner+" AND AD_Org_ID = "+ID_Org);
 						if(ID_Viatico > 0)//existe viatico abierto para conductor
 						{
 							//antes de generar la linea de viatico normal, hay que revisar que no exista otra linea con los mismo datos
@@ -323,12 +327,12 @@ public class GenerateRefundHeader extends SvrProcess
 						headViatico.setDescription("Generado Automaticamente");
 						headViatico.setDocStatus("DR");
 						headViatico.setType("01");
-						headViatico.setTP_RefundHeader_ID(ID_HeadViatico);
+						//headViatico.setTP_RefundHeader_ID(headViatico.get_ID());
 						headViatico.save();
 						
 						int ID_Viatico = DB.getSQLValue(get_TrxName(), "SELECT COALESCE(MAX(TP_Refund_ID),0)" +
 								" FROM TP_Refund WHERE DocStatus NOT IN ('CO','VO') AND Type='01' " +
-								" AND C_BPartner_ID = "+ID_BPartner);
+								" AND C_BPartner_ID = "+ID_BPartner+" AND AD_Org_ID = "+ID_Org);
 						if(ID_Viatico > 0)//existe viatico abierto para conductor
 						{
 							//antes de generar la linea de viatico normal, hay que revisar que no exista otra linea con los mismo datos

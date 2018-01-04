@@ -93,23 +93,27 @@ public class ModWindsorUniqueOpenReq implements ModelValidator
 						" INNER JOIN M_Requisition mr ON (rl.M_Requisition_ID = mr.M_Requisition_ID) " +
 						" WHERE mr.DocStatus IN ('CO','CL') AND mr.C_BPartner_ID = "+req.get_ValueAsInt("C_BPartner_ID")+
 						" AND mr.C_BPartner_Location_ID = "+req.get_ValueAsInt("C_BPartner_Location_ID")+
-						" AND rl.M_Product_ID = "+reqLine.getM_Product_ID()+" AND qty > qtyUsed");
+						" AND rl.M_Product_ID = "+reqLine.getM_Product_ID()+" AND qty > qtyUsed " +
+						" AND rl.M_Requisition_ID <>"+req.get_ID());
 				//se revisa si existe solicitud de distribucion abierta
 				int ID_reqD = DB.getSQLValue(po.get_TrxName(), "SELECT MAX(mr.M_Requisition_ID) FROM M_RequisitionLine rl " +
 						" INNER JOIN M_Requisition mr ON (rl.M_Requisition_ID = mr.M_Requisition_ID) " +
 						" WHERE mr.DocStatus IN ('CO','CL') AND mr.C_BPartner_ID = "+req.get_ValueAsInt("C_BPartner_ID")+
 						" AND mr.OverWriteRequisition = 'Y' "+
-						" AND rl.M_Product_ID = "+reqLine.getM_Product_ID()+" AND qty > qtyUsed");
+						" AND rl.M_Product_ID = "+reqLine.getM_Product_ID()+" AND qty > qtyUsed "+
+						" AND rl.M_Requisition_ID <>"+req.get_ID());
 				if(ID_req > 0)
 				{
+					MRequisition reqAux = new MRequisition(po.getCtx(), ID_req, po.get_TrxName());
 					BigDecimal qtySol = DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(qty - qtyUsed) FROM M_RequisitionLine rl " +
 							" WHERE rl.M_Requisition_ID = "+ID_req+" AND rl.M_Product_ID = "+reqLine.getM_Product_ID());								
-					return "ERROR: Debe usar solicitud abierta para este cliente. N°: "+req.getDocumentNo()+" con cantidad "+qtySol;
+					return "ERROR: Debe usar solicitud abierta para este cliente. N°: "+reqAux.getDocumentNo()+" con cantidad "+qtySol;
 				}else if (ID_reqD > 0)
 				{
+					MRequisition reqAux = new MRequisition(po.getCtx(), ID_reqD, po.get_TrxName());
 					BigDecimal qtySol = DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(qty - qtyUsed) FROM M_RequisitionLine rl " +
 							" WHERE rl.M_Requisition_ID = "+ID_req+" AND rl.M_Product_ID = "+reqLine.getM_Product_ID());
-					return "ERROR: Debe usar solicitud de distribución abierta para este cliente. N°: "+req.getDocumentNo()+" con cantidad "+qtySol;
+					return "ERROR: Debe usar solicitud de distribución abierta para este cliente. N°: "+reqAux.getDocumentNo()+" con cantidad "+qtySol;
 				}
 			}
 		}

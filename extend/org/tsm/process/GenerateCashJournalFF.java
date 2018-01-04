@@ -90,6 +90,8 @@ public class GenerateCashJournalFF extends SvrProcess
 				" WHERE c.DocStatus IN ('CO','DR','IP') AND cLine.M_Movement_ID IS NOT NULL) " +
 				" AND pm.AD_Client_ID = "+Env.getAD_Client_ID(getCtx())+
 				" AND pm.MovementDate BETWEEN ? AND ? " +
+				//ininoles se revierte cambio de ultima version a pedido de TSM
+				//" AND COALESCE((select MAX(mml.tp_inicialhr) from m_movementline mml where mml.m_movement_id =  pm.M_Movement_ID), pm.MovementDate) BETWEEN ? AND ? "+
 				" AND pm.DocStatus IN ('CO','CL','DR')";
 		if(p_Org_ID > 0)
 			sqlHR = sqlHR + " AND pm.AD_Org_ID = "+p_Org_ID;
@@ -99,6 +101,12 @@ public class GenerateCashJournalFF extends SvrProcess
 		ResultSet rsHR = null;
 		try
 		{
+			//ininoles se revierte cambio de ultima version a pedido de TSM
+			/*
+			p_DateTrxTo.setHours(23);
+			p_DateTrxTo.setMinutes(59);
+			p_DateTrxTo.setSeconds(59);
+			*/
 			pstmtHR = DB.prepareStatement (sqlHR, get_TrxName());
 			pstmtHR.setTimestamp(1, p_DateTrxFrom);
 			pstmtHR.setTimestamp(2, p_DateTrxTo);

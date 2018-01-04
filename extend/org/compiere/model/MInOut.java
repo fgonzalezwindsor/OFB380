@@ -45,7 +45,6 @@ import org.compiere.util.Env;
 import org.compiere.util.Msg;
 import org.compiere.util.TimeUtil;
 import org.ofb.model.OFBForward;
-import org.ofb.process.ExportDTEInvoiceCG;
 import org.ofb.process.ExportDTEMInOutCGProvectis;
 import org.ofb.process.ExportDTEMInOutFOL;
 import org.w3c.dom.DOMImplementation;

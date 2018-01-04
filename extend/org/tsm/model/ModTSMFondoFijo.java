@@ -26,7 +26,6 @@ import org.compiere.model.ModelValidator;
 import org.compiere.model.PO;
 import org.compiere.model.X_C_PaymentRequestLine;
 import org.compiere.model.X_DM_Document;
-import org.compiere.model.X_TP_RefundHeader;
 import org.compiere.util.CLogger;
 import org.compiere.util.DB;
 import org.compiere.util.Env;
@@ -71,7 +70,7 @@ public class ModTSMFondoFijo implements ModelValidator
 
 		//	Tables to be monitored
 		//engine.addModelChange(X_TP_Refund.Table_Name, this);
-		engine.addModelChange(X_TP_RefundHeader.Table_Name, this);
+		//engine.addModelChange(X_TP_RefundHeader.Table_Name, this);
 		engine.addModelChange(X_C_PaymentRequestLine.Table_Name, this);
 		//	Documents to be monitored
 		engine.addDocValidate(MCash.Table_Name, this);
@@ -115,7 +114,7 @@ public class ModTSMFondoFijo implements ModelValidator
 				//refund.set_CustomColumn("DM_Document_ID",doc.get_ID());
 			}			
 		}*/
-		if(type == TYPE_BEFORE_CHANGE && po.get_Table_ID()==X_TP_RefundHeader.Table_ID
+		/*if(type == TYPE_BEFORE_CHANGE && po.get_Table_ID()==X_TP_RefundHeader.Table_ID
 				&& po.is_ValueChanged("DocStatus"))  
 		{
 			X_TP_RefundHeader refundHead = (X_TP_RefundHeader) po;
@@ -142,7 +141,7 @@ public class ModTSMFondoFijo implements ModelValidator
 				doc.saveEx();
 				//refund.set_CustomColumn("DM_Document_ID",doc.get_ID());
 			}			
-		}
+		}*/
 		
 		if((type == TYPE_AFTER_CHANGE || type == TYPE_AFTER_NEW || type == TYPE_AFTER_DELETE )
 				&& po.get_Table_ID()==X_C_PaymentRequestLine.Table_ID)  
@@ -192,25 +191,32 @@ public class ModTSMFondoFijo implements ModelValidator
 		if(timing == TIMING_AFTER_COMPLETE && po.get_Table_ID()==MCash.Table_ID)  
 		{
 			MCash cash = (MCash) po;
-			BigDecimal amt =  DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(amount) FROM C_CashLine" +
-					" WHERE Amount > 0 AND CashType = 'R' AND IsActive = 'Y' AND C_Cash_ID ="+cash.get_ID());
-			if(amt != null && amt.compareTo(Env.ZERO) > 0)
+			//ahora se vera por marca en libro de efectivo si se genera o no resolucion
+			if(cash.getC_CashBook_ID() > 0)
 			{
-				MCashBook book = new MCashBook(po.getCtx(), cash.getC_CashBook_ID(), po.get_TrxName());
-				//generacion de resolucion
-				X_DM_Document doc = new X_DM_Document(po.getCtx(), 0, po.get_TrxName());
-				doc.setAD_Org_ID(cash.getAD_Org_ID());
-				doc.set_CustomColumn("C_BPartner_ID",book.get_ValueAsInt("C_BPartner_ID"));
-				doc.setAmt(amt);
-				doc.setDescription("Generado desde diario de efectivo "+cash.getDocumentNo());
-				doc.set_CustomColumn("C_Cash_ID", cash.get_ID());
-				doc.setDateTrx(cash.getStatementDate());
-				doc.setDocStatus("CO");
-				doc.setProcessed(true);
-				doc.saveEx();
-				cash.set_CustomColumn("DM_Document_ID", doc.get_ID());
-				updateHeader(cash);
-				cash.saveEx();
+				MCashBook cashBook = new MCashBook(po.getCtx(), cash.getC_CashBook_ID(), po.get_TrxName());
+				if(cashBook.get_ValueAsString("TypeBook").compareTo("FF") == 0)
+				{
+					BigDecimal amt =  DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(amount) FROM C_CashLine" +
+							" WHERE IsActive = 'Y' AND C_Cash_ID ="+cash.get_ID());
+					if(amt != null && amt.compareTo(Env.ZERO) > 0)
+					{
+						//generacion de resolucion
+						X_DM_Document doc = new X_DM_Document(po.getCtx(), 0, po.get_TrxName());
+						doc.setAD_Org_ID(cash.getAD_Org_ID());
+						doc.set_CustomColumn("C_BPartner_ID",cashBook.get_ValueAsInt("C_BPartner_ID"));
+						doc.setAmt(amt);
+						doc.setDescription("Generado desde diario de efectivo "+cash.getDocumentNo());
+						doc.set_CustomColumn("C_Cash_ID", cash.get_ID());
+						doc.setDateTrx(cash.getStatementDate());
+						doc.setDocStatus("CO");
+						doc.setProcessed(true);
+						doc.saveEx();
+						cash.set_CustomColumn("DM_Document_ID", doc.get_ID());
+						updateHeader(cash);
+						cash.saveEx();
+					}
+				}
 			}
 		}
 		return null;

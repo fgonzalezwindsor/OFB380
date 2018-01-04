@@ -329,11 +329,11 @@ public class AndesRedFileWriteAD extends SvrProcess
 			    		else
 			    			bal.setAvailableBalance(Env.ZERO);
 			    		if (pRet1d >= 0)
-			    			bal.setRetention((BigDecimal) decimalFormat.parse(datos.get(x)[pRet1d].replace("$","").replace("\"","").trim()));
+			    			bal.setRetention((BigDecimal) decimalFormat.parse(datos.get(x)[pRet1d].replace("$","").replace("\"","").replace("Sin información","0").replace("Sin informacion","0").trim()));
 			    		else
 			    			bal.setRetention(Env.ZERO);
 			    		if (pRetMas1d >= 0)
-		    				bal.setRetention1((BigDecimal) decimalFormat.parse(datos.get(x)[pRetMas1d].replace("$","").replace("\"","").trim()));
+		    				bal.setRetention1((BigDecimal) decimalFormat.parse(datos.get(x)[pRetMas1d].replace("$","").replace("\"","").replace("Sin información","0").replace("Sin informacion","0").trim()));
 			    		else
 			    			bal.setRetention1(Env.ZERO);
 			    		if (pRetOtro >= 0)

@@ -904,10 +904,10 @@ public class ExportDTEInvoiceFOLPA extends SvrProcess
     			try
     			{				
     				final CXFConnector wsc = new CXFConnector();					
-    				wsc.setSoapAction("http://clientes.dtefacturaenlinea.cl/WsFEL/wsFEL.php/SolicitarSesion");
+    				wsc.setSoapAction("http://clientes2.dtefacturaenlinea.cl/WsFEL/wsFEL.php/SolicitarSesion");
     				wsc.setRequest(request);
     				wsc.setBinding(SOAPBinding.SOAP11HTTP_BINDING);
-    				wsc.setEndpointAddress("http://clientes.dtefacturaenlinea.cl/WsFEL/wsFEL.php");
+    				wsc.setEndpointAddress("http://clientes2.dtefacturaenlinea.cl/WsFEL/wsFEL.php");
     				wsc.setServiceName("DTElectronico");
     				wsc.setPortName("DTElectronicoPort");
     				wsc.setTargetNS("/var/www//WsTest/");
@@ -974,10 +974,10 @@ public class ExportDTEInvoiceFOLPA extends SvrProcess
     			try
     			{				
     				final CXFConnector wsc = new CXFConnector();					
-    				wsc.setSoapAction("http://clientes.dtefacturaenlinea.cl/WsFEL/wsFEL.php/EnviarDTE");
+    				wsc.setSoapAction("http://clientes2.dtefacturaenlinea.cl/WsFEL/wsFEL.php/EnviarDTE");
     				wsc.setRequest(request);
     				wsc.setBinding(SOAPBinding.SOAP11HTTP_BINDING);
-    				wsc.setEndpointAddress("http://clientes.dtefacturaenlinea.cl/WsFEL/wsFEL.php");
+    				wsc.setEndpointAddress("http://clientes2.dtefacturaenlinea.cl/WsFEL/wsFEL.php");
     				wsc.setServiceName("DTElectronico");
     				wsc.setPortName("DTElectronicoPort");
     				wsc.setTargetNS("/var/www//WsTest/");    				

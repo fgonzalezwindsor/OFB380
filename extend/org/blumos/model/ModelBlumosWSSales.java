@@ -21,7 +21,6 @@ import org.compiere.model.MInvoice;
 import org.compiere.model.ModelValidationEngine;
 import org.compiere.model.ModelValidator;
 import org.compiere.model.PO;
-import org.compiere.model.X_I_IMPORTINVOICEXMLW;
 import org.compiere.util.CLogger;
 import org.compiere.util.DB;
 

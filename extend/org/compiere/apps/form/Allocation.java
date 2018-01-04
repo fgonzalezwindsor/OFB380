@@ -44,6 +44,7 @@ import org.compiere.util.KeyNamePair;
 import org.compiere.util.Msg;
 import org.compiere.util.TimeUtil;
 import org.compiere.util.Util;
+import org.ofb.model.OFBForward;
 
 public class Allocation
 {
@@ -598,7 +599,17 @@ public class Allocation
 			{
 				Timestamp ts = (Timestamp)payment.getValueAt(i, 1);
 				if ( !isMultiCurrency )  // the converted amounts are only valid for the selected date
+				{
 					allocDate = TimeUtil.max(allocDate, ts);
+					//se sobreescribe fecha con fecha de vencimiento del pago
+					if(OFBForward.AllocationUseActualDate())
+					{				
+						KeyNamePair pp = (KeyNamePair)payment.getValueAt(i, 2);   //  Value
+						int C_Payment_ID = pp.getKey();
+						MPayment payN = new MPayment(Env.getCtx(), C_Payment_ID, null);
+						allocDate = payN.getDateAcct();
+					}
+				}
 				BigDecimal bd = (BigDecimal)payment.getValueAt(i, i_payment);
 				totalPay = totalPay.add(bd);  //  Applied Pay
 				m_noPayments++;
@@ -623,6 +634,13 @@ public class Allocation
 				Timestamp ts = (Timestamp)invoice.getValueAt(i, 1);
 				if ( !isMultiCurrency )  // converted amounts only valid for selected date
 					allocDate = TimeUtil.max(allocDate, ts);
+				if(OFBForward.AllocationUseActualDate())
+				{				
+					KeyNamePair pp = (KeyNamePair)invoice.getValueAt(i, 2);   //  Value
+					int Invoice_ID = pp.getKey();
+					MInvoice invN = new MInvoice(Env.getCtx(), Invoice_ID, null);
+					allocDate = invN.getDateAcct();
+				}
 				BigDecimal bd = (BigDecimal)invoice.getValueAt(i, i_applied);
 				totalInv = totalInv.add(bd);  //  Applied Inv
 				m_noInvoices++;
@@ -663,9 +681,12 @@ public class Allocation
 		{
 			new AdempiereException("Period Closed");
 		}
-		
-		//Timestamp Today = new Timestamp(TimeUtil.getToday().getTimeInMillis());
-		//DateTrx = Today;
+
+		/*if(OFBForward.AllocationUseActualDate())
+		{
+			Timestamp Today = new Timestamp(TimeUtil.getToday().getTimeInMillis());
+			DateTrx = Today;
+		}*/
 		//faaguilar OFB period open? End
 		
 		//
