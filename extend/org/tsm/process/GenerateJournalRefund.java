@@ -20,6 +20,7 @@ import java.math.BigDecimal;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 
 import org.adempiere.exceptions.DBException;
 import org.compiere.model.MAcctSchema;
@@ -69,9 +70,9 @@ public class GenerateJournalRefund extends SvrProcess
 			batch.setPostingType("A");
 			batch.setC_DocType_ID(MDocType.getOfDocBaseType(getCtx(), "GLJ")[0].getC_DocType_ID());
 			batch.setGL_Category_ID(MGLCategory.getDefault(getCtx(), MGLCategory.CATEGORYTYPE_Manual).getGL_Category_ID());
-			batch.setDateAcct(rHead.getDocumentDate());
-			batch.setDateDoc(rHead.getDocumentDate());
-			batch.setC_Period_ID(MPeriod.getC_Period_ID(getCtx(),rHead.getDocumentDate(),rHead.getAD_Org_ID()));
+			batch.setDateAcct(new Timestamp(System.currentTimeMillis()));
+			batch.setDateDoc(new Timestamp(System.currentTimeMillis()));
+			batch.setC_Period_ID(MPeriod.getC_Period_ID(getCtx(),new Timestamp(System.currentTimeMillis()),rHead.getAD_Org_ID()));
 			MClient client= MClient.get(getCtx(), rHead.getAD_Client_ID());
 			batch.setC_Currency_ID(client.getC_Currency_ID());
 			batch.set_CustomColumn("TP_RefundHeader_ID", rHead.get_ID());
@@ -130,7 +131,7 @@ public class GenerateJournalRefund extends SvrProcess
 					
 					//linea Credito
 					MJournalLine line2= new MJournalLine(journal);
-					line1.set_CustomColumn("C_Bpartner_ID", refund.getC_BPartner_ID());
+					line2.set_CustomColumn("C_Bpartner_ID", refund.getC_BPartner_ID());
 					line2.setAmtSourceDr(Env.ZERO);
 					line2.setAmtSourceCr(amtRefund);
 					line2.setAmtAcct(Env.ZERO,amtRefund);

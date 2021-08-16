@@ -187,7 +187,7 @@ public class GenerateMovement extends SvrProcess {
 					String vendedor = rs.getString("vendedor");
 					
 					log.config("vend string =" +vendedor);
-					String sqlvendedor = "SELECT nvl(max(ad_user_id),0) from ad_user where name like '"+vendedor+"'";
+					String sqlvendedor = "SELECT coalesce(max(ad_user_id),0) from ad_user where name like '"+vendedor+"'";
 					log.config("sql de vendedor = "+sqlvendedor);
 					int vend = DB.getSQLValue(get_TrxName(), sqlvendedor);
 					log.config("vendedor "+vend);

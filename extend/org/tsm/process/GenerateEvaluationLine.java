@@ -71,8 +71,9 @@ public class GenerateEvaluationLine extends SvrProcess
 				throw new AdempiereException("Debe ingresar una flota");
 			
 			String sqldrivers = "SELECT C_BPartner_ID FROM C_BPartner where IsActive='Y' and " +
-					" AD_OrgRef_ID ="+eHeader.getAD_OrgRef_ID();
+					" isunlinked='N' and AD_OrgRef_ID ="+eHeader.getAD_OrgRef_ID();
 			
+			log.config("sql drivers : "+sqldrivers);
 			PreparedStatement pstmt = null;
 			ResultSet rs = null;
 
@@ -89,7 +90,7 @@ public class GenerateEvaluationLine extends SvrProcess
 					X_RH_EvaluationLine eLine = new X_RH_EvaluationLine(getCtx(),0,get_TrxName());
 
 					eLine.setAD_Org_ID(eHeader.getAD_Org_ID());
-					eLine.setAnswer1("Y");
+	/*				eLine.setAnswer1("Y");
 					eLine.setAnswer2("Y");
 					eLine.setAnswer3("Y");
 					eLine.setAnswer4("Y");
@@ -99,6 +100,17 @@ public class GenerateEvaluationLine extends SvrProcess
 					eLine.setAnswer8("Y");
 					eLine.setAnswer9("Y");
 					eLine.setAnswer10("Y");
+*/	
+					eLine.setAnswer1(eGuide.get_Value("ExpectedResult1").toString());
+					eLine.setAnswer2(eGuide.get_Value("ExpectedResult2").toString());
+					eLine.setAnswer3(eGuide.get_Value("ExpectedResult3").toString());
+					eLine.setAnswer4(eGuide.get_Value("ExpectedResult4").toString());
+					eLine.setAnswer5(eGuide.get_Value("ExpectedResult5").toString());
+					eLine.setAnswer6(eGuide.get_Value("ExpectedResult6").toString());
+					eLine.setAnswer7(eGuide.get_Value("ExpectedResult7").toString());
+					eLine.setAnswer8(eGuide.get_Value("ExpectedResult8").toString());
+					eLine.setAnswer9(eGuide.get_Value("ExpectedResult9").toString());
+					eLine.setAnswer10(eGuide.get_Value("ExpectedResult10").toString());
 					eLine.setquestion1_drive(eGuide.getquestion1_drive());
 					eLine.setquestion2_drive(eGuide.getquestion2_drive());
 					eLine.setquestion3_drive(eGuide.getquestion3_drive());
@@ -110,6 +122,8 @@ public class GenerateEvaluationLine extends SvrProcess
 					eLine.setquestion9_drive(eGuide.getquestion9_drive());
 					eLine.setquestion10_drive(eGuide.getquestion10_drive());
 					eLine.setC_BPartner_ID(ID_BPartner);
+					log.config("evaluation header "+p_Ev_ID);
+					eLine.setRH_EvaluationHeader_ID(p_Ev_ID);
 					
 					eLine.save();
 				}	

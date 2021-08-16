@@ -16,6 +16,8 @@
  *****************************************************************************/
 package org.tsm.process;
 
+import java.math.BigDecimal;
+import java.sql.PreparedStatement;
 import java.util.logging.*;
 
 import org.compiere.model.*;
@@ -91,21 +93,24 @@ public class ProcessPaymentRequest extends SvrProcess
 			pr.setDocStatus("VO");
 			pr.save();
 			
-			 if(requestType.equals(X_C_PaymentRequest.REQUESTTYPE_DesdeResolucion ))
-			   {	
-							MProject pj = new  MProject(getCtx(),pr.get_ValueAsInt("C_Project_ID"),get_TrxName() );
-							pj.setProjectBalanceAmt(pj.getProjectBalanceAmt().subtract(pr.getPayAmt()));
-							pj.save();
-							
-							if(pr.get_ValueAsInt("C_ProjectSchedule_ID")>0)
-								DB.executeUpdate("update C_ProjectSchedule set isvalid='Y',C_PaymentRequest_ID="+pr.getC_PaymentRequest_ID()+" where C_ProjectSchedule_ID="+pr.get_ValueAsInt("C_ProjectSchedule_ID"), get_TrxName());
-						//}
-						
-					//}
-			   }
-			 
+			if(requestType.equals(X_C_PaymentRequest.REQUESTTYPE_DesdeResolucion ))
+			{	
+				//se devuelve monto linea por linea 
+				X_C_PaymentRequestLine[] lines = pr.getLines();	//	Line is default
+				for (int i = 0; i < lines.length; i++)
+				{
+					X_C_PaymentRequestLine prLine = lines[i];
+					if(prLine.get_ValueAsInt("DM_Document_ID") > 0)
+					{
+						X_DM_Document doc = new X_DM_Document(getCtx(), prLine.get_ValueAsInt("DM_Document_ID"), get_TrxName());
+						BigDecimal amtAllo = (BigDecimal)doc.get_Value("AllocatedAmt");
+						amtAllo = amtAllo.subtract(prLine.getAmt());
+						doc.set_CustomColumn("AllocatedAmt",amtAllo);
+						doc.saveEx(get_TrxName());
+					}
+				}
+			}
 			 return "Pago generado borrado y solicitud de pago anulada";
-			
 		}
 		
 		if(pr.getDocStatus().equals(X_C_PaymentRequest.DOCSTATUS_Drafted))

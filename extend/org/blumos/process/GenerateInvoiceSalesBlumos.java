@@ -14,6 +14,8 @@ import org.compiere.model.MOrderLine;
 import org.compiere.model.MInvoice;
 import org.compiere.model.MInvoiceLine;
 
+import org.compiere.model.X_T_BL_REF_DTE;
+
 public class GenerateInvoiceSalesBlumos extends SvrProcess {
 	
 	/**
@@ -31,10 +33,10 @@ public class GenerateInvoiceSalesBlumos extends SvrProcess {
 	 */
 	protected String doIt() throws Exception
 	{	
-		String sqlDet = "SELECT inv.numero_nf, inv.numero_pedido, inv.entrada_saida, inv.nat_op, inv.cf_op, inv.cf_op, inv.nome, inv.cnpj,  " + 
+		/** String sqlDet = "SELECT inv.numero_nf, inv.numero_pedido, inv.entrada_saida, inv.nat_op, inv.cf_op, inv.cf_op, inv.nome, inv.cnpj,  " + 
 			" inv.dt_emissao, inv.cidade, inv.fone_fax, inv.uf, inv.inscricao_estadual, inv.hora_saida, inv.obs, inv.moeda, inv.encargo, " +
 			" inv.data_impressa, inv.total_produtos, inv.total_nf, inv.status,  inv.forma_pagamento, inv.finalidade_nfe, " +
-			" inv.codigo_cliente, inv.total_iva_chile, inv.processed, inv.vendedor, inv.terminopago, " +
+			" inv.codigo_cliente, inv.total_iva_chile, inv.processed, inv.vendedor, inv.terminopago,  " +
 			//
 			" invl.numero_nf, invl.descricao, invl.unidade, invl.qtde, invl.valor_unitario, invl.valor_total, invl.codigo_produto, " +
 			" invl.iva_chile, invl.valor_iva_chile, invl.processed,inv.i_importinvoicexmlw_id, invl.i_importinvoicexmlwline_id,invl.costo_xml" +
@@ -42,6 +44,22 @@ public class GenerateInvoiceSalesBlumos extends SvrProcess {
 			" LEFT JOIN i_importinvoicexmlwline invl ON (inv.numero_nf = invl.numero_nf)" +
 			" WHERE inv.processed = 'N'  and inv.isabort='N' AND (invl.isAbort='N' OR invl.isAbort is null) and (invl.processed = 'N' OR invl.processed IS NULL) " +
 			" Order By inv.numero_nf Asc";
+		*/
+		//mfrojas 20181010 se cambia sql, para poder asociar los documentos de referencia y el tipo de socio de negocio.
+		
+		String sqlDet = "SELECT inv.numero_nf, inv.numero_pedido, inv.entrada_saida, inv.nat_op, inv.cf_op, inv.cf_op, inv.nome, inv.cnpj,  " + 
+				" inv.dt_emissao, inv.cidade, inv.fone_fax, inv.uf, inv.inscricao_estadual, inv.hora_saida, inv.obs, inv.moeda, inv.encargo, " +
+				" inv.data_impressa, inv.total_produtos, inv.total_nf, inv.status,  inv.forma_pagamento, inv.finalidade_nfe, " +
+				" inv.codigo_cliente, inv.total_iva_chile, inv.processed, inv.vendedor, inv.terminopago,  " +
+				//
+				" invl.numero_nf, invl.descricao, invl.unidade, invl.qtde, invl.valor_unitario, invl.valor_total, invl.codigo_produto, " +
+				" invl.iva_chile, invl.valor_iva_chile, invl.processed,inv.i_importinvoicexmlw_id, invl.i_importinvoicexmlwline_id,invl.costo_xml, " +
+				" inv.venta_directa " +
+				" FROM i_importinvoicexmlw inv " +
+				" LEFT JOIN i_importinvoicexmlwline invl ON (inv.numero_nf = invl.numero_nf)" +
+				
+				" WHERE inv.processed = 'N'  and inv.isabort='N' AND (invl.isAbort='N' OR invl.isAbort is null) and (invl.processed = 'N' OR invl.processed IS NULL) " +
+				" Order By inv.numero_nf Asc";
 		
 		log.config("sql = "+sqlDet);
 		PreparedStatement pstmt = null;
@@ -82,9 +100,12 @@ public class GenerateInvoiceSalesBlumos extends SvrProcess {
 						ord = null;
 					}
 					if(ord == null)
-					{						
+					{			
+						
 						//se buscan valores necesarios para la NV
 						//cliente
+						String flag_vdirecta = rs.getString("venta_directa");
+
 						int ID_ClienteRef = DB.getSQLValue(get_TrxName(), "SELECT MAX(C_Bpartner_ID) FROM C_Bpartner " +
 								" WHERE IsActive = 'Y' AND AD_Client_ID = 1000000 AND (value||''||digito = '"+rs.getString("cnpj")+"' OR value = '"+rs.getString("cnpj")+"' OR value||'-'||digito = '"+rs.getString("cnpj")+"')");
 						//validacion de clientref
@@ -102,6 +123,13 @@ public class GenerateInvoiceSalesBlumos extends SvrProcess {
 							bpartnerlocation = 1006771;
 						if(bpartnerlocation <= 0)
 							LogError = LogError + "ERROR 102: El socio de negocio "+rs.getString("cnpj")+" no tiene dirección asociada. Documento nro "+rs.getString("numero_nf")+". ";
+						//direccion ref
+						int bpartnerlocationrefbill = DB.getSQLValue(get_TrxName(), "select max(c_bpartner_location_id) from c_bpartner_location where isactive='Y' and c_bpartner_id = "+ID_ClienteRef);
+						int bpartnerlocationrefship = DB.getSQLValue(get_TrxName(), "select max(c_bpartner_location_id) from c_bpartner_location where isactive='Y' and c_bpartner_id = "+ID_ClienteRef);
+
+						if(bpartnerlocationrefbill <= 0)
+							LogError = LogError + "ERROR 102: El socio de negocio "+rs.getString("cnpj")+" no tiene dirección asociada. Documento nro "+rs.getString("numero_nf")+". ";
+
 						//termino de pago
 						int tp = 0;
 						if(rs.getString("terminopago") != null)
@@ -115,7 +143,9 @@ public class GenerateInvoiceSalesBlumos extends SvrProcess {
 						}else
 							LogError = "ERROR 104: No existe termino de pago. ";						
 						//vendedor
-						String sqlvendedor = "SELECT nvl(max(ad_user_id),0) from ad_user where name like '"+ rs.getString("vendedor")+"' and AD_Client_ID = "+Env.getAD_Client_ID(getCtx());
+						//mfrojas, 20180820
+						//se cambia los NVL por COALESCE
+						String sqlvendedor = "SELECT coalesce(max(ad_user_id),0) from ad_user where name like '"+ rs.getString("vendedor")+"' and AD_Client_ID = "+Env.getAD_Client_ID(getCtx());
 						int vend = DB.getSQLValue(get_TrxName(), sqlvendedor);
 						if(vend <= 0)
 							LogError = LogError + "ERROR 103: No existe vendedor";
@@ -139,13 +169,39 @@ public class GenerateInvoiceSalesBlumos extends SvrProcess {
 						}
 						else
 							DocNo = "FS-"+rs.getString("numero_nf");
+						
+						
+						//id cliente en solutec
+						if(flag_vdirecta.compareTo("Y") == 0)
+						{
+							ID_ClienteRef = DB.getSQLValue(get_TrxName(), "SELECT coalesce(MAX(C_Bpartner_ID),0) FROM C_Bpartner " +
+									" WHERE IsActive = 'Y' AND AD_Client_ID = "+Env.getAD_Client_ID(getCtx())+" AND " +
+									" (value||''||digito = '"+rs.getString("cnpj")+"' OR value = '"+rs.getString("cnpj")+"' OR value||'-'||digito = '"+rs.getString("cnpj")+"')");
+							if(ID_ClienteRef <= 0)
+								LogError = LogError + "Error 106: Cliente no registrado en SOLUTEC";
 							
+							bpartnerlocationrefbill = DB.getSQLValue(get_TrxName(), "select max(c_bpartner_location_id) from c_bpartner_location " +
+									" where isactive='Y' " +
+									" and isbillto='Y' and " +
+									" c_bpartner_id = "+ID_ClienteRef);
+							if(bpartnerlocationrefbill <= 0)
+								LogError = LogError + "ERROR 107: El socio de negocio "+rs.getString("cnpj")+" no tiene dirección de facturacion asociada. Documento nro "+rs.getString("numero_nf")+". ";
+
+							bpartnerlocationrefship = DB.getSQLValue(get_TrxName(), "select max(c_bpartner_location_id) from c_bpartner_location " +
+									" where isactive='Y' " +
+									" and isshipto='Y' and " +
+									" c_bpartner_id = "+ID_ClienteRef);
+
+							if(bpartnerlocationrefbill <= 0)
+								LogError = LogError + "ERROR 108: El socio de negocio "+rs.getString("cnpj")+" no tiene dirección de envio asociada. Documento nro "+rs.getString("numero_nf")+". ";
+
+						}
 						if(LogError != null && LogError.trim().length() > 1)
 						{
 							Hay_Errores = ". Hubo errores en el proceso "+LogError;
 							DB.executeUpdate("UPDATE I_ImportInvoiceXMLW SET isabort='Y',help = '"+LogError+"' WHERE numero_nf='"+rs.getString("numero_nf")+"'",get_TrxName());
 						}						
-						if(ID_Cliente > 0 && bpartnerlocation > 0 && tp > 0 && vend > 0 && ID_ClienteRef > 0)
+						if(ID_Cliente > 0 && bpartnerlocation > 0 && tp > 0 && vend > 0 && ID_ClienteRef > 0 && bpartnerlocationrefbill > 0 && bpartnerlocationrefship > 0)
 						{
 							ord = new MOrder(getCtx(),0,get_TrxName());
 							ord.setAD_Org_ID(1000023);
@@ -156,8 +212,26 @@ public class GenerateInvoiceSalesBlumos extends SvrProcess {
 								ord.setDateOrdered(rs.getTimestamp("dt_emissao"));
 								ord.setDateAcct(rs.getTimestamp("dt_emissao"));
 							}
-							ord.setC_BPartner_ID(ID_Cliente);
-							ord.setC_BPartner_Location_ID(bpartnerlocation);
+							
+							if(flag_vdirecta.compareTo("Y")==0)
+							{
+
+
+								ord.setC_BPartner_ID(ID_ClienteRef);
+								ord.setC_BPartner_Location_ID(bpartnerlocationrefship);
+								ord.setBill_Location_ID(bpartnerlocationrefbill);
+							}
+							
+							else if(flag_vdirecta.compareTo("N") == 0)
+							{
+								ord.setC_BPartner_ID(ID_Cliente);
+								ord.setC_BPartner_Location_ID(bpartnerlocation);
+								ord.setBill_Location_ID(bpartnerlocation);
+
+							}
+							
+							
+							//ord.setC_BPartner_Location_ID(bpartnerlocation);
 							ord.setDocStatus("DR");
 							ord.setDeliveryRule("A");
 							ord.setM_Warehouse_ID(1000038);							
@@ -166,7 +240,7 @@ public class GenerateInvoiceSalesBlumos extends SvrProcess {
 							ord.setDocumentNo(DocNo);
 							ord.setFreightCostRule("I");
 							//obtener id de lista de precios
-							String sqlpricelist = "SELECT nvl(max(m_pricelist_id),0) from m_pricelist where name like 'WS_VENTAS' and AD_Client_ID = "+Env.getAD_Client_ID(getCtx());
+							String sqlpricelist = "SELECT coalesce(max(m_pricelist_id),0) from m_pricelist where name like 'WS_VENTAS' and AD_Client_ID = "+Env.getAD_Client_ID(getCtx());
 							pr = DB.getSQLValue(get_TrxName(), sqlpricelist);
 							if(pr > 0)
 								ord.setM_PriceList_ID(pr);
@@ -175,7 +249,8 @@ public class GenerateInvoiceSalesBlumos extends SvrProcess {
 							
 							ord.setC_PaymentTerm_ID(tp);
 							ord.setIsSOTrx(true);
-							ord.setSalesRep_ID(vend);									
+							ord.setSalesRep_ID(vend);	
+							ord.setPOReference("000");
 							if(ID_ClienteRef > 0)
 								ord.set_CustomColumn("C_BPartnerRef_ID", ID_ClienteRef);
 							if(ord.save())
@@ -191,7 +266,7 @@ public class GenerateInvoiceSalesBlumos extends SvrProcess {
 							min.setDocumentNo(ord.getDocumentNo());
 							min.setAD_Org_ID(ord.getAD_Org_ID());
 							min.setIsSOTrx(true);
-							String sqldoctype = "SELECT nvl(max(c_doctype_id),0) from c_doctype where name like '%Despacho%' and AD_Client_ID = "+Env.getAD_Client_ID(getCtx());
+							String sqldoctype = "SELECT coalesce(max(c_doctype_id),0) from c_doctype where name like '%Despacho%' and AD_Client_ID = "+Env.getAD_Client_ID(getCtx());
 							int doc = DB.getSQLValue(get_TrxName(), sqldoctype);
 							if(doc > 0)
 								min.setC_DocType_ID(doc);
@@ -257,7 +332,7 @@ public class GenerateInvoiceSalesBlumos extends SvrProcess {
 							inv.setDescription(rs.getString("obs"));
 							inv.setDocStatus("DR");
 							inv.setC_BPartner_ID(ord.getC_BPartner_ID());
-							inv.setC_BPartner_Location_ID(ord.getC_BPartner_Location_ID());
+							inv.setC_BPartner_Location_ID(ord.getBill_Location_ID());
 							String sqlvalidatedoc = "SELECT count(1) from c_invoice where issotrx='Y' and c_bpartner_id = "+ord.getC_BPartner_ID()+" and documentno like '"+rs.getString("numero_nf")+"'";
 							log.config(sqlvalidatedoc);
 							//int counter = DB.getSQLValue(get_TrxName(), sqlvalidatedoc);
@@ -343,7 +418,7 @@ public class GenerateInvoiceSalesBlumos extends SvrProcess {
 									
 								}
 								minl.setDescription(rs.getString("descricao"));
-								int loc = DB.getSQLValue(get_TrxName(),"SELECT nvl(max(m_locator_id),0) from m_locator where m_warehouse_id = "+ord.getM_Warehouse_ID()+" and isactive='Y'");
+								int loc = DB.getSQLValue(get_TrxName(),"SELECT coalesce(max(m_locator_id),0) from m_locator where m_warehouse_id = "+ord.getM_Warehouse_ID()+" and isactive='Y'");
 								if(loc > 0)
 									minl.setM_Locator_ID(loc);
 								else
@@ -416,9 +491,38 @@ public class GenerateInvoiceSalesBlumos extends SvrProcess {
 				
 				min.save();
 				
+				//mfrojas 20181010 se agrega código para ingresar los valores de referencia de la factura
+				String sqlref = "SELECT a.i_importinvoicexmlwref_id, a.numero_nf, a.date_ref, a.tipo_doc_ref, a.doc_referenciado, a.cod_ref, a.razon_ref " +
+						" from I_IMPORTINVOICEXMLWREF a WHERE (a.processed='N' OR a.processed is NULL) and a.numero_nf like '"+OrderFlag+"'";
+				log.config("sqlref "+sqlref);
+				
+				PreparedStatement pstmt2 = null;
+				
+				pstmt2 = DB.prepareStatement (sqlref, get_TrxName());
+				ResultSet rs2 = pstmt2.executeQuery ();			
+				String ID_invxmlref = "0";
+				int line = 10;
+				while (rs2.next ())
+				{
+					X_T_BL_REF_DTE dte = new X_T_BL_REF_DTE(getCtx(), 0, get_TrxName());
+					dte.setC_Invoice_ID(inv.get_ID());
+					dte.setDATE_REF(rs2.getTimestamp("date_ref"));
+					dte.setCOD_REF(rs2.getString("cod_ref"));
+					dte.setTIPO_DOC_REF(rs2.getString("tipo_doc_ref"));
+					dte.setDOC_REFERENCIADO(rs2.getString("doc_referenciado"));
+					dte.setRAZON_REF(rs2.getString("razon_ref"));
+					dte.setLine(line);
+					dte.save();
+					if(rs2.getString("I_ImportInvoiceXMLWref_ID") != null)
+						ID_invxmlref = ID_invxmlref+","+rs2.getString("I_ImportInvoiceXMLWref_ID");
+
+					line += 10;
+				}
+				DB.executeUpdate("UPDATE I_ImportInvoiceXMLWREF SET processed = 'Y' WHERE I_ImportInvoiceXMLWRef_ID in ("+ID_invxmlref+")",get_TrxName());
+
 				inv.setDocAction("CO");
 				inv.processIt("CO");
-				
+				inv.save();
 				inv.set_CustomColumn("EMITIR_DTE", "Y");
 				inv.save();
 				//commitEx();
@@ -447,7 +551,7 @@ public class GenerateInvoiceSalesBlumos extends SvrProcess {
 		min.setDocumentNo(order.getDocumentNo());
 		min.setAD_Org_ID(order.getAD_Org_ID());
 		min.setIsSOTrx(true);
-		String sqldoctype = "SELECT nvl(max(c_doctype_id),0) from c_doctype where name like '%Despacho%' and AD_Client_ID = "+Env.getAD_Client_ID(getCtx());
+		String sqldoctype = "SELECT coalesce(max(c_doctype_id),0) from c_doctype where name like '%Despacho%' and AD_Client_ID = "+Env.getAD_Client_ID(getCtx());
 		int doc = DB.getSQLValue(get_TrxName(), sqldoctype);
 		if(doc > 0)
 			min.setC_DocType_ID(doc);

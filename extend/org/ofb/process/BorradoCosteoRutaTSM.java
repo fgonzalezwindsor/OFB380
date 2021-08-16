@@ -16,9 +16,6 @@
  *****************************************************************************/
 package org.ofb.process;
 
-import java.math.BigDecimal;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.Timestamp;
 import java.util.logging.*;
 
@@ -26,7 +23,6 @@ import org.compiere.model.*;
 import org.compiere.process.*;
 import org.compiere.util.AdempiereSystemError;
 import org.compiere.util.DB;
-import org.compiere.util.Env;
  
 /**
  *	report infoprojectPROVECTIS
@@ -40,7 +36,7 @@ public class BorradoCosteoRutaTSM extends SvrProcess
 	private Timestamp p_MovementDateFrom = null;
 	private Timestamp p_MovementDateTo = null;
 	private int	p_C_Period_ID = 0;
-	private int p_PInstance_ID;		
+//	private int p_PInstance_ID;		
 
 	/**
 	 *  Prepare - e.g., get Parameters.
@@ -64,7 +60,7 @@ public class BorradoCosteoRutaTSM extends SvrProcess
 			else
 				log.log(Level.SEVERE, "prepare - Unknown Parameter: " + name);
 		}
-		p_PInstance_ID = getAD_PInstance_ID();
+		//p_PInstance_ID = getAD_PInstance_ID();
 	}	//	prepare
 
 	/**

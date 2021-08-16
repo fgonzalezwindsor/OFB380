@@ -85,7 +85,7 @@ public class ProcessPaymentRequest extends SvrProcess
 		{
 			MPayment pay = new MPayment(Env.getCtx(), pr.getC_Payment_ID(), get_TrxName());
 			if(pay.getDocStatus().equals(X_C_PaymentRequest.DOCSTATUS_Completed) || pay.getDocStatus().equals(X_C_PaymentRequest.DOCSTATUS_InProgress) )
-				return "el pago relacionado con esta solicitud se encuentra compleado o procesado, no puede se puede anular";
+				return "el pago relacionado con esta solicitud se encuentra completado o procesado, no puede se puede anular";
 			
 			pay.deleteEx(true, get_TrxName());
 			pr.setC_Payment_ID(0);

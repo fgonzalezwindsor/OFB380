@@ -84,7 +84,10 @@ public class ProcessEvaluationDriver extends SvrProcess
 							eHeader.setDocStatus(newStatus);
 					}
 					else
-**/						eHeader.setDocStatus(newStatus);						
+					
+**/					if(newStatus.compareTo("CO") == 0)
+						eHeader.setProcessed(true);
+					eHeader.setDocStatus(newStatus);						
 					eHeader.save();
 				
 				//error de permisos

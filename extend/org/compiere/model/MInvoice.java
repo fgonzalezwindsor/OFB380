@@ -2476,18 +2476,27 @@ public class MInvoice extends X_C_Invoice implements DocAction
 		log.config("reset post:"+i);
 		i=DB.executeUpdate("update C_INVOICETAX set TAXAMT=0 where C_Invoice_ID="+getC_Invoice_ID(), get_TrxName());
 		MFactAcct.deleteEx(MInvoice.Table_ID, getC_Invoice_ID(), get_TrxName());
-		/**
-		 * faaguilar OFB
-		 * le agrega la palabra "anulada" y un numero que representa el numero de 
-		 * veces que la misma factura ya ah sido anulada, en el caso de ser factura de compra.*/
-		//faaguilar OFB begin
-		if (!isSOTrx()){
-			int count=DB.getSQLValue(get_TrxName(), "select count(1) from C_Invoice where DocStatus='VO' and  AD_Org_ID="+getAD_Org_ID()
-					+" and C_DocType_ID="+getC_DocType_ID()+" and documentno='"+getDocumentNo()+"' and C_Invoice_ID<>"+getC_Invoice_ID());
-			if(count<0)
-				count=0;
-			count ++;
-			setDocumentNo(getDocumentNo()+"_Anulada_"+count);
+		
+		//se usara nuevo metodo para tsm con fecha y hora del anulado ininoles
+		if(OFBForward.UseDocNoVoidTSM())
+		{
+			setDocumentNo(getDocumentNo()+"-"+new Timestamp(System.currentTimeMillis()).toString().substring(0, 16));
+		}else // sino se usara metodo normal de fabian
+		{	
+			/**
+			 * faaguilar OFB
+			 * le agrega la palabra "anulada" y un numero que representa el numero de 
+			 * veces que la misma factura ya ah sido anulada, en el caso de ser factura de compra.*/
+			//faaguilar OFB begin		
+			if (!isSOTrx())
+			{
+				int count=DB.getSQLValue(get_TrxName(), "select count(1) from C_Invoice where DocStatus='VO' and  AD_Org_ID="+getAD_Org_ID()
+						+" and C_DocType_ID="+getC_DocType_ID()+" and documentno='"+getDocumentNo()+"' and C_Invoice_ID<>"+getC_Invoice_ID());
+				if(count<0)
+					count=0;
+				count ++;
+				setDocumentNo(getDocumentNo()+"_Anulada_"+count);
+			}
 		}
 		//faaguilar OFB end
 		
@@ -3238,7 +3247,15 @@ public class MInvoice extends X_C_Invoice implements DocAction
                  fechareferencia = refdoc.getMovementDate().toString().substring(0, 10);
             	 tipo_Ref = 3; //despacho
             }
-            
+            if(get_ValueAsString("POReference2") != null && get_ValueAsString("POReference2").length() > 0)//referencia 802
+            {
+            	 mylog = "referencia:802";
+            	 //MOrder refdoc = new MOrder(invoice.getCtx(), ((Integer)get_Value("C_RefOrder_ID")).intValue(), invoice.get_TrxName()); 
+            	 tiporeferencia = "802";
+                 folioreferencia = get_ValueAsString("POReference2");
+                 fechareferencia = getDateOrdered().toString().substring(0, 10);
+            	 tipo_Ref = 4; //802
+            }
             if(tipo_Ref>0){
                 Element Referencia = document.createElement("Referencia");
                 Documento.appendChild(Referencia);
@@ -3258,6 +3275,14 @@ public class MInvoice extends X_C_Invoice implements DocAction
                 org.w3c.dom.Text rutot = document.createTextNode(BPref.getValue()+"-"+BPref.getDigito());
                 RUTOtr.appendChild(rutot);
                 Referencia.appendChild(RUTOtr);*/
+                
+                if(fechareferencia == null)
+                	fechareferencia = getDateInvoiced().toString().substring(0, 10);
+                if(fechareferencia.compareTo(" ") == 0 || fechareferencia.compareTo("") == 0)
+                	fechareferencia = getDateInvoiced().toString().substring(0, 10);
+                if(fechareferencia.length()<2)
+                	fechareferencia = getDateInvoiced().toString().substring(0, 10);                
+                
                 Element FchRef = document.createElement("FchRef");
                 org.w3c.dom.Text fchref = document.createTextNode(fechareferencia);
                 FchRef.appendChild(fchref);
@@ -3562,216 +3587,213 @@ public class MInvoice extends X_C_Invoice implements DocAction
 		{
 			MInvoiceLine sLine = lines[lineIndex];
 			boolean createdUpdated = false;
-			    if(isAsset(sLine))
-				{
-					
-					
-					if(sLine.get_ValueAsInt("A_Asset_Group_ID")>0 && sLine.get_ValueAsString("A_CapvsExp").equals(X_C_InvoiceLine.A_CAPVSEXP_Capital)){
+			if(isAsset(sLine))
+			{	
+				if(sLine.get_ValueAsInt("A_Asset_Group_ID")>0 && sLine.get_ValueAsString("A_CapvsExp").equals(X_C_InvoiceLine.A_CAPVSEXP_Capital))
+				{						
+					int gacct_id = DB.getSQLValue(get_TableName(), "select a_asset_group_acct_id from a_asset_group_acct where a_asset_group_id="+sLine.get_ValueAsInt("A_Asset_Group_ID"));
+					MAssetGroupAcct assetgrpacct = new MAssetGroupAcct (getCtx(), gacct_id, get_TrxName());
 						
-						int gacct_id = DB.getSQLValue(get_TableName(), "select a_asset_group_acct_id from a_asset_group_acct where a_asset_group_id="+sLine.get_ValueAsInt("A_Asset_Group_ID"));
-						MAssetGroupAcct assetgrpacct = new MAssetGroupAcct (getCtx(), gacct_id, get_TrxName());
-						
-						MAsset asset = new MAsset(getCtx(),  sLine.getA_Asset_ID() ,get_TrxName());
-						asset.setA_Asset_Group_ID(sLine.get_ValueAsInt("A_Asset_Group_ID"));
-						asset.setUseLifeYears(assetgrpacct.getUseLifeYears());
-						asset.setUseLifeMonths(assetgrpacct.getUseLifeMonths());
-						asset.setIsDepreciated(true);
-						asset.setIsOwned(true);
-						asset.saveEx();
+					MAsset asset = new MAsset(getCtx(),  sLine.getA_Asset_ID() ,get_TrxName());
+					asset.setA_Asset_Group_ID(sLine.get_ValueAsInt("A_Asset_Group_ID"));
+					asset.setUseLifeYears(assetgrpacct.getUseLifeYears());
+					asset.setUseLifeMonths(assetgrpacct.getUseLifeMonths());
+					asset.setIsDepreciated(true);
+					asset.setIsOwned(true);
+					asset.saveEx();
+				
+					int acct_id = DB.getSQLValue(get_TableName(), "select A_Asset_Acct_ID from A_Asset_Acct where A_Asset_ID="+asset.getA_Asset_ID());
+					MAssetAcct assetacct = new MAssetAcct (getCtx(), acct_id, get_TrxName());
+					assetacct.setPostingType(assetgrpacct.getPostingType());
+					assetacct.setA_Split_Percent(assetgrpacct.getA_Split_Percent());
+					assetacct.setA_Depreciation_Conv_ID(assetgrpacct.getConventionType());
+					assetacct.setA_Depreciation_ID(assetgrpacct.getDepreciationType());
+					assetacct.setA_Asset_Spread_ID(assetgrpacct.getA_Asset_Spread_Type());
+					assetacct.setA_Period_Start(1);
+					assetacct.setA_Period_End(assetgrpacct.getUseLifeMonths());
+					assetacct.setA_Depreciation_Method_ID(assetgrpacct.getA_Depreciation_Calc_Type());
+					assetacct.setA_Asset_Acct(assetgrpacct.getA_Asset_Acct());
+					assetacct.setC_AcctSchema_ID(assetgrpacct.getC_AcctSchema_ID());
+					assetacct.setA_Accumdepreciation_Acct(assetgrpacct.getA_Accumdepreciation_Acct());
+					assetacct.setA_Depreciation_Acct(assetgrpacct.getA_Depreciation_Acct());
+					assetacct.setA_Disposal_Revenue(assetgrpacct.getA_Disposal_Revenue());
+					assetacct.setA_Disposal_Loss(assetgrpacct.getA_Disposal_Loss());
+					assetacct.setA_Reval_Accumdep_Offset_Cur(assetgrpacct.getA_Reval_Accumdep_Offset_Cur());
+					assetacct.setA_Reval_Accumdep_Offset_Prior(assetgrpacct.getA_Reval_Accumdep_Offset_Prior());
+					assetacct.setA_Reval_Cost_Offset(assetgrpacct.getA_Reval_Cost_Offset());
+					assetacct.setA_Reval_Cost_Offset_Prior(assetgrpacct.getA_Reval_Cost_Offset_Prior());
+					assetacct.setA_Reval_Depexp_Offset(assetgrpacct.getA_Reval_Depexp_Offset());
+					assetacct.setA_Depreciation_Manual_Amount(assetgrpacct.getA_Depreciation_Manual_Amount());
+					assetacct.setA_Depreciation_Manual_Period(assetgrpacct.getA_Depreciation_Manual_Period());
+					assetacct.setA_Depreciation_Table_Header_ID(assetgrpacct.getA_Depreciation_Table_Header_ID());
+					assetacct.setA_Depreciation_Variable_Perc(assetgrpacct.getA_Depreciation_Variable_Perc());
+					assetacct.setProcessing(false);
+					//assetacct.set_Value("A_Salvage_Value",assetgrpacct.get_ValueAsInt("A_Salvage_Value")); 
+					assetacct.set_Value("A_Salvage_Value",assetgrpacct.get_Value("A_Salvage_Value"));//ininoles camnio a bigdecimal para evitar error
+					assetacct.set_Value("A_Disposal_RevenueD_Acct",assetgrpacct.get_ValueAsInt("A_Disposal_RevenueD_Acct"));
+					assetacct.set_Value("A_Disposal_RevenueC_Acct",assetgrpacct.get_ValueAsInt("A_Disposal_RevenueC_Acct"));
+					assetacct.set_Value("A_Disposal_Loss_Acct",assetgrpacct.get_ValueAsInt("A_Disposal_Loss_Acct"));
+					assetacct.set_Value("A_Disposal_Gain_Acct",assetgrpacct.get_ValueAsInt("A_Disposal_Gain_Acct"));
+					assetacct.set_Value("A_AssetComplement_Acct",assetgrpacct.get_ValueAsInt("A_AssetComplement_Acct"));
+					assetacct.save();
 					
-						int acct_id = DB.getSQLValue(get_TableName(), "select A_Asset_Acct_ID from A_Asset_Acct where A_Asset_ID="+asset.getA_Asset_ID());
-						MAssetAcct assetacct = new MAssetAcct (getCtx(), acct_id, get_TrxName());
-						assetacct.setPostingType(assetgrpacct.getPostingType());
-						assetacct.setA_Split_Percent(assetgrpacct.getA_Split_Percent());
-						assetacct.setA_Depreciation_Conv_ID(assetgrpacct.getConventionType());
-						assetacct.setA_Depreciation_ID(assetgrpacct.getDepreciationType());
-						assetacct.setA_Asset_Spread_ID(assetgrpacct.getA_Asset_Spread_Type());
-						assetacct.setA_Period_Start(1);
-						assetacct.setA_Period_End(assetgrpacct.getUseLifeMonths());
-						assetacct.setA_Depreciation_Method_ID(assetgrpacct.getA_Depreciation_Calc_Type());
-						assetacct.setA_Asset_Acct(assetgrpacct.getA_Asset_Acct());
-						assetacct.setC_AcctSchema_ID(assetgrpacct.getC_AcctSchema_ID());
-						assetacct.setA_Accumdepreciation_Acct(assetgrpacct.getA_Accumdepreciation_Acct());
-						assetacct.setA_Depreciation_Acct(assetgrpacct.getA_Depreciation_Acct());
-						assetacct.setA_Disposal_Revenue(assetgrpacct.getA_Disposal_Revenue());
-						assetacct.setA_Disposal_Loss(assetgrpacct.getA_Disposal_Loss());
-						assetacct.setA_Reval_Accumdep_Offset_Cur(assetgrpacct.getA_Reval_Accumdep_Offset_Cur());
-						assetacct.setA_Reval_Accumdep_Offset_Prior(assetgrpacct.getA_Reval_Accumdep_Offset_Prior());
-						assetacct.setA_Reval_Cost_Offset(assetgrpacct.getA_Reval_Cost_Offset());
-						assetacct.setA_Reval_Cost_Offset_Prior(assetgrpacct.getA_Reval_Cost_Offset_Prior());
-						assetacct.setA_Reval_Depexp_Offset(assetgrpacct.getA_Reval_Depexp_Offset());
-						assetacct.setA_Depreciation_Manual_Amount(assetgrpacct.getA_Depreciation_Manual_Amount());
-						assetacct.setA_Depreciation_Manual_Period(assetgrpacct.getA_Depreciation_Manual_Period());
-						assetacct.setA_Depreciation_Table_Header_ID(assetgrpacct.getA_Depreciation_Table_Header_ID());
-						assetacct.setA_Depreciation_Variable_Perc(assetgrpacct.getA_Depreciation_Variable_Perc());
-						assetacct.setProcessing(false);
-						//assetacct.set_Value("A_Salvage_Value",assetgrpacct.get_ValueAsInt("A_Salvage_Value")); 
-						assetacct.set_Value("A_Salvage_Value",assetgrpacct.get_Value("A_Salvage_Value"));//ininoles camnio a bigdecimal para evitar error
-						assetacct.set_Value("A_Disposal_RevenueD_Acct",assetgrpacct.get_ValueAsInt("A_Disposal_RevenueD_Acct"));
-						assetacct.set_Value("A_Disposal_RevenueC_Acct",assetgrpacct.get_ValueAsInt("A_Disposal_RevenueC_Acct"));
-						assetacct.set_Value("A_Disposal_Loss_Acct",assetgrpacct.get_ValueAsInt("A_Disposal_Loss_Acct"));
-						assetacct.set_Value("A_Disposal_Gain_Acct",assetgrpacct.get_ValueAsInt("A_Disposal_Gain_Acct"));
-						assetacct.set_Value("A_AssetComplement_Acct",assetgrpacct.get_ValueAsInt("A_AssetComplement_Acct"));
-						assetacct.save();
-						
-						log.config("MAssetChange change");
-						int change_id = DB.getSQLValue(get_TableName(), "select A_Asset_Change_ID from A_Asset_Change where A_Asset_ID="+asset.getA_Asset_ID());
-						MAssetChange change = new MAssetChange (getCtx(), change_id, get_TrxName());						
-						change.setPostingType(assetacct.getPostingType());
-						change.setA_Split_Percent(assetacct.getA_Split_Percent());
-						change.setConventionType(assetacct.getA_Depreciation_Conv_ID());
-						//change.setA_Asset_ID(asset.getA_Asset_ID());								
-						change.setDepreciationType(assetacct.getA_Depreciation_ID());
-						change.setA_Asset_Spread_Type(assetacct.getA_Asset_Spread_ID());
-						change.setA_Period_Start(assetacct.getA_Period_Start());
-						change.setA_Period_End(assetacct.getA_Period_End());
-						change.setIsInPosession(asset.isOwned());
-						change.setIsDisposed(asset.isDisposed());
-						change.setIsDepreciated(asset.isDepreciated());
-						change.setIsFullyDepreciated(asset.isFullyDepreciated());					
-						change.setA_Depreciation_Calc_Type(assetacct.getA_Depreciation_Method_ID());
-						change.setA_Asset_Acct(assetacct.getA_Asset_Acct());
-						change.setC_AcctSchema_ID(assetacct.getC_AcctSchema_ID());
-						change.setA_Accumdepreciation_Acct(assetacct.getA_Accumdepreciation_Acct());
-						change.setA_Depreciation_Acct(assetacct.getA_Depreciation_Acct());
-						change.setA_Disposal_Revenue(assetacct.getA_Disposal_Revenue());
-						change.setA_Disposal_Loss(assetacct.getA_Disposal_Loss());
-						change.setA_Reval_Accumdep_Offset_Cur(assetacct.getA_Reval_Accumdep_Offset_Cur());
-						change.setA_Reval_Accumdep_Offset_Prior(assetacct.getA_Reval_Accumdep_Offset_Prior());
-						change.setA_Reval_Cal_Method(assetacct.getA_Reval_Cal_Method());
-						change.setA_Reval_Cost_Offset(assetacct.getA_Reval_Cost_Offset());
-						change.setA_Reval_Cost_Offset_Prior(assetacct.getA_Reval_Cost_Offset_Prior());
-						change.setA_Reval_Depexp_Offset(assetacct.getA_Reval_Depexp_Offset());
-						change.setA_Depreciation_Manual_Amount(assetacct.getA_Depreciation_Manual_Amount());
-						change.setA_Depreciation_Manual_Period(assetacct.getA_Depreciation_Manual_Period());
-						change.setA_Depreciation_Table_Header_ID(assetacct.getA_Depreciation_Table_Header_ID());
-						change.setA_Depreciation_Variable_Perc(assetacct.getA_Depreciation_Variable_Perc());
-						change.setA_Parent_Asset_ID(asset.getA_Parent_Asset_ID());
-					    change.setChangeType("CRT");	
-						change.setTextDetails(MRefList.getListDescription (getCtx(),"A_Update_Type" , "CRT"));		    
-					    change.setIsInPosession(asset.isOwned());
-						change.setIsDisposed(asset.isDisposed());
-						change.setIsDepreciated(asset.isDepreciated());
-						change.setIsFullyDepreciated(asset.isFullyDepreciated());
-						change.setLot(asset.getLot());
-						change.setSerNo(asset.getSerNo());
-						change.setVersionNo(asset.getVersionNo());
-					    change.setUseLifeMonths(asset.getUseLifeMonths());
-					    change.setUseLifeYears(asset.getUseLifeYears());
-					    change.setLifeUseUnits(asset.getLifeUseUnits());
-					    change.setAssetDisposalDate(asset.getAssetDisposalDate());
-					    change.setAssetServiceDate(asset.getAssetServiceDate());
-					    change.setC_BPartner_Location_ID(asset.getC_BPartner_Location_ID());
-					    change.setC_BPartner_ID(asset.getC_BPartner_ID());
-					    change.setAssetValueAmt(sLine.getLineTotalAmt());
-					    change.setA_QTY_Current(sLine.getQtyEntered());
-					    change.setA_QTY_Original(sLine.getQtyEntered());
-					    change.setA_Asset_CreateDate(asset.getA_Asset_CreateDate());
-					    change.setAD_User_ID(asset.getAD_User_ID());
-					    change.setC_Location_ID(asset.getC_Location_ID());
-					    //faaguilar OFB begin
-					    change.setAssetValueAmt(sLine.getLineNetAmt().divide(sLine.getQtyEntered(), BigDecimal.ROUND_HALF_EVEN));
-					    change.setA_QTY_Current(Env.ONE);
-					    change.setA_QTY_Original(Env.ONE);
-					    //faaguilar OFB begin
-					    change.save();
+					log.config("MAssetChange change");
+					int change_id = DB.getSQLValue(get_TableName(), "select A_Asset_Change_ID from A_Asset_Change where A_Asset_ID="+asset.getA_Asset_ID());
+					MAssetChange change = new MAssetChange (getCtx(), change_id, get_TrxName());						
+					change.setPostingType(assetacct.getPostingType());
+					change.setA_Split_Percent(assetacct.getA_Split_Percent());
+					change.setConventionType(assetacct.getA_Depreciation_Conv_ID());
+					//change.setA_Asset_ID(asset.getA_Asset_ID());								
+					change.setDepreciationType(assetacct.getA_Depreciation_ID());
+					change.setA_Asset_Spread_Type(assetacct.getA_Asset_Spread_ID());
+					change.setA_Period_Start(assetacct.getA_Period_Start());
+					change.setA_Period_End(assetacct.getA_Period_End());
+					change.setIsInPosession(asset.isOwned());
+					change.setIsDisposed(asset.isDisposed());
+					change.setIsDepreciated(asset.isDepreciated());
+					change.setIsFullyDepreciated(asset.isFullyDepreciated());					
+					change.setA_Depreciation_Calc_Type(assetacct.getA_Depreciation_Method_ID());
+					change.setA_Asset_Acct(assetacct.getA_Asset_Acct());
+					change.setC_AcctSchema_ID(assetacct.getC_AcctSchema_ID());
+					change.setA_Accumdepreciation_Acct(assetacct.getA_Accumdepreciation_Acct());
+					change.setA_Depreciation_Acct(assetacct.getA_Depreciation_Acct());
+					change.setA_Disposal_Revenue(assetacct.getA_Disposal_Revenue());
+					change.setA_Disposal_Loss(assetacct.getA_Disposal_Loss());
+					change.setA_Reval_Accumdep_Offset_Cur(assetacct.getA_Reval_Accumdep_Offset_Cur());
+					change.setA_Reval_Accumdep_Offset_Prior(assetacct.getA_Reval_Accumdep_Offset_Prior());
+					change.setA_Reval_Cal_Method(assetacct.getA_Reval_Cal_Method());
+					change.setA_Reval_Cost_Offset(assetacct.getA_Reval_Cost_Offset());
+					change.setA_Reval_Cost_Offset_Prior(assetacct.getA_Reval_Cost_Offset_Prior());
+					change.setA_Reval_Depexp_Offset(assetacct.getA_Reval_Depexp_Offset());
+					change.setA_Depreciation_Manual_Amount(assetacct.getA_Depreciation_Manual_Amount());
+					change.setA_Depreciation_Manual_Period(assetacct.getA_Depreciation_Manual_Period());
+					change.setA_Depreciation_Table_Header_ID(assetacct.getA_Depreciation_Table_Header_ID());
+					change.setA_Depreciation_Variable_Perc(assetacct.getA_Depreciation_Variable_Perc());
+					change.setA_Parent_Asset_ID(asset.getA_Parent_Asset_ID());
+				    change.setChangeType("CRT");	
+					change.setTextDetails(MRefList.getListDescription (getCtx(),"A_Update_Type" , "CRT"));		    
+				    change.setIsInPosession(asset.isOwned());
+					change.setIsDisposed(asset.isDisposed());
+					change.setIsDepreciated(asset.isDepreciated());
+					change.setIsFullyDepreciated(asset.isFullyDepreciated());
+					change.setLot(asset.getLot());
+					change.setSerNo(asset.getSerNo());
+					change.setVersionNo(asset.getVersionNo());
+				    change.setUseLifeMonths(asset.getUseLifeMonths());
+				    change.setUseLifeYears(asset.getUseLifeYears());
+				    change.setLifeUseUnits(asset.getLifeUseUnits());
+				    change.setAssetDisposalDate(asset.getAssetDisposalDate());
+				    change.setAssetServiceDate(asset.getAssetServiceDate());
+				    change.setC_BPartner_Location_ID(asset.getC_BPartner_Location_ID());
+				    change.setC_BPartner_ID(asset.getC_BPartner_ID());
+				    change.setAssetValueAmt(sLine.getLineTotalAmt());
+				    change.setA_QTY_Current(sLine.getQtyEntered());
+				    change.setA_QTY_Original(sLine.getQtyEntered());
+				    change.setA_Asset_CreateDate(asset.getA_Asset_CreateDate());
+				    change.setAD_User_ID(asset.getAD_User_ID());
+				    change.setC_Location_ID(asset.getC_Location_ID());
+				    //faaguilar OFB begin
+				    change.setAssetValueAmt(sLine.getLineNetAmt().divide(sLine.getQtyEntered(), BigDecimal.ROUND_HALF_EVEN));
+				    change.setA_QTY_Current(Env.ONE);
+				    change.setA_QTY_Original(Env.ONE);
+				    //faaguilar OFB begin
+				    change.save();
 					    
-					    log.config("X_A_Depreciation_Workfile");
-					    int Workfile_id = DB.getSQLValue(get_TableName(), "select A_Depreciation_Workfile_ID from A_Depreciation_Workfile where A_Asset_ID="+asset.getA_Asset_ID());
-						X_A_Depreciation_Workfile assetwk = new X_A_Depreciation_Workfile (getCtx(), Workfile_id, get_TrxName());
-						//assetwk.setA_Asset_ID(asset.getA_Asset_ID());		
-						assetwk.setA_Life_Period(assetgrpacct.getUseLifeMonths());
-						assetwk.setA_Asset_Life_Years(assetgrpacct.getUseLifeYears());
-						assetwk.setA_Asset_Cost(assetwk.getA_Asset_Cost().add(sLine.getLineTotalAmt()));							
-						assetwk.setA_QTY_Current(sLine.getQtyEntered());
-						assetwk.setIsDepreciated(assetgrpacct.isProcessing());
-						assetwk.setPostingType(assetgrpacct.getPostingType());
-						assetwk.setA_Accumulated_Depr(new BigDecimal (0.0));
-						assetwk.setA_Period_Posted(0);
-						assetwk.setA_Asset_Life_Current_Year(new BigDecimal (0.0));
-						assetwk.setA_Curr_Dep_Exp(new BigDecimal (0.0));
-						//faaguilar OFB begin
-						assetwk.setA_Asset_Cost(sLine.getLineNetAmt().divide(sLine.getQtyEntered(), BigDecimal.ROUND_HALF_EVEN));							
-						assetwk.setA_QTY_Current(Env.ONE);
-						//faaguilar OFB end
-						assetwk.save();
-						
-						log.config("X_A_Asset_Addition");
-						int Addition_id = DB.getSQLValue(get_TableName(), "select A_Asset_Addition_ID from A_Asset_Addition where A_Asset_ID="+asset.getA_Asset_ID());
-						X_A_Asset_Addition assetadd = new X_A_Asset_Addition (getCtx(), Addition_id, get_TrxName());
-						assetadd.setA_Asset_ID(asset.getA_Asset_ID());
-						assetadd.setAssetValueAmt(sLine.getLineTotalAmt());
-						assetadd.setA_SourceType("INV");
-						assetadd.setA_CapvsExp("Cap");
-						//assetadd.setM_InOutLine_ID(rs.getInt("C_Invoice_ID"));				
-						assetadd.setC_Invoice_ID(getC_Invoice_ID());
-						assetadd.setDocumentNo(getDocumentNo());
-						assetadd.setLine(sLine.getLine());
-						assetadd.setDescription(sLine.getDescription());
-						assetadd.setA_QTY_Current(sLine.getQtyEntered());
-						assetadd.setPostingType(assetwk.getPostingType());
-						//faaguilar OFB begin
-						assetadd.setA_QTY_Current(Env.ONE);
-						assetadd.setAssetValueAmt(sLine.getLineNetAmt().divide(sLine.getQtyEntered(), BigDecimal.ROUND_HALF_EVEN));
-						//faaguilar OFB end
-						assetadd.save();
-						
-						DB.executeUpdate("Delete from A_Asset_Forecast where Processed='N' and Corrected='N' and A_Asset_ID="+asset.getA_Asset_ID(), get_TrxName());
-						CreateAssetForecast.createForecast(asset, change, assetacct, get_TrxName());
-						
-						createdUpdated = true;
-					}
+				    log.config("X_A_Depreciation_Workfile");
+				    int Workfile_id = DB.getSQLValue(get_TableName(), "select A_Depreciation_Workfile_ID from A_Depreciation_Workfile where A_Asset_ID="+asset.getA_Asset_ID());
+					X_A_Depreciation_Workfile assetwk = new X_A_Depreciation_Workfile (getCtx(), Workfile_id, get_TrxName());
+					//assetwk.setA_Asset_ID(asset.getA_Asset_ID());		
+					assetwk.setA_Life_Period(assetgrpacct.getUseLifeMonths());
+					assetwk.setA_Asset_Life_Years(assetgrpacct.getUseLifeYears());
+					assetwk.setA_Asset_Cost(assetwk.getA_Asset_Cost().add(sLine.getLineTotalAmt()));							
+					assetwk.setA_QTY_Current(sLine.getQtyEntered());
+					assetwk.setIsDepreciated(assetgrpacct.isProcessing());
+					assetwk.setPostingType(assetgrpacct.getPostingType());
+					assetwk.setA_Accumulated_Depr(new BigDecimal (0.0));
+					assetwk.setA_Period_Posted(0);
+					assetwk.setA_Asset_Life_Current_Year(new BigDecimal (0.0));
+					assetwk.setA_Curr_Dep_Exp(new BigDecimal (0.0));
+					//faaguilar OFB begin
+					assetwk.setA_Asset_Cost(sLine.getLineNetAmt().divide(sLine.getQtyEntered(), BigDecimal.ROUND_HALF_EVEN));							
+					assetwk.setA_QTY_Current(Env.ONE);
+					//faaguilar OFB end
+					assetwk.save();
 					
-					if(sLine.getA_Asset_ID()>0 && sLine.get_ValueAsString("A_CapvsExp").equals(X_C_InvoiceLine.A_CAPVSEXP_Expense))//gasto relacionado con un activo
-					{
-						MAsset asset = new MAsset(getCtx(),  sLine.getA_Asset_ID() ,get_TrxName());
-						BigDecimal monto = sLine.getLineNetAmt();
-						
-						int change_id = DB.getSQLValue(get_TableName(), "select A_Asset_Change_ID from A_Asset_Change where A_Asset_ID="+asset.getA_Asset_ID());
-						MAssetChange change = new MAssetChange (getCtx(), change_id, get_TrxName());
-						change.setAssetValueAmt(change.getAssetValueAmt().add(monto) );
-						change.save();
-						
-						int Workfile_id = DB.getSQLValue(get_TableName(), "select A_Depreciation_Workfile_ID from A_Depreciation_Workfile where A_Asset_ID="+asset.getA_Asset_ID());
-						X_A_Depreciation_Workfile assetwk = new X_A_Depreciation_Workfile (getCtx(), Workfile_id, get_TrxName());
-						assetwk.setA_Asset_Cost(assetwk.getA_Asset_Cost().add(monto));
-						assetwk.save();
-						
-						X_A_Asset_Addition assetadd = new X_A_Asset_Addition (getCtx(), 0, get_TrxName());
-						assetadd.setA_Asset_ID(asset.getA_Asset_ID());
-						assetadd.setAssetValueAmt(sLine.getLineTotalAmt());
-						assetadd.setA_SourceType("INV");
-						assetadd.setA_CapvsExp("Exp");			
-						assetadd.setC_Invoice_ID(getC_Invoice_ID());
-						assetadd.setDocumentNo(getDocumentNo());
-						assetadd.setLine(sLine.getLine());
-						assetadd.setDescription(sLine.getDescription());
-						assetadd.setA_QTY_Current(sLine.getQtyEntered());
-						assetadd.setPostingType(assetwk.getPostingType());
-						assetadd.setA_QTY_Current(sLine.getQtyInvoiced());
-						assetadd.setAssetValueAmt(sLine.getLineNetAmt());
-						assetadd.save();
-						
-						int acct_id = DB.getSQLValue(get_TableName(), "select A_Asset_Acct_ID from A_Asset_Acct where A_Asset_ID="+asset.getA_Asset_ID());
-						MAssetAcct assetacct = new MAssetAcct (getCtx(), acct_id, get_TrxName());
-						
-						
-						DB.executeUpdate("Delete from A_Asset_Forecast where Processed='N' and Corrected='N' and A_Asset_ID="+asset.getA_Asset_ID(), get_TrxName());
-						CreateAssetForecast.createForecast(asset, change, assetacct, get_TrxName());
-						
-						createdUpdated = true;
-					}
+					log.config("X_A_Asset_Addition");
+					int Addition_id = DB.getSQLValue(get_TableName(), "select A_Asset_Addition_ID from A_Asset_Addition where A_Asset_ID="+asset.getA_Asset_ID());
+					X_A_Asset_Addition assetadd = new X_A_Asset_Addition (getCtx(), Addition_id, get_TrxName());
+					assetadd.setA_Asset_ID(asset.getA_Asset_ID());
+					assetadd.setAssetValueAmt(sLine.getLineTotalAmt());
+					assetadd.setA_SourceType("INV");
+					assetadd.setA_CapvsExp("Cap");
+					//assetadd.setM_InOutLine_ID(rs.getInt("C_Invoice_ID"));				
+					assetadd.setC_Invoice_ID(getC_Invoice_ID());
+					assetadd.setDocumentNo(getDocumentNo());
+					assetadd.setLine(sLine.getLine());
+					assetadd.setDescription(sLine.getDescription());
+					assetadd.setA_QTY_Current(sLine.getQtyEntered());
+					assetadd.setPostingType(assetwk.getPostingType());
+					//faaguilar OFB begin
+					assetadd.setA_QTY_Current(Env.ONE);
+					assetadd.setAssetValueAmt(sLine.getLineNetAmt().divide(sLine.getQtyEntered(), BigDecimal.ROUND_HALF_EVEN));
+					//faaguilar OFB end
+					assetadd.save();
 					
-					if(createdUpdated)
-					{
-						sLine.setA_Processed(true);
-						sLine.save();
-					}
+					DB.executeUpdate("Delete from A_Asset_Forecast where Processed='N' and Corrected='N' and A_Asset_ID="+asset.getA_Asset_ID(), get_TrxName());
+					CreateAssetForecast.createForecast(asset, change, assetacct, get_TrxName());
 					
+					createdUpdated = true;
 				}
+				
+				if(sLine.getA_Asset_ID()>0 && sLine.get_ValueAsString("A_CapvsExp").equals(X_C_InvoiceLine.A_CAPVSEXP_Expense))//gasto relacionado con un activo
+				{
+					MAsset asset = new MAsset(getCtx(),  sLine.getA_Asset_ID() ,get_TrxName());
+					BigDecimal monto = sLine.getLineNetAmt();
+					
+					int change_id = DB.getSQLValue(get_TableName(), "select A_Asset_Change_ID from A_Asset_Change where A_Asset_ID="+asset.getA_Asset_ID());
+					MAssetChange change = new MAssetChange (getCtx(), change_id, get_TrxName());
+					change.setAssetValueAmt(change.getAssetValueAmt().add(monto) );
+					change.save();
+					
+					int Workfile_id = DB.getSQLValue(get_TableName(), "select A_Depreciation_Workfile_ID from A_Depreciation_Workfile where A_Asset_ID="+asset.getA_Asset_ID());
+					X_A_Depreciation_Workfile assetwk = new X_A_Depreciation_Workfile (getCtx(), Workfile_id, get_TrxName());
+					assetwk.setA_Asset_Cost(assetwk.getA_Asset_Cost().add(monto));
+					assetwk.save();
+					
+					X_A_Asset_Addition assetadd = new X_A_Asset_Addition (getCtx(), 0, get_TrxName());
+					assetadd.setA_Asset_ID(asset.getA_Asset_ID());
+					assetadd.setAssetValueAmt(sLine.getLineTotalAmt());
+					assetadd.setA_SourceType("INV");
+					assetadd.setA_CapvsExp("Exp");			
+					assetadd.setC_Invoice_ID(getC_Invoice_ID());
+					assetadd.setDocumentNo(getDocumentNo());
+					assetadd.setLine(sLine.getLine());
+					assetadd.setDescription(sLine.getDescription());
+					assetadd.setA_QTY_Current(sLine.getQtyEntered());
+					assetadd.setPostingType(assetwk.getPostingType());
+					assetadd.setA_QTY_Current(sLine.getQtyInvoiced());
+					assetadd.setAssetValueAmt(sLine.getLineNetAmt());
+					assetadd.save();
+					
+					int acct_id = DB.getSQLValue(get_TableName(), "select A_Asset_Acct_ID from A_Asset_Acct where A_Asset_ID="+asset.getA_Asset_ID());
+					MAssetAcct assetacct = new MAssetAcct (getCtx(), acct_id, get_TrxName());
+					
+					
+					DB.executeUpdate("Delete from A_Asset_Forecast where Processed='N' and Corrected='N' and A_Asset_ID="+asset.getA_Asset_ID(), get_TrxName());
+					CreateAssetForecast.createForecast(asset, change, assetacct, get_TrxName());
+					
+					createdUpdated = true;
+				}
+				
+				if(createdUpdated)
+				{
+					sLine.setA_Processed(true);
+					sLine.save();
+				}
+					
+			}
 		}//fin for
-	}//updateAssetAsset()
-	
+	}//updateAssetAsset()	
 	/**
 	 * faaguilar is la linea tiene relacion con activos*/
 	private boolean isAsset(MInvoiceLine sLine)

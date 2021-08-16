@@ -143,7 +143,9 @@ public class ImportDriversControl extends SvrProcess
 							&& rs.getString("TypeMatrix").trim() != " ")
 				{											
 					dControl = new X_TP_DriversControl(getCtx(), 0, get_TrxName());
-					dControl.setAD_Org_ID(Env.getAD_Org_ID(getCtx()));
+					//dControl.setAD_Org_ID(Env.getAD_Org_ID(getCtx()));
+					//ininoles la organizacion siempre debe ser *
+					dControl.setAD_Org_ID(0);
 					dControl.setTypeMatrix(rs.getString("TypeMatrix"));
 					dControl.setC_ProjectOFB_ID(rs.getInt("C_ProjectOFB_ID"));
 					dControl.setA_Asset_ID(rs.getInt("A_Asset_ID"));

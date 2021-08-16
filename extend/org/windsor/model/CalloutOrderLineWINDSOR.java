@@ -76,7 +76,38 @@ public class CalloutOrderLineWINDSOR extends CalloutEngine
 			{
 				if(product_id!=null && product_id!=0 )
 				{
-					String sql="SELECT qtyavailableofb(?,1000001)+qtyavailableofb(?,1000010) as suma FROM dual";
+					String sql="SELECT " + // qtyavailableofb(?,1000001)+qtyavailableofb(?,1000010) 
+							
+" COALESCE ( "+
+"         (SELECT SUM (s.qtyonhand) "+
+ "           FROM rv_storage s "+
+  "         WHERE     s.M_Product_ID = p.m_product_id "+
+   "              AND s.m_warehouse_id IN (1000001, 1000010) "+
+    "             AND s.isactive = 'Y'), "+
+     "    0) "+
+    " - (  (SELECT COALESCE (SUM (ol2.qtyreserved), 0)      "+
+   "         FROM C_orderline ol2      "+
+    "             INNER JOIN C_Order o2  "+
+     "               ON (ol2.C_ORDER_ID = o2.c_order_ID)  "+
+      "     WHERE     ol2.M_Product_ID = p.m_product_id "+
+       "          AND o2.m_warehouse_id = 1000001 "+
+        "         AND o2.saldada <> 'Y' "+
+         "        AND o2.docstatus IN ('IP', 'CO', 'CL') "+
+          "       AND o2.issotrx = 'Y' "+
+           "      AND o2.c_doctypetarget_ID NOT IN "+
+            "            (1000110, 1000048, 1000568)) "+
+      " + (SELECT COALESCE (SUM (rl.qtyreserved), 0)     "+
+       "     FROM M_Requisitionline rl     "+
+        "         INNER JOIN M_Requisition r  "+
+         "           ON (rl.M_Requisition_ID = r.M_Requisition_ID)  "+
+          " WHERE     rl.M_Product_ID = p.m_product_id  "+
+           "      AND r.m_warehouse_id = 1000001  "+
+            "     AND r.docstatus IN ('CO', 'CL')  "+
+             "    AND r.issotrx = 'Y'))  "+
+             " as suma FROM m_product p where p.m_product_ID=? or p.m_product_ID=?"	
+							
+							
+							;
 					resultStr=" Producto:"+product_id;
 					try {
 						pstmt=DB.prepareStatement(sql,null);

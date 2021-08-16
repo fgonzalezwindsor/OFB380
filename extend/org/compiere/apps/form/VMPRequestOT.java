@@ -45,6 +45,7 @@ import javax.swing.table.TableModel;
 
 import org.adempiere.plaf.AdempierePLAF;
 import org.compiere.apps.StatusBar;
+import org.compiere.grid.ed.VComboBox;
 import org.compiere.grid.ed.VDate;
 import org.compiere.grid.ed.VLookup;
 import org.compiere.minigrid.MiniTable;
@@ -52,6 +53,8 @@ import org.compiere.model.MColumn;
 import org.compiere.model.MDocType;
 import org.compiere.model.MLookup;
 import org.compiere.model.MLookupFactory;
+import org.compiere.model.MOrder;
+import org.compiere.model.MRMA;
 import org.compiere.model.X_MP_JobStandar;
 import org.compiere.model.X_MP_OT;
 import org.compiere.model.X_MP_OT_Resource;
@@ -162,8 +165,6 @@ public class VMPRequestOT extends CPanel
 	private JLabel jobLabel = new JLabel();
 	private VLookup jobSearch = null;
 	private JButton jobButton = new JButton();
-
-
 
 	/**
 	 *  Static Init
@@ -288,8 +289,8 @@ public class VMPRequestOT extends CPanel
 		MLookup lookupjob = MLookupFactory.get (Env.getCtx(), m_WindowNo, 0, AD_Column_ID, DisplayType.Search);
 		jobSearch = new VLookup("MP_JobStandar_ID", true, false, true, lookupjob);
 		jobSearch.addVetoableChangeListener(this);
-		
-	//  Date set to Login Date
+	
+		//  Date set to Login Date
 		dateField.setValue(Env.getContextAsDate(Env.getCtx(), "#Date"));
 		//  Translation
 		statusBar.setStatusLine("Seleccione la mantencion, cambie la fecha pronosticada o genere directamente la OT ");
@@ -325,7 +326,7 @@ public class VMPRequestOT extends CPanel
 			"where rt.DocStatus='WC' and rt.processed='Y'");
 		
 		sql.append(" and rt.AD_Client_ID="+ Env.getAD_Client_ID(Env.getCtx()));
-		
+
 		log.config("Prognosis=" + sql.toString());
 		try
 		{
@@ -427,11 +428,10 @@ public class VMPRequestOT extends CPanel
 		if (e.getSource().equals(ProcessButton))
 		{
 			//ProcessButton.setEnabled(false);
-			saveData();
-
-			
+			saveData();			
 		}
-		else if (e.getSource().equals(jobButton)){
+		else if (e.getSource().equals(jobButton))
+		{
 			TableModel prognosis = requestTable.getModel();
 			int rows = prognosis.getRowCount();
 			X_MP_JobStandar job=new X_MP_JobStandar(Env.getCtx(), m_Job_ID,null);
@@ -440,8 +440,7 @@ public class VMPRequestOT extends CPanel
 				if (((Boolean)prognosis.getValueAt(i, 0)).booleanValue())
 				{
 					KeyNamePair pp = new KeyNamePair(job.getMP_JobStandar_ID(), job.getName());
-					prognosis.setValueAt(pp, i, 9);
-					
+					prognosis.setValueAt(pp, i, 9);					
 				}
 			}
 			
@@ -449,7 +448,8 @@ public class VMPRequestOT extends CPanel
 		else if (e.getSource().equals(VoidButton)){
 			voidData();
 		}
-		else if (e.getSource().equals(ChangeButton)){
+		else if (e.getSource().equals(ChangeButton))
+		{
 			ProcessButton.setEnabled(true);
 			//updating rows selected
 			TableModel prognosis = requestTable.getModel();
@@ -458,10 +458,8 @@ public class VMPRequestOT extends CPanel
 			for (int i = 0; i < rows; i++)
 			{
 				if (((Boolean)prognosis.getValueAt(i, 0)).booleanValue())
-				{
-					
-					prognosis.setValueAt(DateTrx, i, 2);
-					
+				{	
+					prognosis.setValueAt(DateTrx, i, 2);					
 				}
 			}
 		}

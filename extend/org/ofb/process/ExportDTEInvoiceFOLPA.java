@@ -738,11 +738,41 @@ public class ExportDTEInvoiceFOLPA extends SvrProcess
                 org.w3c.dom.Text fchref = document.createTextNode(inOutref.getMovementDate().toString().substring(0, 10));
                 FchRef.appendChild(fchref);
                 Referencia.appendChild(FchRef);                
-            }
-            
+            }            
             //fin referencia
             
-          //ininoles nueva descripcion:
+            //ininoles nueva referencia hes 14-11-2019
+            //referencia hes            
+            Timestamp p_fechahes = (Timestamp)invoice.get_Value("dateHES");
+            String p_hes = invoice.get_ValueAsString("folioHES");
+            	
+            if(p_fechahes != null && p_hes != null && p_hes.trim().length() > 0)
+            {
+            	indice = indice+1;
+            	String  docRef = "HES";
+            	Element Referencia = document.createElement("Referencia");
+                Documento.appendChild(Referencia);
+                Element NroLinRef = document.createElement("NroLinRef");
+                org.w3c.dom.Text Nro = document.createTextNode(Integer.toString(indice));
+                NroLinRef.appendChild(Nro);
+                Referencia.appendChild(NroLinRef);
+                Element TpoDocRef = document.createElement("TpoDocRef");
+                org.w3c.dom.Text tpo = document.createTextNode(docRef);
+                TpoDocRef.appendChild(tpo);
+                Referencia.appendChild(TpoDocRef);
+                Element FolioRef = document.createElement("FolioRef");
+                org.w3c.dom.Text ref = document.createTextNode(p_hes);
+                FolioRef.appendChild(ref);
+                Referencia.appendChild(FolioRef);
+                Element FchRef = document.createElement("FchRef");
+                org.w3c.dom.Text fchref = document.createTextNode(p_fechahes.toString().substring(0, 10));
+                FchRef.appendChild(fchref);
+                Referencia.appendChild(FchRef);       
+            }
+            //fin referencia HES
+            
+            
+            //ininoles nueva descripcion:
             String DescXML = "";
             String payRule = DB.getSQLValueString(invoice.get_TrxName(), "SELECT rlt.name FROM AD_Ref_List rl " +
             	" INNER JOIN AD_Ref_List_Trl rlt ON (rl.AD_Ref_List_ID = rlt.AD_Ref_List_ID ) " +
@@ -1585,6 +1615,9 @@ public class ExportDTEInvoiceFOLPA extends SvrProcess
             	DescXML = "Regla de Pago: "+payRule;
             if (invoice.getDescription() != null && invoice.getDescription() != "" && invoice.getDescription() != " ")
             	DescXML = DescXML +". Descripcion: "+invoice.getDescription();
+            //ininoles se agrega leyenda nueva
+            String ln = System.getProperty("line.separator");
+            DescXML = DescXML+ln+ln+ln+ln+ln+"Confirmación de litros recepcionados por el cliente:___________ litros.";
             if (DescXML != null && DescXML != "" && DescXML != " " && DescXML.length() > 1)
             {            
 	            mylog = "Adicional";

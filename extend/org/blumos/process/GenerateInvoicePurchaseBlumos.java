@@ -184,7 +184,9 @@ public class GenerateInvoicePurchaseBlumos extends SvrProcess {
 							ord.setFreightCostRule("I");
 							//ord.setM_PriceList_ID(1002936);
 							//obtener id de lista de precios
-							String sqlpricelist = "SELECT nvl(max(m_pricelist_id),0) from m_pricelist where name like 'WS_COMPRAS' and AD_Client_ID = "+Env.getAD_Client_ID(getCtx());
+							//mfrojas, 20180820
+							//se cambia los NVL por COALESCE
+							String sqlpricelist = "SELECT coalesce(max(m_pricelist_id),0) from m_pricelist where name like 'WS_COMPRAS' and AD_Client_ID = "+Env.getAD_Client_ID(getCtx());
 							pr = DB.getSQLValue(get_TrxName(), sqlpricelist);
 							if(pr > 0)
 								ord.setM_PriceList_ID(pr);

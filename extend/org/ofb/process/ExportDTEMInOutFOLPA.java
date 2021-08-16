@@ -516,6 +516,10 @@ public class ExportDTEMInOutFOLPA extends SvrProcess
             else
             	fullDesc = inOut.getDescription();
             //if (inOut.getDescription() != null && inOut.getDescription() != "" && inOut.getDescription() != " ")
+            //ininoles se agrega leyenda nueva
+            String ln = System.getProperty("line.separator");
+            fullDesc = fullDesc+ln+ln+ln+ln+ln+"Confirmación de litros recepcionados por el cliente:___________ litros.";
+            
             if (fullDesc != null && fullDesc.trim() != "" && fullDesc.trim() != " ")
             {            
             	//ininoles info adicional

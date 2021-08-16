@@ -16,15 +16,13 @@
  *****************************************************************************/
 package org.tsm.model;
 
-import java.sql.Timestamp;
-import java.util.Calendar;
-
 import org.compiere.model.MClient;
 
 import org.compiere.model.ModelValidationEngine;
 import org.compiere.model.ModelValidator;
 import org.compiere.model.PO;
 import org.compiere.util.CLogger;
+import org.compiere.util.DB;
 import org.compiere.util.Env;
 import org.compiere.model.X_RH_EvaluationGuide;
 import java.math.BigDecimal;
@@ -112,8 +110,10 @@ public class ModTSMValidateEvaluationGuide implements ModelValidator
 			if(amount.compareTo(Env.ONEHUNDRED)>0)
 				throw new AdempiereException ("El resultado no debe ser mayor a 100");
 			else
-				eg.setSumOfAnswers(amount);
-			eg.save();
+				DB.executeUpdate("Update rh_evaluationguide set SumOfAnswers = "+amount+" where rh_evaluationguide_id = "+eg.get_ID(), po.get_TrxName());
+			
+				//eg.setSumOfAnswers(amount);
+			//eg.save();
 		}
 	return null;
 	}	//	modelChange

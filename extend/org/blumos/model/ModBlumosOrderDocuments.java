@@ -63,13 +63,13 @@ public class ModBlumosOrderDocuments implements ModelValidator
 		if((type == TYPE_BEFORE_CHANGE || type == TYPE_BEFORE_NEW) && po.get_Table_ID()==MOrder.Table_ID)  
 		{
 			MOrder order = (MOrder) po;
-			if(order.isSOTrx())
+			if(!order.isSOTrx())
 			{
 				if(order.getC_DocTypeTarget_ID() == 1000052)
 				{
-					if(order.getDescription().compareTo("A") == 0 ||
-							order.getDescription() == null ||
-							order.getDescription() == "")
+					if(order.getDescription() == null 
+							|| order.getDescription().compareTo("A") == 0 
+							|| order.getDescription() == "")
 						order.set_CustomColumn("Description2", "The buyer will not accept products whose remaining " +
 								"shelf life is less than 75% of that indicated on the Certificate of Analysis, and/or " +
 								"products that belong to more than one production batch.  All packing made of wood , " +
@@ -81,9 +81,9 @@ public class ModBlumosOrderDocuments implements ModelValidator
 				}
 				else
 				{
-					if(order.getDescription().compareTo("A") == 0 ||
-							order.getDescription() == null ||
-							order.getDescription() == "")
+					if(order.getDescription() == null 
+							|| order.getDescription().compareTo("A") == 0 
+							|| order.getDescription() == "")
 						order.set_CustomColumn("Description2", "El comprador no aceptara productos con vida util menor " +
 								"al 75% de lo indicado en el Certificado de Analisis y/o productos que pertenezcan a mas " +
 								"de un lote de produccion.  Todo el embalaje de madera, incluso el material de estiba, " +

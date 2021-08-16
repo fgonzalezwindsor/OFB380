@@ -311,7 +311,8 @@ public class MStorage extends X_M_Storage
 			if (positiveOnly)
 			{
 				//sql += " AND s.QtyOnHand > 0 "; faaguilar OFB original code commented
-				sql += " AND (select sum(fa.qtyonhand) from m_storage fa where fa.M_Locator_ID=l.M_Locator_ID and fa.M_Product_ID=s.M_Product_ID)>0 ";//faaguilar OFB
+				//sql += " AND (select sum(fa.qtyonhand) from m_storage fa where fa.M_Locator_ID=l.M_Locator_ID and fa.M_Product_ID=s.M_Product_ID)>0 ";//faaguilar OFB
+				sql += " AND (select sum(fa.qtyonhand) from m_storage fa where fa.M_Locator_ID=? and fa.M_Product_ID=?)>0 ";//mfrojas se cambia prod punto por parametro
 			}
 			else
 			{
@@ -353,9 +354,20 @@ public class MStorage extends X_M_Storage
 			{
 				pstmt.setInt(3, M_AttributeSetInstance_ID);
 			}
-			else if (minGuaranteeDate != null) //faaguilar OFB add client.get_ValueAsBoolean("QtyPriority")
-			{
-				pstmt.setTimestamp(3, minGuaranteeDate);
+			//mfrojas 20190723 se agrega if para reemplazar parametros.
+			else
+			{	
+				if(positiveOnly && minGuaranteeDate != null)
+				{
+					pstmt.setInt(3, M_Locator_ID > 0 ? M_Locator_ID : M_Warehouse_ID);
+					pstmt.setInt(4, M_Product_ID);
+					pstmt.setTimestamp(5, minGuaranteeDate);
+
+				}
+				else if (!positiveOnly && minGuaranteeDate != null) //faaguilar OFB add client.get_ValueAsBoolean("QtyPriority")
+				{
+					pstmt.setTimestamp(3, minGuaranteeDate);
+				}
 			}
 			rs = pstmt.executeQuery();
 			while (rs.next())

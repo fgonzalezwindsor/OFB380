@@ -248,7 +248,11 @@ public class ModWindsorUpdateReserved implements ModelValidator
 				DB.executeUpdate("UPDATE M_RequisitionLine SET QtyReserved = 0 WHERE M_Requisition_ID = "+req.get_ID(), po.get_TrxName());				
 		}
 		//actualizamos campo qtyReserved en solicitud de venta
-		if(timing == TIMING_AFTER_COMPLETE && po.get_Table_ID()== MOrder.Table_ID)  
+		// se ocupan metodos individuales pòr errores generados 
+		// ininoles 03-09-2020
+		//se vuelve a solo 1 metodo y se comentan metodos individuales 28-10-2020
+		if((timing == TIMING_AFTER_COMPLETE || timing == TIMING_AFTER_VOID 
+				|| timing == TIMING_AFTER_REACTIVATE)&& po.get_Table_ID()== MOrder.Table_ID)  
 		{
 			MOrder order = (MOrder) po;
 			if(order.isSOTrx())
@@ -260,16 +264,62 @@ public class ModWindsorUpdateReserved implements ModelValidator
 					if(oLine.get_ValueAsInt("M_RequisitionLine_ID") > 0)
 					{
 						MRequisitionLine rLine = new MRequisitionLine(po.getCtx(), oLine.get_ValueAsInt("M_RequisitionLine_ID"), po.get_TrxName());
-						BigDecimal qtyAva = (BigDecimal)rLine.get_Value("QtyReserved");
-						if(qtyAva == null)
-							qtyAva = Env.ZERO;
-						qtyAva = qtyAva.subtract(oLine.getQtyOrdered());
-						DB.executeUpdate("UPDATE M_RequisitionLine SET QtyReserved = "+qtyAva+" WHERE M_RequisitionLine_ID = "+rLine.get_ID(), po.get_TrxName());
+						
+						BigDecimal qtyUsed =DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(QtyOrdered)" +
+								" FROM C_OrderLine co" +
+								" INNER JOIN C_Order col ON (col.C_Order_ID = co.C_Order_ID)" +
+								" WHERE DocStatus IN ('CO','CL','IP') AND M_RequisitionLine_ID = ?",rLine.get_ID());
+						if(qtyUsed == null)							
+							qtyUsed = Env.ZERO;
+						BigDecimal qtyReserved = rLine.getQty().subtract(qtyUsed); 
+						DB.executeUpdate("UPDATE M_RequisitionLine SET QtyReserved = "+qtyReserved+", qtyUsed = " +qtyUsed+
+								" WHERE M_RequisitionLine_ID = "+rLine.get_ID(), po.get_TrxName());
 					}
 				}
 			}
 		}
-		
+		//al completar
+		/*if(timing == TIMING_AFTER_COMPLETE && po.get_Table_ID()== MOrder.Table_ID)  
+		{
+			MOrder order = (MOrder) po;
+			if(order.isSOTrx())
+			{
+				MOrderLine[] oLines = order.getLines(false, null);
+				for (int i = 0; i < oLines.length; i++)
+				{
+					MOrderLine oLine = oLines[i];
+					if(oLine.get_ValueAsInt("M_RequisitionLine_ID") > 0)
+					{
+						MRequisitionLine rLine = new MRequisitionLine(po.getCtx(), oLine.get_ValueAsInt("M_RequisitionLine_ID"), po.get_TrxName());
+						BigDecimal qtyReserved = ((BigDecimal)rLine.get_Value("QtyReserved")).subtract(oLine.getQtyOrdered()); 
+						BigDecimal qtyUsed = ((BigDecimal)rLine.get_Value("QtyUsed")).add(oLine.getQtyOrdered());
+						DB.executeUpdate("UPDATE M_RequisitionLine SET QtyReserved = "+qtyReserved+", qtyUsed = " +qtyUsed+
+								" WHERE M_RequisitionLine_ID = "+rLine.get_ID(), po.get_TrxName());
+					}
+				}
+			}
+		}
+		//al anular y reactivar
+		if((timing == TIMING_BEFORE_VOID || timing == TIMING_BEFORE_REACTIVATE) && po.get_Table_ID()== MOrder.Table_ID)  
+		{
+			MOrder order = (MOrder) po;
+			if(order.isSOTrx())
+			{
+				MOrderLine[] oLines = order.getLines(false, null);
+				for (int i = 0; i < oLines.length; i++)
+				{
+					MOrderLine oLine = oLines[i];
+					if(oLine.get_ValueAsInt("M_RequisitionLine_ID") > 0)
+					{
+						MRequisitionLine rLine = new MRequisitionLine(po.getCtx(), oLine.get_ValueAsInt("M_RequisitionLine_ID"), po.get_TrxName());
+						BigDecimal qtyReserved = ((BigDecimal)rLine.get_Value("QtyReserved")).add(oLine.getQtyOrdered()); 
+						BigDecimal qtyUsed = ((BigDecimal)rLine.get_Value("QtyUsed")).subtract(oLine.getQtyOrdered());
+						DB.executeUpdate("UPDATE M_RequisitionLine SET QtyReserved = "+qtyReserved+", qtyUsed = " +qtyUsed+
+								" WHERE M_RequisitionLine_ID = "+rLine.get_ID(), po.get_TrxName());
+					}
+				}
+			}
+		}*/
 		return null;
 	}	//	docValidate
 

@@ -29,6 +29,7 @@ import org.compiere.model.MPriceListVersion;
 import org.compiere.model.MProductPrice;
 import org.compiere.process.SvrProcess;
 import org.compiere.util.DB;
+import org.compiere.util.Env;
 
 /**
  *	CopyFromJobStandar
@@ -97,7 +98,8 @@ public class CopyPListVersionWithTax extends SvrProcess
 						MProductPrice ppNew = new MProductPrice(getCtx(), pListVNew.get_ID(), rsProd.getInt("M_Product_ID"),get_TrxName());
 						ppNew.setPriceList(price9);
 						ppNew.setPriceStd(price9);
-						ppNew.setPriceLimit(price9);
+						//ppNew.setPriceLimit(price9);
+						ppNew.setPriceLimit(Env.ONE);
 						//buscamos impuestos de la lista de precios base
 						BigDecimal vTax = DB.getSQLValueBD(get_TrxName(), "SELECT Variabletax FROM M_ProductPrice " +
 								" WHERE M_PriceList_Version_ID = "+pListV.get_ID()+" AND M_Product_ID = "+rsProd.getInt("M_Product_ID"));

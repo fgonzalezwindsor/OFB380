@@ -82,15 +82,15 @@ public class ModelOFBBlumosCAP implements ModelValidator
 			
 			if (inv.isSOTrx())// solo facturas de ventas
 			{		
-				String sqlUT = "UPDATE C_InvoiceTax cit SET TaxAmt = round((round(TaxBaseAmt)* "+
-					"(select Rate From C_Tax ct  where ct.C_Tax_ID = cit.C_Tax_ID))/100) "+ 
+				String sqlUT = "UPDATE C_InvoiceTax cit SET TaxAmt = COALESCE(round((round(TaxBaseAmt)* "+
+					"(select Rate From C_Tax ct  where ct.C_Tax_ID = cit.C_Tax_ID))/100),0) "+ 
 					"where C_Invoice_ID=? "; 
 			
 				DB.executeUpdate(sqlUT, inv.get_ID(), po.get_TrxName());
 			
-				String sqlUpdateCab = "UPDATE C_Invoice ci SET GrandTotal = Totallines + "+ 
-					"(SELECT SUM(TaxAmt) FROM C_InvoiceTax cit WHERE cit.C_Invoice_ID=ci.C_Invoice_ID) "+
-					"where C_Invoice_ID = ? ";
+				String sqlUpdateCab = "UPDATE C_Invoice ci SET GrandTotal = COALESCE(Totallines + "+ 
+					" COALESCE((SELECT SUM(TaxAmt) FROM C_InvoiceTax cit WHERE cit.C_Invoice_ID=ci.C_Invoice_ID),0),0) "+
+					" where C_Invoice_ID = ? ";
 			
 				DB.executeUpdate(sqlUpdateCab, inv.get_ID(), po.get_TrxName());
 			}			

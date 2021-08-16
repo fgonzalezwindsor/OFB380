@@ -377,29 +377,33 @@ public class ModPAUpdateCreditBP implements ModelValidator
 		if(timing == TIMING_BEFORE_VOID && po.get_Table_ID()==MOrder.Table_ID) 
 		{	
 			MOrder order = (MOrder)po;
-			//validación que descuente solo si no es devolución.
-			int flag = DB.getSQLValue(po.get_TrxName(), "SELECT COUNT(1) " +
-					" FROM C_DocType WHERE C_DocType_ID = "+order.getC_DocType_ID()+"" +
-					" AND C_DocType_ID IN ( SELECT dt.C_DocType_ID FROM C_DocType dt " +
-					" INNER JOIN C_DocType dt2 ON (dt.C_DocTypeInvoice_ID = dt2.C_DocType_ID)" +
-					" WHERE dt2.DocBaseType = 'ARC')");
-			if(order.isSOTrx() && flag < 1)
+			//solo se tomara credito si el estado del documento
+			if(order.getDocStatus().compareTo("CO") == 0)
 			{
-				MBPartner bp = new MBPartner(po.getCtx(), order.getC_BPartner_ID(), po.get_TrxName());
-				BigDecimal amtTotal = (BigDecimal)bp.get_Value("TotalOpenBalanceOFB");
-				if(amtTotal == null)
-					amtTotal = (BigDecimal)bp.get_Value("OwnCreditLimit");
-				if(amtTotal == null)
-					amtTotal = Env.ZERO;
-				amtTotal = amtTotal.add(order.getGrandTotal());
-				bp.set_CustomColumn("TotalOpenBalanceOFB", amtTotal);
-				BigDecimal amtUsed = (BigDecimal)bp.get_Value("SO_CreditUsedOFB");
-				if(amtUsed == null)
-					amtUsed = Env.ZERO;
-				amtUsed = amtUsed.subtract(order.getGrandTotal());
-				bp.set_CustomColumn("SO_CreditUsedOFB", amtUsed);
-				bp.save();	
-			}	
+				//validación que descuente solo si no es devolución.
+				int flag = DB.getSQLValue(po.get_TrxName(), "SELECT COUNT(1) " +
+						" FROM C_DocType WHERE C_DocType_ID = "+order.getC_DocType_ID()+"" +
+						" AND C_DocType_ID IN ( SELECT dt.C_DocType_ID FROM C_DocType dt " +
+						" INNER JOIN C_DocType dt2 ON (dt.C_DocTypeInvoice_ID = dt2.C_DocType_ID)" +
+						" WHERE dt2.DocBaseType = 'ARC')");
+				if(order.isSOTrx() && flag < 1)
+				{
+					MBPartner bp = new MBPartner(po.getCtx(), order.getC_BPartner_ID(), po.get_TrxName());
+					BigDecimal amtTotal = (BigDecimal)bp.get_Value("TotalOpenBalanceOFB");
+					if(amtTotal == null)
+						amtTotal = (BigDecimal)bp.get_Value("OwnCreditLimit");
+					if(amtTotal == null)
+						amtTotal = Env.ZERO;
+					amtTotal = amtTotal.add(order.getGrandTotal());
+					bp.set_CustomColumn("TotalOpenBalanceOFB", amtTotal);
+					BigDecimal amtUsed = (BigDecimal)bp.get_Value("SO_CreditUsedOFB");
+					if(amtUsed == null)
+						amtUsed = Env.ZERO;
+					amtUsed = amtUsed.subtract(order.getGrandTotal());
+					bp.set_CustomColumn("SO_CreditUsedOFB", amtUsed);
+					bp.save();	
+				}	
+			}
 		}
 		//se libera credito al cerrar(saldar) nota de venta
 		if(timing == TIMING_BEFORE_CLOSE && po.get_Table_ID()==MOrder.Table_ID) 

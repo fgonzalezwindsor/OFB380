@@ -35,6 +35,7 @@ import org.compiere.util.CLogger;
 import org.compiere.util.DB;
 import org.compiere.util.Env;
 import org.compiere.util.Msg;
+import org.ofb.model.OFBForward;
 
 /**
  *  Payment Allocation Model.
@@ -773,7 +774,16 @@ public final class MAllocationHdr extends X_C_AllocationHdr implements DocAction
 		{
 			int C_BPartner_ID = it.next();
 			MBPartner bp = new MBPartner(getCtx(), C_BPartner_ID, get_TrxName());
-			bp.setTotalOpenBalance();		//	recalculates from scratch
+			//ininoles 
+			if(OFBForward.NoUpdateCreditWindsor())
+			{		
+				if(bp.get_ID()!= 1001237 && !bp.get_ValueAsBoolean("NoUpdateBalance"))
+				{
+					bp.setTotalOpenBalance();		//	recalculates from scratch
+				}
+			}
+			else
+				bp.setTotalOpenBalance();		//	recalculates from scratch
 		//	bp.setSOCreditStatus();			//	called automatically
 			if (bp.save())
 				log.fine(bp.toString());

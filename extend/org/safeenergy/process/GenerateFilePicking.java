@@ -5,7 +5,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.util.Calendar;
 
-import org.apache.ecs.xhtml.br;
 import org.compiere.model.MOrder;
 import org.compiere.process.SvrProcess;
 import org.compiere.util.DB;

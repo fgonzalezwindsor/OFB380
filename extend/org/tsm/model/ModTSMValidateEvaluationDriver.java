@@ -16,18 +16,16 @@
  *****************************************************************************/
 package org.tsm.model;
 
-import java.sql.Timestamp;
-import java.util.Calendar;
-
 import org.compiere.model.MClient;
 
 import org.compiere.model.ModelValidationEngine;
 import org.compiere.model.ModelValidator;
 import org.compiere.model.PO;
 import org.compiere.util.CLogger;
+import org.compiere.util.DB;
 import org.compiere.util.Env;
 import org.compiere.model.X_RH_EvaluationGuide;
-import org.compiere.model.X_RH_EvaluationHeader;
+//import org.compiere.model.X_RH_EvaluationHeader;
 import org.compiere.model.X_RH_EvaluationLine;
 
 import java.math.BigDecimal;
@@ -93,35 +91,80 @@ public class ModTSMValidateEvaluationDriver implements ModelValidator
 
 			X_RH_EvaluationGuide eGuide = new X_RH_EvaluationGuide(po.getCtx(),eLine.getRH_EvaluationHeader().getRH_EvaluationGuide_ID(),po.get_TrxName());
 
+			//20180605 mfrojas se cambia forma. Las respuesta positivas no siempre serán las que sumen puntaje. A veces seran los NO los que
+			//sumen puntaje
 			
 			BigDecimal amount = Env.ZERO;
-			if(eLine.getAnswer1() != null && eLine.getAnswer1().compareTo("Y")==0)
+			log.config("qu1 "+eLine.getquestion1_drive());
+			String qu1 = DB.getSQLValueString(eLine.get_TrxName(), "SELECT ExpectedResult1 FROM RH_EvaluationGuide " +
+					" WHERE RH_EvaluationGuide_ID = ?", eLine.getRH_EvaluationHeader().getRH_EvaluationGuide_ID());
+			if(qu1==null)
+				qu1="";
+			if(eLine.getAnswer1() != null && eLine.getAnswer1().compareTo(qu1)==0)
 				amount = amount.add(eGuide.getAnswer1());
-			if(eLine.getAnswer2() != null && eLine.getAnswer2().compareTo("Y")==0)
+			String qu2 = DB.getSQLValueString(eLine.get_TrxName(), "SELECT ExpectedResult2 FROM RH_EvaluationGuide " +
+					" WHERE RH_EvaluationGuide_ID = ?", eLine.getRH_EvaluationHeader().getRH_EvaluationGuide_ID());
+			if(qu2==null)
+				qu2="";
+			if(eLine.getAnswer2() != null && eLine.getAnswer2().compareTo(qu2)==0)
 				amount = amount.add(eGuide.getAnswer2());
-			if(eLine.getAnswer3() != null && eLine.getAnswer3().compareTo("Y")==0)
+			String qu3 = DB.getSQLValueString(eLine.get_TrxName(), "SELECT ExpectedResult3 FROM RH_EvaluationGuide " +
+					" WHERE RH_EvaluationGuide_ID = ?", eLine.getRH_EvaluationHeader().getRH_EvaluationGuide_ID());
+			if(qu3==null)
+				qu3="";
+			if(eLine.getAnswer3() != null && eLine.getAnswer3().compareTo(qu3)==0)
 				amount = amount.add(eGuide.getAnswer3());
-			if(eLine.getAnswer4() != null && eLine.getAnswer4().compareTo("Y")==0)
+			String qu4 = DB.getSQLValueString(eLine.get_TrxName(), "SELECT ExpectedResult4 FROM RH_EvaluationGuide " +
+					" WHERE RH_EvaluationGuide_ID = ?", eLine.getRH_EvaluationHeader().getRH_EvaluationGuide_ID());
+			if(qu4==null)
+				qu4="";
+			if(eLine.getAnswer4() != null && eLine.getAnswer4().compareTo(qu4)==0)
 				amount = amount.add(eGuide.getAnswer4());
-			if(eLine.getAnswer5() != null && eLine.getAnswer5().compareTo("Y")==0)
+			String qu5 = DB.getSQLValueString(eLine.get_TrxName(), "SELECT ExpectedResult5 FROM RH_EvaluationGuide " +
+					" WHERE RH_EvaluationGuide_ID = ?", eLine.getRH_EvaluationHeader().getRH_EvaluationGuide_ID());
+			if(qu5==null)
+				qu5="";
+			if(eLine.getAnswer5() != null && eLine.getAnswer5().compareTo(qu5)==0)
 				amount = amount.add(eGuide.getAnswer5());
-			if(eLine.getAnswer6() != null && eLine.getAnswer6().compareTo("Y")==0)
+			String qu6 = DB.getSQLValueString(eLine.get_TrxName(), "SELECT ExpectedResult6 FROM RH_EvaluationGuide " +
+					" WHERE RH_EvaluationGuide_ID = ?", eLine.getRH_EvaluationHeader().getRH_EvaluationGuide_ID());
+			if(qu6==null)
+				qu6="";
+			if(eLine.getAnswer6() != null && eLine.getAnswer6().compareTo(qu6)==0)
 				amount = amount.add(eGuide.getAnswer6());
-			if(eLine.getAnswer7() != null && eLine.getAnswer7().compareTo("Y")==0)
+			String qu7 = DB.getSQLValueString(eLine.get_TrxName(), "SELECT ExpectedResult7 FROM RH_EvaluationGuide " +
+					" WHERE RH_EvaluationGuide_ID = ?", eLine.getRH_EvaluationHeader().getRH_EvaluationGuide_ID());
+			if(qu7==null)
+				qu7="";
+			if(eLine.getAnswer7() != null && eLine.getAnswer7().compareTo(qu7)==0)
 				amount = amount.add(eGuide.getAnswer7());
-			if(eLine.getAnswer8() != null && eLine.getAnswer8().compareTo("Y")==0)
+			String qu8 = DB.getSQLValueString(eLine.get_TrxName(), "SELECT ExpectedResult8 FROM RH_EvaluationGuide " +
+					" WHERE RH_EvaluationGuide_ID = ?", eLine.getRH_EvaluationHeader().getRH_EvaluationGuide_ID());
+			if(qu8==null)
+				qu8="";
+			if(eLine.getAnswer8() != null && eLine.getAnswer8().compareTo(qu8)==0)
 				amount = amount.add(eGuide.getAnswer8());
-			if(eLine.getAnswer9() != null && eLine.getAnswer9().compareTo("Y")==0)
+			String qu9 = DB.getSQLValueString(eLine.get_TrxName(), "SELECT ExpectedResult9 FROM RH_EvaluationGuide " +
+					" WHERE RH_EvaluationGuide_ID = ?", eLine.getRH_EvaluationHeader().getRH_EvaluationGuide_ID());
+			if(qu9==null)
+				qu9="";
+			if(eLine.getAnswer9() != null && eLine.getAnswer9().compareTo(qu9)==0)
 				amount = amount.add(eGuide.getAnswer9());
-			if(eLine.getAnswer10() != null && eLine.getAnswer10().compareTo("Y")==0)
+			String qu10 = DB.getSQLValueString(eLine.get_TrxName(), "SELECT ExpectedResult10 FROM RH_EvaluationGuide " +
+					" WHERE RH_EvaluationGuide_ID = ?", eLine.getRH_EvaluationHeader().getRH_EvaluationGuide_ID());
+			if(qu10==null)
+				qu10="";
+			if(eLine.getAnswer10() != null && eLine.getAnswer10().compareTo(qu10)==0)
 				amount = amount.add(eGuide.getAnswer10());
 
 			if(amount.compareTo(Env.ONEHUNDRED)>0)
 				throw new AdempiereException ("El resultado no debe ser mayor a 100");
 			else
-				eLine.setResult(amount);
+				DB.executeUpdate("Update rh_evaluationline set result = "+amount+" where rh_evaluationline_id = "+eLine.get_ID(), po.get_TrxName());
+
+				//eLine.setResult(amount);
 				
-			eLine.save();
+			//eLine.save();
 		}
 	return null;
 	}	//	modelChange

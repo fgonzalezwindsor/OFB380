@@ -730,7 +730,7 @@ public class ImportGLJournal extends SvrProcess
 						}
 						break;
 					}
-					journal.set_CustomColumn("C_ProjectOFB_ID", imp.get_ValueAsInt("C_ProjectOFB_ID"));//ininoles OFB
+					//journal.set_CustomColumn("C_ProjectOFB_ID", imp.get_ValueAsInt("C_ProjectOFB_ID"));//ininoles OFB
 					journal.save();
 					noInsertJournal++;
 				}
@@ -788,7 +788,7 @@ public class ImportGLJournal extends SvrProcess
 				try{
 					line.set_ValueOfColumn("M_Product_ID", imp.getM_Product_ID());//faaguilar OFB Cost
 					line.set_ValueOfColumn("C_BPartner_ID", imp.getC_BPartner_ID());//faaguilar OFB
-					journal.set_CustomColumn("C_ProjectOFB_ID", imp.get_ValueAsInt("C_ProjectOFB_ID"));//ininoles OFB
+					line.set_CustomColumn("C_ProjectOFB_ID", imp.get_ValueAsInt("C_ProjectOFB_ID"));//ininoles OFB
 					}catch(Exception e){}
 					line.setAD_Org_ID(imp.getAD_Org_ID()); //faaguilar OFB org lines
 				if (line.save())

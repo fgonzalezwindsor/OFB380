@@ -29,6 +29,7 @@ import org.compiere.model.MPriceListVersion;
 import org.compiere.model.MProductPrice;
 import org.compiere.process.SvrProcess;
 import org.compiere.util.DB;
+import org.compiere.util.Env;
 
 /**
  *	CopyFromJobStandar
@@ -97,7 +98,8 @@ public class CopyPListVersion extends SvrProcess
 						MProductPrice ppNew = new MProductPrice(getCtx(), pListVNew.get_ID(), rsProd.getInt("M_Product_ID"),get_TrxName());
 						ppNew.setPriceList(price9);
 						ppNew.setPriceStd(price9);
-						ppNew.setPriceLimit(price9);
+						//ppNew.setPriceLimit(price9);
+						ppNew.setPriceLimit(Env.ONE);
 						ppNew.set_CustomColumn("Variabletax", price9);
 						ppNew.set_CustomColumn("fixedtax", price9);
 						ppNew.save();

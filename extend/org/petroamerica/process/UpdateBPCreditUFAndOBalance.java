@@ -73,7 +73,8 @@ public class UpdateBPCreditUFAndOBalance extends SvrProcess
 					//ininoles se actualiza credito externo por DB para que no ejecute otros model
 					BigDecimal param[] = new BigDecimal[1];
 					param[0] = amtConvert;
-					DB.executeUpdateEx("UPDATE C_BPartner SET ExternalCreditLimit = ? WHERE C_BPartner_ID = "+bp.get_ID(),param,get_TrxName());
+					//DB.executeUpdateEx("UPDATE C_BPartner SET ExternalCreditLimit = ? WHERE C_BPartner_ID = "+bp.get_ID(),param,get_TrxName());
+					DB.executeUpdateEx("UPDATE C_BPartner SET ExternalCreditLine = ? WHERE C_BPartner_ID = "+bp.get_ID(),param,get_TrxName());
 					
 					BigDecimal amtUsed = (BigDecimal)bp.get_Value("SO_CreditUsedOFB");
 					if(amtUsed == null)

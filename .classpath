@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="extend"/>
+	<classpathentry kind="lib" path="lib/gson-2.6.2.jar"/>
+	<classpathentry kind="lib" path="lib/java-json.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/adempiere_360"/>
+	<classpathentry kind="lib" path="D:/Aplicaciones/Desarrollo/Dropbox/oracle_drivers_jdbc/ojdbc6.jar"/>
+	<classpathentry kind="lib" path="D:/Aplicaciones/Desarrollo/Dropbox/oracle_drivers_jdbc/orai18n.jar"/>
+	<classpathentry kind="lib" path="D:/Aplicaciones/Desarrollo/Dropbox/oracle_drivers_jdbc/xdb6.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

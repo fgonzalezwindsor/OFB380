@@ -21,7 +21,6 @@ package org.blumos.process;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Timestamp;
-import java.util.logging.Level;
 import java.math.BigDecimal;
 
 import org.compiere.model.X_T_BL_ER_PARAMETROS;
@@ -106,19 +105,23 @@ public class ProcessER extends SvrProcess
 		int E7 = DB.getSQLValue(get_TrxName(), "SELECT MAX(C_ELEMENTVALUE_ID) FROM C_ELEMENTVALUE WHERE VALUE='52' AND AD_CLIENT_ID="+para.getAD_Client_ID());
 		
 		//BORRA T_BL_ER_SALDOS
-		P_IniA = para.getHASTA_A();
+		P_IniA = new Timestamp(para.getHASTA_A().getTime());
 		P_IniA.setMonth(0);
 		P_IniA.setDate(1);
-		P_IniB = para.getHASTA_B();
+		P_IniB = new Timestamp(para.getHASTA_B().getTime());
 		P_IniB.setMonth(0);
 		P_IniB.setDate(1);
 		
 		//BORRA ENCABEZADO DE T_BL_FLASH_VENTAS Y POR DEFINICION DE LLAVE 
 		//BORRA DETALLE DE T_BL_FLASH_VENTAS_DETALLE
+		
 		DB.executeUpdate("DELETE FROM T_BL_ER_SALDOS WHERE T_BL_ER_PARAMETROS_ID="+para.get_ID(), get_TrxName());
 
 		//Formacion de SQL variable
-		String sqlVar = "select AD_CLIENT_ID,AD_ORG_ID,ISACTIVE,SYSDATE,100,SYSDATE,100,c_elementvalue_id," +
+		String sqlVar = "";
+		if(DB.isOracle())
+		{
+			sqlVar = "select AD_CLIENT_ID,AD_ORG_ID,ISACTIVE,SYSDATE,100,SYSDATE,100,c_elementvalue_id," +
 				" sum(saldo_a) as saldo_a, sum(saldo_b) as saldo_b,sum(saldos_a) as saldos_a, sum(saldos_b) as saldos_b," +
 				" sum(debitos_a) as debitos_a, sum(creditos_a) as creditos_a,sum(debitos_b) as debitos_b, sum(creditos_b) as creditos_b," +
 				" AccountType from c_elementvalue " +
@@ -138,7 +141,33 @@ public class ProcessER extends SvrProcess
 				" 0 as saldos_a, (sum(fa.amtacctdr) - sum(fa.amtacctcr)) as saldos_b, 0 as debitos_a, 0 as creditos_a, sum(fa.amtacctdr) as debitos_b, sum(fa.amtacctcr) as creditos_b" +
 				" from fact_acct fa WHERE fa.dateacct >= ? AND fa.dateacct <= ? "+sql_var_org+" GROUP BY fa.account_id) saldos on (c_elementvalue.c_elementvalue_id=saldos.account_id)" +
 				" where ad_client_id="+para.getAD_Client_ID()+" AND issummary='N' AND ISACTIVE='Y'  " +
-				" GROUP BY AD_CLIENT_ID,AD_ORG_ID,ISACTIVE,SYSDATE,100,SYSDATE,100,c_elementvalue_id,AccountType";
+				" GROUP BY AD_CLIENT_ID,AD_ORG_ID,ISACTIVE,SYSDATE,100,SYSDATE,100,c_elementvalue_id,AccountType ORDER BY c_elementvalue_id";
+		}
+		else
+		{
+			sqlVar = "select AD_CLIENT_ID,AD_ORG_ID,ISACTIVE,SYSDATE,100,SYSDATE,100,c_elementvalue_id," +
+			" sum(saldo_a) as saldo_a, sum(saldo_b) as saldo_b,sum(saldos_a) as saldos_a, sum(saldos_b) as saldos_b," +
+			" sum(debitos_a) as debitos_a, sum(creditos_a) as creditos_a,sum(debitos_b) as debitos_b, sum(creditos_b) as creditos_b," +
+			" AccountType from c_elementvalue " +
+			" inner join (select fa.account_id,(sum(fa.amtacctdr) - sum(fa.amtacctcr)) as saldo_a, 0 as saldo_b," +
+			" 0 as saldos_a, 0 as saldos_b, 0 as debitos_a, 0 as creditos_a, 0 as debitos_b, 0 as creditos_b" +
+			" from fact_acct fa WHERE fa.dateacct >= ? AND fa.dateacct <= ? "+sql_var_org+" GROUP BY fa.account_id" +
+			" union all" +
+			" select fa.account_id,0 as saldo_a, (sum(fa.amtacctdr) - sum(fa.amtacctcr)) as saldo_b," +
+			" 0 as saldos_a, 0 as saldos_b, 0 as debitos_a, 0 as creditos_a, 0 as debitos_b, 0 as creditos_b" +
+			" from fact_acct fa WHERE fa.dateacct >= ? AND fa.dateacct <= ? "+sql_var_org+" GROUP BY fa.account_id" +
+			" union all" +
+			" select fa.account_id, 0 as saldo_a, 0 as saldo_b," +
+			" (sum(fa.amtacctdr) - sum(fa.amtacctcr)) as saldos_a, 0 as saldos_b, sum(fa.amtacctdr) as debitos_a, sum(fa.amtacctcr) as creditos_a, 0 as debitos_b, 0 as creditos_b" +
+			" from fact_acct fa WHERE fa.dateacct >=? AND fa.dateacct <=? "+sql_var_org+" GROUP BY fa.account_id " +
+			" union all" +
+			" select fa.account_id,0 as saldo_a, 0 as saldo_b," +
+			" 0 as saldos_a, (sum(fa.amtacctdr) - sum(fa.amtacctcr)) as saldos_b, 0 as debitos_a, 0 as creditos_a, sum(fa.amtacctdr) as debitos_b, sum(fa.amtacctcr) as creditos_b" +
+			" from fact_acct fa WHERE fa.dateacct >= ? AND fa.dateacct <= ? "+sql_var_org+" GROUP BY fa.account_id) saldos on (c_elementvalue.c_elementvalue_id=saldos.account_id)" +
+			" where ad_client_id="+para.getAD_Client_ID()+" AND issummary='N' AND ISACTIVE='Y'  " +
+			" GROUP BY AD_CLIENT_ID,AD_ORG_ID,ISACTIVE,SYSDATE,SYSDATE,c_elementvalue_id,AccountType ORDER BY c_elementvalue_id";
+		}
+			
 		
 		log.config("sqldet "+sqlVar);
 		PreparedStatement pstmt = null;
@@ -149,8 +178,8 @@ public class ProcessER extends SvrProcess
 		PreparedStatement pstmtE5 = null;
 		PreparedStatement pstmtE6 = null;
 		PreparedStatement pstmtE7 = null;
-		try
-		{
+		//try
+		//{
 			pstmt = DB.prepareStatement (sqlVar, get_TrxName());
 			pstmt.setTimestamp(1, para.getDESDE_A());
 			pstmt.setTimestamp(2, para.getHASTA_A());
@@ -160,7 +189,17 @@ public class ProcessER extends SvrProcess
 			pstmt.setTimestamp(6, para.getHASTA_A());
 			pstmt.setTimestamp(7, P_IniB);
 			pstmt.setTimestamp(8, para.getHASTA_B());
-			ResultSet rs = pstmt.executeQuery ();			
+			ResultSet rs = pstmt.executeQuery ();		
+			log.config("Lista de parametros:");
+			log.config("Para 1:"+para.getDESDE_A());
+			log.config("Para 2"+para.getHASTA_A());
+			log.config("Para 3"+para.getDESDE_B());
+			log.config("Para 4"+para.getHASTA_B());
+			log.config("Para 5"+P_IniA);
+			log.config("Para 6"+para.getHASTA_A());
+			log.config("Para 7"+P_IniB);
+			log.config("Para 8"+para.getHASTA_B());
+			
 			while (rs.next())
 			{
 				X_T_BL_ER_SALDOS saldo = new X_T_BL_ER_SALDOS(getCtx(), 0, get_TrxName());
@@ -176,9 +215,9 @@ public class ProcessER extends SvrProcess
 				saldo.setSALDOHASTA_A(rs.getBigDecimal("saldos_a"));
 				saldo.setSALDOHASTA_B(rs.getBigDecimal("saldos_b"));
 				saldo.setDEBEHASTA_A(rs.getBigDecimal("debitos_a"));
-				saldo.setHABERHASTA_A(rs.getBigDecimal("creditos_a"));
+				saldo.setHABERHASTA_A(rs.getBigDecimal("creditos_a"));//revisar este campo
 				saldo.setDEBEHASTA_B(rs.getBigDecimal("debitos_b"));
-				saldo.setHABERHASTA_A(rs.getBigDecimal("creditos_b"));
+				saldo.setHABERHASTA_B(rs.getBigDecimal("creditos_b"));
 				saldo.setAccountType(rs.getString("AccountType"));
 				saldo.setINI_A(P_IniA);
 				saldo.setINI_B(P_IniB);
@@ -196,11 +235,9 @@ public class ProcessER extends SvrProcess
 			DB.executeUpdate("update t_bl_er_saldos set haberhasta_A=0 where Haberhasta_A is null",get_TrxName());
 			DB.executeUpdate("update t_bl_er_saldos set haberhasta_b=0 where haberhasta_b is null",get_TrxName());
 			
-			commitEx();
 			//CONSTRUCCION ESTADO DE RESULTADOS
 			//vaciamos la tabla de salida 
 			DB.executeUpdate("DELETE FROM T_BL_ER_SALIDA WHERE T_BL_ER_PARAMETROS_ID="+para.get_ID(),get_TrxName());
-			
 			//ESCRIBIMOS PRIMER TITULO
 			X_T_BL_ER_SALIDA tSalida = new X_T_BL_ER_SALIDA(getCtx(), 0, get_TrxName());
 			tSalida.setT_BL_ER_PARAMETROS_ID(para.get_ID());
@@ -239,8 +276,9 @@ public class ProcessER extends SvrProcess
 			
 			//COSTOS DE LA OPERACION
 			String sqlE2 = "select pc.nombre_abuelo, pc.nombre_padre, pc.account_id, pc.value, pc.NAME, ts.saldo_a, ts.saldo_b, ts.desde_a, ts.hasta_a, ts.desde_b, ts.hasta_b" +
-			" from rvbl_plandecuentas pc INNER JOIN t_bl_er_saldos ts On (pc.account_id=ts.account_id)" +
-			" where id_padre = "+E2+" AND T_BL_ER_PARAMETROS_ID="+para.get_ID();		
+					" from rvbl_plandecuentas pc" +
+					" INNER JOIN t_bl_er_saldos ts On (pc.account_id=ts.account_id)" +
+					" where id_padre= "+E2+" AND T_BL_ER_PARAMETROS_ID="+para.get_ID()+" ORDER BY pc.sec_padre, sec_cuenta";		
 	
 			pstmtE2 = DB.prepareStatement (sqlE2, get_TrxName());			
 			ResultSet rsE2 = pstmtE2.executeQuery ();			
@@ -264,12 +302,14 @@ public class ProcessER extends SvrProcess
 			}
 			pstmtE2.close ();rsE2.close(); 
 			pstmtE2 = null; rsE2 = null;
-	
+			
 			// GASTOS OPERACIONALES
 			String sqlE3 = "select pc.nombre_abuelo, pc.nombre_padre, pc.account_id, pc.value, pc.NAME, ts.saldo_a, ts.saldo_b, ts.desde_a, ts.hasta_a, ts.desde_b, ts.hasta_b" +
-			" from rvbl_plandecuentas pc INNER JOIN t_bl_er_saldos ts On (pc.account_id=ts.account_id)" +
-			" where id_padre = "+E3+" AND T_BL_ER_PARAMETROS_ID="+para.get_ID();		
-	
+					" from rvbl_plandecuentas pc" +
+					" INNER JOIN t_bl_er_saldos ts On (pc.account_id=ts.account_id)" +
+					" where pc.id_abuelo="+E3+" AND pc.id_padre<> "+E2+" AND T_BL_ER_PARAMETROS_ID="+para.get_ID()+
+					" ORDER BY pc.sec_padre, sec_cuenta";
+			
 			pstmtE3 = DB.prepareStatement (sqlE3, get_TrxName());			
 			ResultSet rsE3 = pstmtE3.executeQuery ();			
 			while (rsE3.next ())
@@ -339,8 +379,8 @@ public class ProcessER extends SvrProcess
 			
 			//ingresos no operacionales
 			String sqlE4 = "select pc.nombre_abuelo, pc.nombre_padre, pc.account_id, pc.value, pc.NAME, ts.saldo_a, ts.saldo_b, ts.desde_a, ts.hasta_a, ts.desde_b, ts.hasta_b" +
-			" from rvbl_plandecuentas pc INNER JOIN t_bl_er_saldos ts On (pc.account_id=ts.account_id)" +
-			" where id_padre = "+E4+" AND T_BL_ER_PARAMETROS_ID="+para.get_ID();		
+					" from rvbl_plandecuentas pc INNER JOIN t_bl_er_saldos ts On (pc.account_id=ts.account_id)" +
+					" where id_abuelo="+E4+" AND T_BL_ER_PARAMETROS_ID="+para.get_ID()+" ORDER BY pc.sec_padre, sec_cuenta";		
 	
 			pstmtE4 = DB.prepareStatement (sqlE4, get_TrxName());			
 			ResultSet rsE4 = pstmtE4.executeQuery ();			
@@ -364,11 +404,12 @@ public class ProcessER extends SvrProcess
 			}
 			pstmtE4.close ();rsE4.close(); 
 			pstmtE4 = null; rsE4 = null;
+			commitEx();
 			
 			//egresos no operacionales
 			String sqlE5 = "select pc.nombre_abuelo, pc.nombre_padre, pc.account_id, pc.value, pc.NAME, ts.saldo_a, ts.saldo_b, ts.desde_a, ts.hasta_a, ts.desde_b, ts.hasta_b" +
-			" from rvbl_plandecuentas pc INNER JOIN t_bl_er_saldos ts On (pc.account_id=ts.account_id)" +
-			" where id_padre = "+E5+" AND T_BL_ER_PARAMETROS_ID="+para.get_ID();		
+					" from rvbl_plandecuentas pc INNER JOIN t_bl_er_saldos ts On (pc.account_id=ts.account_id)" +
+					" where id_ABUELO="+E5+" AND T_BL_ER_PARAMETROS_ID="+para.get_ID()+"ORDER BY pc.sec_padre, sec_cuenta";		
 		
 			pstmtE5 = DB.prepareStatement (sqlE5, get_TrxName());			
 			ResultSet rsE5 = pstmtE5.executeQuery ();			
@@ -392,11 +433,11 @@ public class ProcessER extends SvrProcess
 			}
 			pstmtE5.close ();rsE5.close(); 
 			pstmtE5 = null; rsE5 = null;
-		
+			
 			//correccion monetaria
 			String sqlE6 = "select pc.nombre_abuelo, pc.nombre_padre, pc.account_id, pc.value, pc.NAME, ts.saldo_a, ts.saldo_b, ts.desde_a, ts.hasta_a, ts.desde_b, ts.hasta_b" +
-			" from rvbl_plandecuentas pc INNER JOIN t_bl_er_saldos ts On (pc.account_id=ts.account_id)" +
-			" where id_padre = "+E6+" AND T_BL_ER_PARAMETROS_ID="+para.get_ID();		
+					" from rvbl_plandecuentas pc INNER JOIN t_bl_er_saldos ts On (pc.account_id=ts.account_id)" +
+					" where id_ABUELO="+E6+" AND T_BL_ER_PARAMETROS_ID="+para.get_ID()+" ORDER BY pc.sec_padre, sec_cuenta";		
 		
 			pstmtE6 = DB.prepareStatement (sqlE6, get_TrxName());			
 			ResultSet rsE6 = pstmtE6.executeQuery ();			
@@ -473,8 +514,8 @@ public class ProcessER extends SvrProcess
 			
 			//impuesto Renta
 			String sqlE7 = "select pc.nombre_abuelo, pc.nombre_padre, pc.account_id, pc.value, pc.NAME, ts.saldo_a, ts.saldo_b, ts.desde_a, ts.hasta_a, ts.desde_b, ts.hasta_b" +
-			" from rvbl_plandecuentas pc INNER JOIN t_bl_er_saldos ts On (pc.account_id=ts.account_id)" +
-			" where id_padre = "+E7+" AND T_BL_ER_PARAMETROS_ID="+para.get_ID();		
+					" from rvbl_plandecuentas pc INNER JOIN t_bl_er_saldos ts On (pc.account_id=ts.account_id)" +
+					" where id_abuelo="+E7+" AND T_BL_ER_PARAMETROS_ID="+para.get_ID()+" ORDER BY pc.sec_padre, sec_cuenta";		
 		
 			pstmtE7 = DB.prepareStatement (sqlE7, get_TrxName());			
 			ResultSet rsE7 = pstmtE7.executeQuery ();			
@@ -535,11 +576,11 @@ public class ProcessER extends SvrProcess
 			DB.executeUpdate("update t_bl_er_salida set saldo_a=(saldo_a*-1), saldo_b=(saldo_b*-1)", get_TrxName());
 			para.setBANDERA2(true);
 			para.saveEx();
-		}
+		/*}
 		catch (Exception e)
 		{
 			log.log(Level.SEVERE, e.getMessage(), e);
-		}		
+		}*/		
 		return "OK";
 	}	//	doIt
 }	//	Replenish

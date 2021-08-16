@@ -70,7 +70,7 @@ public class ModBlumosCashLine implements ModelValidator
 						" inner join c_charge_acct cca on (cvc.c_validcombination_id=cca.ch_revenue_acct) " +
 						" WHERE cca.c_charge_id="+cLine.getC_Charge_ID());
 				Boolean analisis = false; 
-				if(an != null && an.compareTo("Y") == 0);
+				if(an != null && an.compareTo("Y") == 0)
 					analisis = true;				
 				int ID_BP = cLine.get_ValueAsInt("C_BPartner_ID"); 
 				if(ID_BP < 1 && analisis)

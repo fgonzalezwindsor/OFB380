@@ -57,7 +57,11 @@ public class SaldarRequisitionWinOnLine extends SvrProcess
 	{
 		
 		MRequisitionLine rLine = new MRequisitionLine(getCtx(), p_M_RequisitionLine_ID, get_TrxName());
-		BigDecimal qtyDif = rLine.getQty().subtract((BigDecimal)rLine.get_Value("QtyUsed"));				
+		//se actualiza cantidad usada
+		DB.executeUpdate("UPDATE M_RequisitionLine SET QtyUsed = Qty, QtyReserved = 0, liberada = 'Y', " +
+				" FechaLibereacion = Sysdate, AD_UserRef_ID = "+Env.getAD_User_ID(getCtx())+
+				" WHERE M_RequisitionLine_ID = "+p_M_RequisitionLine_ID, get_TrxName());
+		BigDecimal qtyDif = rLine.getQty().subtract((BigDecimal)rLine.get_Value("QtyUsed"));
 		if(qtyDif != null && qtyDif.compareTo(Env.ZERO) > 0)
 		{
 			//se desreserva cantidad
@@ -77,9 +81,7 @@ public class SaldarRequisitionWinOnLine extends SvrProcess
 					rLine.getM_AttributeSetInstance_ID(), rLine.getM_AttributeSetInstance_ID(),
 					Env.ZERO, qtyDif.negate(), Env.ZERO, rLine.get_TrxName());
 			}
-			//se actualiza cantidad usada
-			DB.executeUpdate("UPDATE M_RequisitionLine SET QtyUsed = Qty, QtyReserved = 0 " +
-					" WHERE M_RequisitionLine_ID = "+p_M_RequisitionLine_ID, get_TrxName());
+			
 		}
 		return "actualizado";
 	}	//	doIt

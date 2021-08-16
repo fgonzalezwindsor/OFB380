@@ -54,7 +54,7 @@ public interface I_T_BL_ER_SALDOS
 	  */
 	public int getAccount_ID();
 
-	public I_C_ValidCombination getAccount() throws RuntimeException;
+	public I_C_ElementValue getAccount() throws RuntimeException;
 
     /** Column name AccountType */
     public static final String COLUMNNAME_AccountType = "AccountType";

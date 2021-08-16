@@ -562,7 +562,8 @@ public class VAllocationBp extends Allocation
 		 WHERE -- i.IsPaid='N' AND i.Processed='Y' AND i.C_BPartner_ID=1000001
 		 */
 		data = new Vector<Vector<Object>>();
-		sql = new StringBuffer("SELECT i.DateAcct,i.DocumentNo,i.C_Invoice_ID," //  1..3
+		//sql = new StringBuffer("SELECT i.DateAcct,i.DocumentNo,i.C_Invoice_ID," //  1..3
+		sql = new StringBuffer("SELECT i.DueDate,i.DocumentNo,i.C_Invoice_ID," //  1..3
 			+ "c.ISO_Code,i.GrandTotal*i.MultiplierAP, "                            //  4..5    Orig Currency
 			+ "currencyConvert(i.GrandTotal*i.MultiplierAP,i.C_Currency_ID,?,?,i.C_ConversionType_ID,i.AD_Client_ID,i.AD_Org_ID), " //  6   #1  Converted, #2 Date
 			+ "currencyConvert(invoiceOpen(C_Invoice_ID,C_InvoicePaySchedule_ID),i.C_Currency_ID,?,?,i.C_ConversionType_ID,i.AD_Client_ID,i.AD_Org_ID)*i.MultiplierAP, "  //  7   #3, #4  Converted Open

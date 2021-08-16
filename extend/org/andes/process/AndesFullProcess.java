@@ -72,7 +72,7 @@ public class AndesFullProcess extends SvrProcess
 	{	
 		//ejecucion de archivo bat
 		X_C_AccountCredentials aCr = new X_C_AccountCredentials(getCtx(),getRecord_ID(), get_TrxName());
-		String rutaBat = OFBForward.PathBatIMacro();		
+		//String rutaBat = OFBForward.PathBatIMacro();		
 		//ejecucion(aCr.getFileName(),rutaBat);
 		//delay a espera de terminar de ejecutar imacro
 		try 

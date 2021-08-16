@@ -10,6 +10,7 @@ import org.compiere.model.ModelValidator;
 import org.compiere.model.PO;
 import org.compiere.util.CLogger;
 import org.compiere.util.DB;
+import org.ofb.utils.DateUtils;
 /**
  *	Validator for company blumos
  *
@@ -85,55 +86,37 @@ public class ModBlumosValidaTurno implements ModelValidator
 					&& order.getDeliveryViaRule().compareTo("V") != 0
 					&& order.getM_Warehouse_ID() == 1000000
 					&& !order.get_ValueAsBoolean("Solutec"))
-			{
-				Timestamp today_00 = new Timestamp(System.currentTimeMillis());
-				Timestamp today = new Timestamp(System.currentTimeMillis());
-				today_00.setHours(0);
-				today_00.setMinutes(0);
-				today_00.setSeconds(0);
-				today_00.setNanos(0);
-				Timestamp date_promised = order.getDatePromised();
-				date_promised.setHours(0);
-				date_promised.setMinutes(0);
-				date_promised.setSeconds(0);
-				date_promised.setNanos(0);		
-				if(date_promised.compareTo(today_00) < 0 
-						&& order.getDatePromised().getHours() > 9)
+			{	
+				//nuevo metodo de actualizacion de turnos y fecha prometida				
+				Timestamp newDatePromise = order.getDatePromised();
+				if(BlumosUtilities.DameSumarDiasTurno(DateUtils.now(), order.getDatePromised()) > 0)
+					//newDatePromise = DateUtils.SumarDias(DateUtils.now(), BlumosUtilities.DameSumarDiasTurno(DateUtils.now(), order.getDatePromised()));
+					newDatePromise = DateUtils.SumarDias(newDatePromise, BlumosUtilities.DameSumarDiasTurno(DateUtils.now(), order.getDatePromised()));
+				order.setDatePromised(newDatePromise);
+				//siempre se setea turno
+				order.setPriorityRule(BlumosUtilities.DameTurno(DateUtils.now(), order.getDatePromised()));
+				order.save(po.get_TrxName());
+				//se actualiza fecha de lineas
+				MOrderLine[] lines = order.getLines(true, null);	//	Line is default
+				for (int i = 0; i < lines.length; i++)
 				{
-					Timestamp prom1 = today_00;
-					prom1.setDate(prom1.getDate()+1);
-					order.setDatePromised(prom1);
-					DB.executeUpdate("update c_orderline set rrstartdate=sysdate+1 where C_order_id=:new.c_order_id and datepromised<=to_char(sysdate, 'dd/mm/yyyy') and datepromised=rrstartdate",po.get_TrxName());
-					DB.executeUpdate("update c_orderline set datepromised=sysdate+1 where C_order_id=:new.c_order_id and datepromised<=to_char(sysdate, 'dd/mm/yyyy')",po.get_TrxName());
+					MOrderLine line = lines[i];
+					//actualizacion de rrstartdate
+					Timestamp date= (Timestamp)line.get_Value("rrstartdate");
+					if(date == null)
+					{
+						line.set_CustomColumn("rrstartdate", line.getDatePromised());
+						line.set_CustomColumn("Qty_Original", line.getQtyOrdered());
+						line.save(po.get_TrxName());
+					}
+					//actualizacion de datepromised lineas
+					if(line.getDatePromised().compareTo(newDatePromise) <= 0)
+					{
+						line.setDatePromised(newDatePromise);
+						line.save(po.get_TrxName());
+					}
 				}
-				if(date_promised.compareTo(today_00) < 0 
-						&& order.getDatePromised().getHours() < 9)
-				{
-					order.setDatePromised(today_00);
-					DB.executeUpdate("update c_orderline set rrstartdate=sysdate where C_order_id=:new.c_order_id and datepromised<=to_char(sysdate, 'dd/mm/yyyy') and datepromised=rrstartdate",po.get_TrxName());
-					DB.executeUpdate("update c_orderline set datepromised=sysdate where C_order_id=:new.c_order_id and datepromised<=to_char(sysdate, 'dd/mm/yyyy')",po.get_TrxName());
-				}
-				if(today.getHours() > 9)
-				{
-					DB.executeUpdate("update c_orderline set rrstartdate=sysdate+1 where C_order_id=:new.c_order_id and datepromised<=to_char(sysdate, 'dd/mm/yyyy') and datepromised=rrstartdate", po.get_TrxName());
-					DB.executeUpdate("update c_orderline set datepromised=sysdate+1 where C_order_id=:new.c_order_id and datepromised<=to_char(sysdate, 'dd/mm/yyyy')", po.get_TrxName());
-				}
-			}
-			
-			
-			
-			MOrderLine[] lines = order.getLines(true, null);	//	Line is default
-			for (int i = 0; i < lines.length; i++)
-			{
-				MOrderLine line = lines[i];
-				Timestamp date= (Timestamp)line.get_Value("rrstartdate");
-				if(date == null)
-				{
-					line.set_CustomColumn("rrstartdate", line.getDatePromised());
-					line.set_CustomColumn("Qty_Original", line.getQtyOrdered());
-					line.save(po.get_TrxName());
-				}
-			}
+			}		
 		}
 		
 		return null;

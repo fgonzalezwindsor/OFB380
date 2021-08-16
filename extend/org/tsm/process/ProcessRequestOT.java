@@ -84,44 +84,48 @@ public class ProcessRequestOT extends SvrProcess
 				//ahora se crearan los incidentes al procesar la primera vez y luego al completar se actualizaran
 				//se crear registros de incidencias
 				//generamos demas registros dependiendo de los dias
-				Calendar calCalendario = Calendar.getInstance();		
-				Timestamp dateStart = ROT.getDateDoc();
-				if((Timestamp)ROT.get_Value("DateEnd")!= null)
+				//ininoles 15-01-2018 solo se generaran incidencias si es concepto mantención 
+				if(ROT.get_ValueAsString("Concept").compareTo("13") == 0)
 				{
-					Timestamp dateEnd = (Timestamp)ROT.get_Value("DateEnd");
-					long dif = dateEnd.getTime()-dateStart.getTime();
-					dif = dif/(1000*60*60*24);
-					calCalendario.setTimeInMillis(dateStart.getTime());				
-					if(dif >= 0)
+					Calendar calCalendario = Calendar.getInstance();		
+					Timestamp dateStart = ROT.getDateDoc();
+					if((Timestamp)ROT.get_Value("DateEnd")!= null)
 					{
-						dif++;
-						X_HR_Prebitacora prebitacoraSub = null;
-						//obtenemos fecha en calendario			
-				        //calCalendario.setTimeInMillis(prebitacora.getDateTrx().getTime());			
-						while(dif > 0)
+						Timestamp dateEnd = (Timestamp)ROT.get_Value("DateEnd");
+						long dif = dateEnd.getTime()-dateStart.getTime();
+						dif = dif/(1000*60*60*24);
+						calCalendario.setTimeInMillis(dateStart.getTime());				
+						if(dif >= 0)
 						{
-							//ininoles antes de guardar nueva prebitacora(incidente) se valida que no sea sabado o domingo
-							prebitacoraSub = new X_HR_Prebitacora(Env.getCtx(),0,null);
-							MAsset asset = new MAsset(getCtx(), ROT.getA_Asset_ID(), get_TrxName());
-							if(asset.get_ValueAsInt("AD_OrgRef_ID") > 0)
-								prebitacoraSub.setAD_Org_ID(asset.get_ValueAsInt("AD_OrgRef_ID"));
-							else
-								prebitacoraSub.setAD_Org_ID(asset.getAD_Org_ID());
-							prebitacoraSub.setColumnType("A");
-							prebitacoraSub.setA_Asset_ID(ROT.getA_Asset_ID());
-							//prebitacoraSub.setC_BPartner_ID(prebitacora.getC_BPartner_ID());				
-							//prebitacoraSub.setWorkshift(prebitacora.getWorkshift());
-							prebitacoraSub.setHR_Concept_TSM_ID(1000011);
-							prebitacoraSub.setProcessed(false);
-							prebitacoraSub.setIsActive(true);				
-							prebitacoraSub.setDateTrx(new Timestamp(calCalendario.getTimeInMillis()));	
-							prebitacoraSub.set_CustomColumn("MP_OT_Request_ID", ROT.get_ID());
-							prebitacoraSub.saveEx();
-							//calculamos nueva fecha sumandole 1 dia
-							calCalendario.add(Calendar.DATE,1);
-							dif--;
-						}
-					}				
+							dif++;
+							X_HR_Prebitacora prebitacoraSub = null;
+							//obtenemos fecha en calendario			
+					        //calCalendario.setTimeInMillis(prebitacora.getDateTrx().getTime());			
+							while(dif > 0)
+							{
+								//ininoles antes de guardar nueva prebitacora(incidente) se valida que no sea sabado o domingo
+								prebitacoraSub = new X_HR_Prebitacora(Env.getCtx(),0,null);
+								MAsset asset = new MAsset(getCtx(), ROT.getA_Asset_ID(), get_TrxName());
+								if(asset.get_ValueAsInt("AD_OrgRef_ID") > 0)
+									prebitacoraSub.setAD_Org_ID(asset.get_ValueAsInt("AD_OrgRef_ID"));
+								else
+									prebitacoraSub.setAD_Org_ID(asset.getAD_Org_ID());
+								prebitacoraSub.setColumnType("A");
+								prebitacoraSub.setA_Asset_ID(ROT.getA_Asset_ID());
+								//prebitacoraSub.setC_BPartner_ID(prebitacora.getC_BPartner_ID());				
+								//prebitacoraSub.setWorkshift(prebitacora.getWorkshift());
+								prebitacoraSub.setHR_Concept_TSM_ID(1000011);
+								prebitacoraSub.setProcessed(false);
+								prebitacoraSub.setIsActive(true);				
+								prebitacoraSub.setDateTrx(new Timestamp(calCalendario.getTimeInMillis()));	
+								prebitacoraSub.set_CustomColumn("MP_OT_Request_ID", ROT.get_ID());
+								prebitacoraSub.saveEx();
+								//calculamos nueva fecha sumandole 1 dia
+								calCalendario.add(Calendar.DATE,1);
+								dif--;
+							}
+						}				
+					}
 				}
 				ROT.setProcessed(true);			
 				ROT.setDocStatus("WC");
@@ -155,52 +159,55 @@ public class ProcessRequestOT extends SvrProcess
 				
 				//se crear nuevos registros de incidencias
 				//generamos demas registros dependiendo de los dias
-				Calendar calCalendario = Calendar.getInstance();		
-				Timestamp dateStart = ROT.getDateDoc();
-				if((Timestamp)ROT.get_Value("DateEnd")!= null)
+				//ininoles 15-01-2018 solo se generaran registros si concepto es mantenimiento
+				if(ROT.get_ValueAsString("Concept").compareTo("13") == 0)
 				{
-					Timestamp dateEnd = (Timestamp)ROT.get_Value("DateEnd");
-					long dif = dateEnd.getTime()-dateStart.getTime();
-					dif = dif/(1000*60*60*24);
-					calCalendario.setTimeInMillis(dateStart.getTime());				
-					if(dif >= 0)
+					Calendar calCalendario = Calendar.getInstance();		
+					Timestamp dateStart = ROT.getDateDoc();
+					if((Timestamp)ROT.get_Value("DateEnd")!= null)
 					{
-						dif++;
-						X_HR_Prebitacora prebitacoraSub = null;
-						//obtenemos fecha en calendario			
-				        //calCalendario.setTimeInMillis(prebitacora.getDateTrx().getTime());			
-						while(dif > 0)
+						Timestamp dateEnd = (Timestamp)ROT.get_Value("DateEnd");
+						long dif = dateEnd.getTime()-dateStart.getTime();
+						dif = dif/(1000*60*60*24);
+						calCalendario.setTimeInMillis(dateStart.getTime());				
+						if(dif >= 0)
 						{
-							//ininoles antes de guardar nueva prebitacora(incidente) se valida que no sea sabado o domingo
-							//antes de generar los incidentes se valida que no exista previamente
-							int exist = DB.getSQLValue(get_TrxName(), "SELECT COUNT(1) FROM HR_Prebitacora " +
-									" WHERE MP_OT_Request_ID="+ROT.get_ID()+" AND DateTrx = ?",new Timestamp(calCalendario.getTimeInMillis()));
-							//si no existe se crea  registro
-							if(exist < 1)
+							dif++;
+							X_HR_Prebitacora prebitacoraSub = null;
+							//obtenemos fecha en calendario			
+					        //calCalendario.setTimeInMillis(prebitacora.getDateTrx().getTime());			
+							while(dif > 0)
 							{
-								prebitacoraSub = new X_HR_Prebitacora(Env.getCtx(),0,null);
-								MAsset asset = new MAsset(getCtx(), ROT.getA_Asset_ID(), get_TrxName());
-								if(asset.get_ValueAsInt("AD_OrgRef_ID") > 0)
-									prebitacoraSub.setAD_Org_ID(asset.get_ValueAsInt("AD_OrgRef_ID"));
-								else
-									prebitacoraSub.setAD_Org_ID(asset.getAD_Org_ID());
-								prebitacoraSub.setColumnType("A");
-								prebitacoraSub.setA_Asset_ID(ROT.getA_Asset_ID());
-								//prebitacoraSub.setC_BPartner_ID(prebitacora.getC_BPartner_ID());				
-								//prebitacoraSub.setWorkshift(prebitacora.getWorkshift());
-								prebitacoraSub.setHR_Concept_TSM_ID(1000011);
-								prebitacoraSub.setProcessed(false);
-								prebitacoraSub.setIsActive(true);				
-								prebitacoraSub.setDateTrx(new Timestamp(calCalendario.getTimeInMillis()));	
-								prebitacoraSub.set_CustomColumn("MP_OT_Request_ID", ROT.get_ID());
-								prebitacoraSub.saveEx();
+								//ininoles antes de guardar nueva prebitacora(incidente) se valida que no sea sabado o domingo
+								//antes de generar los incidentes se valida que no exista previamente
+								int exist = DB.getSQLValue(get_TrxName(), "SELECT COUNT(1) FROM HR_Prebitacora " +
+										" WHERE MP_OT_Request_ID="+ROT.get_ID()+" AND DateTrx = ?",new Timestamp(calCalendario.getTimeInMillis()));
+								//si no existe se crea  registro
+								if(exist < 1)
+								{
+									prebitacoraSub = new X_HR_Prebitacora(Env.getCtx(),0,null);
+									MAsset asset = new MAsset(getCtx(), ROT.getA_Asset_ID(), get_TrxName());
+									if(asset.get_ValueAsInt("AD_OrgRef_ID") > 0)
+										prebitacoraSub.setAD_Org_ID(asset.get_ValueAsInt("AD_OrgRef_ID"));
+									else
+										prebitacoraSub.setAD_Org_ID(asset.getAD_Org_ID());
+									prebitacoraSub.setColumnType("A");
+									prebitacoraSub.setA_Asset_ID(ROT.getA_Asset_ID());
+									//prebitacoraSub.setC_BPartner_ID(prebitacora.getC_BPartner_ID());				
+									//prebitacoraSub.setWorkshift(prebitacora.getWorkshift());
+									prebitacoraSub.setHR_Concept_TSM_ID(1000011);
+									prebitacoraSub.setProcessed(false);
+									prebitacoraSub.setIsActive(true);				
+									prebitacoraSub.setDateTrx(new Timestamp(calCalendario.getTimeInMillis()));	
+									prebitacoraSub.set_CustomColumn("MP_OT_Request_ID", ROT.get_ID());
+									prebitacoraSub.saveEx();
+								}
+								//calculamos nueva fecha sumandole 1 dia
+								calCalendario.add(Calendar.DATE,1);
+								dif--;
 							}
-							//calculamos nueva fecha sumandole 1 dia
-							calCalendario.add(Calendar.DATE,1);
-							dif--;
-						}
+						}				
 					}
-				
 				}
 				//
 				return "Confirmado";

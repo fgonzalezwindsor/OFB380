@@ -55,7 +55,7 @@ public class ImportAssetKM extends SvrProcess
 		//actualizamos Asset
 		StringBuffer sqlf = new StringBuffer ("UPDATE I_AssetMeter_Log aml "
 				+ " SET A_Asset_ID = (SELECT MAX(A_Asset_ID) FROM A_Asset aa"
-				+ " WHERE aml.AssetValue = aa.Value AND aml.AD_Client_ID = aa.AD_Client_ID) "
+				+ " WHERE aa.IsActive = 'Y' AND aml.AssetValue = aa.Value AND aml.AD_Client_ID = aa.AD_Client_ID) "
 				+ " WHERE aml.A_Asset_ID IS NULL AND aml.AssetValue IS NOT NULL"
 				+ " AND I_IsImported <> 'Y'").append (clientCheck);
 		DB.executeUpdate(sqlf.toString(), get_TrxName());

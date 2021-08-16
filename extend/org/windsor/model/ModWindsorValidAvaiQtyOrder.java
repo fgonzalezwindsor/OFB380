@@ -32,7 +32,7 @@ import org.compiere.util.Env;
 /**
  *	Validator for company WINDSOR
  *
- *  @author Italo Niñoles
+ *  @author Italo NiÃ±oles
  */
 public class ModWindsorValidAvaiQtyOrder implements ModelValidator
 {
@@ -76,7 +76,7 @@ public class ModWindsorValidAvaiQtyOrder implements ModelValidator
 
     /**
      *	Model Change of a monitored Table.
-     *	OFB Consulting Ltda. By italo niñoles
+     *	OFB Consulting Ltda. By italo niÃ±oles
      */
 	public String modelChange (PO po, int type) throws Exception
 	{
@@ -96,28 +96,11 @@ public class ModWindsorValidAvaiQtyOrder implements ModelValidator
 				if(oLine.getM_Product_ID() > 0 && oLine.getM_Product().isStocked()
 						&& oLine.getM_Product().getProductType().compareTo("I") == 0)
 				{
-					//nueva validacion se slata validacion si noprint='Y' y la qtyenteren en 0 13-09-2017
+					//nueva validacion se slata validacion si notprint='Y' y la qtyenteren en 0 13-09-2017
 					if(oLine.get_ValueAsBoolean("NotPrint") && oLine.getQtyEntered().compareTo(Env.ZERO) == 0)
 						;
 					else
-					{
-						BigDecimal qtyAvai = Env.ZERO; 
-						if(order.getAD_Client_ID() == 1000000)
-						{
-							qtyAvai= DB.getSQLValueBD(po.get_TrxName(), "SELECT qtyavailableofb(mp.M_Product_ID,1000001) FROM M_Product mp WHERE mp.M_Product_ID = "+oLine.getM_Product_ID());
-							if(qtyAvai == null)
-								qtyAvai = Env.ZERO;
-							BigDecimal aux = DB.getSQLValueBD(po.get_TrxName(), "SELECT qtyavailableofb(mp.M_Product_ID,1000010) FROM M_Product mp WHERE mp.M_Product_ID = "+oLine.getM_Product_ID());
-							if(aux == null)
-								aux = Env.ZERO;
-							qtyAvai = qtyAvai.add(aux);
-						}
-						else
-						{
-							qtyAvai= DB.getSQLValueBD(po.get_TrxName(), "SELECT bomqtyavailableofb(mp.M_Product_ID,"+order.getM_Warehouse_ID()+",0) FROM M_Product mp WHERE mp.M_Product_ID = "+oLine.getM_Product_ID());
-						}
-						if(qtyAvai == null)
-							qtyAvai = Env.ZERO;
+					{	
 						//validaciones nuevas
 						//ininoles 27-06 nueva logica pedida por fernando
 						if(oLine.get_ValueAsInt("M_RequisitionLine_ID")>0)
@@ -133,44 +116,355 @@ public class ModWindsorValidAvaiQtyOrder implements ModelValidator
 								qtyUsed = Env.ZERO;
 							BigDecimal qtyAvarLine =  rLine.getQty().subtract(qtyUsed);							
 							if(qtyAvarLine.compareTo(oLine.getQtyOrdered())<0)
-								return "Error: Cantidad Supera Cantidad de Solicitud";
-							//se valida que sea de la misma direccion
-							if(rLine.getParent().get_ValueAsInt("C_Bpartner_Location_ID") != order.getC_BPartner_Location_ID())
+								return "Error: Cantidad Supera Cantidad de Solicitud. <LC: 119>";
+							//se valida que sea de la misma direccion y cliente
+							if(order.get_ValueAsString("MedioCompra").compareTo("Internet")!=0)
 							{
-								if(!rLine.getParent().get_ValueAsBoolean("OverWriteRequisition"))
-									return "Error: Solicitud no es de distribución";
+								if(rLine.getParent().get_ValueAsInt("C_Bpartner_ID") != order.getC_BPartner_ID())
+									return "Error: Solo puede usar reservas del mismo cliente";
+								if(rLine.getParent().get_ValueAsInt("C_Bpartner_Location_ID") != order.getC_BPartner_Location_ID())
+								{
+									if(!rLine.getParent().get_ValueAsBoolean("OverWriteRequisition"))
+										return "Error: Solicitud no es de distribuciÃ³n. <LC: 128>";
+								}
+							}
+							//validaciones para ecomerce
+							if(order.get_ValueAsString("MedioCompra").compareTo("Internet")==0)
+							{
+								//se valida que solicitud de ecomerce tenga el mismo socio de negocio que NV
+								int cant = DB.getSQLValue(po.get_TrxName(), "SELECT COUNT(1) FROM M_Requisition " +
+										" WHERE DocStatus IN ('CO','CL') AND C_BPartner_ID = "+order.getC_BPartner_ID()+" AND M_RequisitionRef_ID="+rLine.getParent().get_ID());
+								if(cant <= 0 && rLine.getParent().get_ValueAsInt("C_Bpartner_ID") != order.getC_BPartner_ID())
+									return "Error: Solo puede usar reservas del mismo cliente. <LC: 138>";
 							}
 						}
 						else
 						{
-							//se revisa si existe solicitud abierta
-							int ID_req = DB.getSQLValue(po.get_TrxName(), "SELECT MAX(mr.M_Requisition_ID) FROM M_RequisitionLine rl " +
-									" INNER JOIN M_Requisition mr ON (rl.M_Requisition_ID = mr.M_Requisition_ID) " +
-									" WHERE mr.DocStatus IN ('CO','CL') AND mr.C_BPartner_ID = "+order.getC_BPartner_ID()+
-									" AND mr.C_BPartner_Location_ID = "+order.getC_BPartner_Location_ID()+
-									" AND rl.M_Product_ID = "+oLine.getM_Product_ID()+" AND qty > qtyUsed");
-							//se revisa si existe solicitud de distribucion abierta
-							int ID_reqD = DB.getSQLValue(po.get_TrxName(), "SELECT MAX(mr.M_Requisition_ID) FROM M_RequisitionLine rl " +
-									" INNER JOIN M_Requisition mr ON (rl.M_Requisition_ID = mr.M_Requisition_ID) " +
-									" WHERE mr.DocStatus IN ('CO','CL') AND mr.C_BPartner_ID = "+order.getC_BPartner_ID()+
-									" AND mr.OverWriteRequisition = 'Y' "+
-									" AND rl.M_Product_ID = "+oLine.getM_Product_ID()+" AND qty > qtyUsed");
-							if(ID_req > 0)
+							BigDecimal qtyAvai = Env.ZERO; 
+							if(order.get_ValueAsInt("OV_Prereserva_ID")>0)
 							{
-								MRequisition req = new MRequisition(po.getCtx(), ID_req, po.get_TrxName());
-								BigDecimal qtySol = DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(qty - qtyUsed) FROM M_RequisitionLine rl " +
-										" WHERE rl.IsActive = 'Y' AND rl.M_Requisition_ID = "+ID_req+" AND rl.M_Product_ID = "+oLine.getM_Product_ID());								
-								return "ERROR: Debe usar solicitud abierta para este cliente. N°: "+req.getDocumentNo()+", producto "+oLine.getM_Product().getName()+"con cantidad "+qtySol;
-							}else if (ID_reqD > 0)
-							{
-								MRequisition req = new MRequisition(po.getCtx(), ID_req, po.get_TrxName());
-								BigDecimal qtySol = DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(qty - qtyUsed) FROM M_RequisitionLine rl " +
-										" WHERE rl.IsActive = 'Y' AND rl.M_Requisition_ID = "+ID_req+" AND rl.M_Product_ID = "+oLine.getM_Product_ID());
-								return "ERROR: Debe usar solicitud de distribución abierta para este cliente. N°: "+req.getDocumentNo()+", producto "+oLine.getM_Product().getName()+" con cantidad "+qtySol;
+
+								qtyAvai= DB.getSQLValueBD(po.get_TrxName(), "SELECT " + //qtyavailableofb(mp.M_Product_ID,1000001) "
+										" COALESCE ( "+
+									      "         (SELECT SUM (s.qtyonhand) "+
+									       "           FROM rv_storage s "+
+									        "         WHERE     s.M_Product_ID = p.m_product_id "+
+									         "              AND s.m_warehouse_id IN (1000001) "+
+									          "             AND s.isactive = 'Y'), "+
+									           "    0) "+
+									          " - (  (SELECT COALESCE (SUM (ol2.qtyreserved), 0)      "+
+									         "         FROM C_orderline ol2      "+
+									          "             INNER JOIN C_Order o2  "+
+									           "               ON (ol2.C_ORDER_ID = o2.c_order_ID)  "+
+									            "     WHERE     ol2.M_Product_ID = p.m_product_id "+
+									             "          AND o2.m_warehouse_id = 1000001 "+
+									              "         AND o2.saldada <> 'Y' "+
+									               "        AND o2.docstatus IN ('IP', 'CO', 'CL') "+
+									                "       AND o2.issotrx = 'Y' "+
+									                 "      AND o2.c_doctypetarget_ID NOT IN "+
+									                  "            (1000110, 1000048, 1000568)) "+
+									            " + (SELECT COALESCE (SUM (rl.qtyreserved), 0)     "+
+									             "     FROM M_Requisitionline rl     "+
+									              "         INNER JOIN M_Requisition r  "+
+									               "           ON (rl.M_Requisition_ID = r.M_Requisition_ID)  "+
+									                " WHERE     rl.M_Product_ID = p.m_product_id  "+
+									                 "      AND r.m_warehouse_id = 1000001  "+
+									                  "     AND r.docstatus IN ('CO', 'CL')  "+
+									                   "    AND r.issotrx = 'Y'))  "+
+										 " FROM M_Product p WHERE p.M_Product_ID = "+oLine.getM_Product_ID());
+								if(qtyAvai == null)
+									qtyAvai = Env.ZERO;
+								BigDecimal aux = DB.getSQLValueBD(po.get_TrxName(), "SELECT "+ 
+									//" qtyavailableofb(mp.M_Product_ID,1000010) FROM M_Product mp WHERE mp.M_Product_ID = "+oLine.getM_Product_ID());
+									" COALESCE ( "+
+								      "         (SELECT SUM (s.qtyonhand) "+
+								       "           FROM rv_storage s "+
+								        "         WHERE     s.M_Product_ID = p.m_product_id "+
+								         "              AND s.m_warehouse_id IN (1000010) "+
+								          "             AND s.isactive = 'Y'), "+
+								           "    0) "+
+								          " - (  (SELECT COALESCE (SUM (ol2.qtyreserved), 0)      "+
+								         "         FROM C_orderline ol2      "+
+								          "             INNER JOIN C_Order o2  "+
+								           "               ON (ol2.C_ORDER_ID = o2.c_order_ID)  "+
+								            "     WHERE     ol2.M_Product_ID = p.m_product_id "+
+								             "          AND o2.m_warehouse_id = 1000010 "+
+								              "         AND o2.saldada <> 'Y' "+
+								               "        AND o2.docstatus IN ('IP', 'CO', 'CL') "+
+								                "       AND o2.issotrx = 'Y' "+
+								                 "      AND o2.c_doctypetarget_ID NOT IN "+
+								                  "            (1000110, 1000048, 1000568)) "+
+								            " + (SELECT COALESCE (SUM (rl.qtyreserved), 0)     "+
+								             "     FROM M_Requisitionline rl     "+
+								              "         INNER JOIN M_Requisition r  "+
+								               "           ON (rl.M_Requisition_ID = r.M_Requisition_ID)  "+
+								                " WHERE     rl.M_Product_ID = p.m_product_id  "+
+								                 "      AND r.m_warehouse_id = 1000010  "+
+								                  "     AND r.docstatus IN ('CO', 'CL')  "+
+								                   "    AND r.issotrx = 'Y'))  "+
+									
+ 												" FROM M_Product p WHERE p.M_Product_ID = "+oLine.getM_Product_ID());
+								if(aux == null)
+									aux = Env.ZERO;
+								qtyAvai = qtyAvai.add(aux);	
+								
+								if(qtyAvai.subtract(oLine.getQtyOrdered()).compareTo(Env.ZERO) < 0)
+									return "ERROR: Stock Insuficiente. <LC: 156>";
 							}
-							if(qtyAvai.subtract(oLine.getQtyOrdered()).compareTo(Env.ZERO) < 0)
-								return "ERROR: Stock Insuficiente y NO Existen solicitudes abiertas";
-						}
+							else
+							{
+								
+							
+							//se separa revision de internet y normal
+									if(order.get_ValueAsString("MedioCompra").compareTo("Internet")==0)
+									{
+										//ininoles nueva funcion para presolicitud
+										/*int ID_reqP = DB.getSQLValue(po.get_TrxName(), "SELECT MAX(mrl2.M_Requisition_ID) FROM M_RequisitionLine rl " +
+												" INNER JOIN M_Requisition mr ON (rl.M_Requisition_ID = mr.M_Requisition_ID)" +
+												" INNER JOIN M_Requisition mr2 ON (mr2.M_Requisition_ID = mr.M_RequisitionRef_ID)" +
+												" WHERE mr.DocStatus IN ('CO','CL') AND mr.C_BPartner_ID = "+order.getC_BPartner_ID()+
+												" AND rl.M_Product_ID = "+oLine.getM_Product_ID()+"" +
+												" AND qty > qtyUsed AND mr.C_DocType_ID IN (1000111,1000570)");
+										*/
+										int ID_reqP = DB.getSQLValue(po.get_TrxName(), "SELECT MAX(mrl2.M_Requisition_ID)" +
+												" FROM  M_Requisition mr" +
+												" INNER JOIN M_Requisition mr2 ON (mr.M_RequisitionRef_ID = mr2.M_Requisition_ID)" +
+												" INNER JOIN M_Requisitionline mrl2 ON (mr2.M_Requisition_ID = mrl2.M_Requisition_ID)" +
+												" WHERE mr.DocStatus IN ('CO','CL') AND mr.C_BPartner_ID=" +order.getC_BPartner_ID()+
+												" and mrl2.M_Product_ID = "+oLine.getM_Product_ID()+"" +
+												//ininoles se agrega que solo use la misma bodega
+												" and mr.M_Warehouse_ID = "+order.getM_Warehouse_ID()+
+												" AND (mrl2.qty - mrl2.qtyUsed) > 0");
+										if (ID_reqP > 0)
+										{
+											MRequisition req = new MRequisition(po.getCtx(), ID_reqP, po.get_TrxName());
+											/*int ID_reqAux = DB.getSQLValue(po.get_TrxName(), "SELECT MAX(mr.M_Requisition_ID) FROM M_RequisitionLine rl " +
+													" INNER JOIN M_Requisition mr ON (rl.M_Requisition_ID = mr.M_Requisition_ID)" +
+													" INNER JOIN M_Requisition mr2 ON (mr2.M_Requisition_ID = mr.M_RequisitionRef_ID)" +
+													" WHERE mr.DocStatus IN ('CO','CL') AND mr2.C_BPartner_ID = "+order.getC_BPartner_ID()+
+													" AND rl.M_Product_ID = "+oLine.getM_Product_ID()+"" +
+													" AND qty > qtyUsed AND mr.C_DocType_ID IN (1000111,1000570)");*/								
+											BigDecimal qtySol = DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(qty - qtyUsed) FROM M_RequisitionLine rl " +
+													" WHERE rl.IsActive = 'Y' AND rl.M_Requisition_ID = "+ID_reqP+" AND rl.M_Product_ID = "+oLine.getM_Product_ID());
+											return "ERROR: Debe usar solicitud Ecommerce abierta para este cliente. NÂ°: "+req.getDocumentNo()+", producto "+oLine.getM_Product().getName()+" con cantidad "+qtySol + ". <LC: 193>";
+										}
+									}
+									//se revisa si existe solicitud abierta
+									int ID_req = DB.getSQLValue(po.get_TrxName(), "SELECT MAX(mr.M_Requisition_ID) FROM M_RequisitionLine rl " +
+											" INNER JOIN M_Requisition mr ON (rl.M_Requisition_ID = mr.M_Requisition_ID) " +
+											" WHERE mr.DocStatus IN ('CO','CL') AND mr.C_BPartner_ID = "+order.getC_BPartner_ID()+
+											" AND mr.C_BPartner_Location_ID = "+order.getC_BPartner_Location_ID()+
+											//ininoles se agrega que solo use la misma bodega
+											" AND mr.M_Warehouse_ID = "+order.getM_Warehouse_ID()+
+											" AND rl.M_Product_ID = "+oLine.getM_Product_ID()+" AND qty > qtyUsed");
+									//se revisa si existe solicitud de distribucion abierta
+									int ID_reqD = DB.getSQLValue(po.get_TrxName(), "SELECT MAX(mr.M_Requisition_ID) FROM M_RequisitionLine rl " +
+											" INNER JOIN M_Requisition mr ON (rl.M_Requisition_ID = mr.M_Requisition_ID) " +
+											" WHERE mr.DocStatus IN ('CO','CL') AND mr.C_BPartner_ID = "+order.getC_BPartner_ID()+
+											" AND mr.M_Warehouse_ID = "+order.getM_Warehouse_ID()+
+											" AND mr.OverWriteRequisition = 'Y' AND mr.C_DocType_ID NOT IN (1000111,1000570)"+
+											" AND rl.M_Product_ID = "+oLine.getM_Product_ID()+" AND qty > qtyUsed");
+									
+									if(ID_req > 0)
+									{
+										MRequisition req = new MRequisition(po.getCtx(), ID_req, po.get_TrxName());
+										BigDecimal qtySol = DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(qty - qtyUsed) FROM M_RequisitionLine rl " +
+												" WHERE rl.IsActive = 'Y' AND rl.M_Requisition_ID = "+ID_req+" AND rl.M_Product_ID = "+oLine.getM_Product_ID());								
+										return "ERROR: Debe usar solicitud abierta para este cliente. NÂ°: "+req.getDocumentNo()+", producto "+oLine.getM_Product().getName()+"con cantidad "+qtySol+". <LC: 217>";
+									}
+									else if (ID_reqD > 0)
+									{
+										MRequisition req = new MRequisition(po.getCtx(), ID_reqD, po.get_TrxName());
+										BigDecimal qtySol = DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(qty - qtyUsed) FROM M_RequisitionLine rl " +
+												" WHERE rl.IsActive = 'Y' AND rl.M_Requisition_ID = "+ID_reqD+" AND rl.M_Product_ID = "+oLine.getM_Product_ID());
+										return "ERROR: Debe usar solicitud de distribuciÃ³n abierta para este cliente. NÂ°: "+req.getDocumentNo()+", producto "+oLine.getM_Product().getName()+" con cantidad "+qtySol+ ". <LC: 224>";
+									}
+							//ininoles 24-09-2019 se mueven validaciones  de solicitud y presolicitud de venta al principio
+							
+									if(order.getAD_Client_ID() == 1000000)
+									{
+										qtyAvai= DB.getSQLValueBD(po.get_TrxName(), "SELECT " + //qtyavailableofb(mp.M_Product_ID,1000001) "
+												" COALESCE ( "+
+											      "         (SELECT SUM (s.qtyonhand) "+
+											       "           FROM rv_storage s "+
+											        "         WHERE     s.M_Product_ID = p.m_product_id "+
+											         "              AND s.m_warehouse_id IN (1000001) "+
+											          "             AND s.isactive = 'Y'), "+
+											           "    0) "+
+											          " - (  (SELECT COALESCE (SUM (ol2.qtyreserved), 0)      "+
+											         "         FROM C_orderline ol2      "+
+											          "             INNER JOIN C_Order o2  "+
+											           "               ON (ol2.C_ORDER_ID = o2.c_order_ID)  "+
+											            "     WHERE     ol2.M_Product_ID = p.m_product_id "+
+											             "          AND o2.m_warehouse_id = 1000001 "+
+											              "         AND o2.saldada <> 'Y' "+
+											               "        AND o2.docstatus IN ('IP', 'CO', 'CL') "+
+											                "       AND o2.issotrx = 'Y' "+
+											                 "      AND o2.c_doctypetarget_ID NOT IN "+
+											                  "            (1000110, 1000048, 1000568)) "+
+											            " + (SELECT COALESCE (SUM (rl.qtyreserved), 0)     "+
+											             "     FROM M_Requisitionline rl     "+
+											              "         INNER JOIN M_Requisition r  "+
+											               "           ON (rl.M_Requisition_ID = r.M_Requisition_ID)  "+
+											                " WHERE     rl.M_Product_ID = p.m_product_id  "+
+											                 "      AND r.m_warehouse_id = 1000001  "+
+											                  "     AND r.docstatus IN ('CO', 'CL')  "+
+											                   "    AND r.issotrx = 'Y'))  "+
+												 " FROM M_Product p WHERE p.M_Product_ID = "+oLine.getM_Product_ID());
+										if(qtyAvai == null)
+											qtyAvai = Env.ZERO;
+										BigDecimal aux = DB.getSQLValueBD(po.get_TrxName(),"SELECT "+ 
+												//" qtyavailableofb(mp.M_Product_ID,1000010) FROM M_Product mp WHERE mp.M_Product_ID = "+oLine.getM_Product_ID());
+												" COALESCE ( "+
+											      "         (SELECT SUM (s.qtyonhand) "+
+											       "           FROM rv_storage s "+
+											        "         WHERE     s.M_Product_ID = p.m_product_id "+
+											         "              AND s.m_warehouse_id IN (1000010) "+
+											          "             AND s.isactive = 'Y'), "+
+											           "    0) "+
+											          " - (  (SELECT COALESCE (SUM (ol2.qtyreserved), 0)      "+
+											         "         FROM C_orderline ol2      "+
+											          "             INNER JOIN C_Order o2  "+
+											           "               ON (ol2.C_ORDER_ID = o2.c_order_ID)  "+
+											            "     WHERE     ol2.M_Product_ID = p.m_product_id "+
+											             "          AND o2.m_warehouse_id = 1000010 "+
+											              "         AND o2.saldada <> 'Y' "+
+											               "        AND o2.docstatus IN ('IP', 'CO', 'CL') "+
+											                "       AND o2.issotrx = 'Y' "+
+											                 "      AND o2.c_doctypetarget_ID NOT IN "+
+											                  "            (1000110, 1000048, 1000568)) "+
+											            " + (SELECT COALESCE (SUM (rl.qtyreserved), 0)     "+
+											             "     FROM M_Requisitionline rl     "+
+											              "         INNER JOIN M_Requisition r  "+
+											               "           ON (rl.M_Requisition_ID = r.M_Requisition_ID)  "+
+											                " WHERE     rl.M_Product_ID = p.m_product_id  "+
+											                 "      AND r.m_warehouse_id = 1000010  "+
+											                  "     AND r.docstatus IN ('CO', 'CL')  "+
+											                   "    AND r.issotrx = 'Y'))  "+
+												
+			 												" FROM M_Product p WHERE p.M_Product_ID = "+oLine.getM_Product_ID());
+										if(aux == null)
+											aux = Env.ZERO;
+										qtyAvai = qtyAvai.add(aux);							
+									}
+									else
+									{
+										qtyAvai= DB.getSQLValueBD(po.get_TrxName(), "SELECT bomqtyavailableofb(mp.M_Product_ID,"+order.getM_Warehouse_ID()+",0) FROM M_Product mp WHERE mp.M_Product_ID = "+oLine.getM_Product_ID());
+									}
+									if(qtyAvai == null)
+										qtyAvai = Env.ZERO;
+							//se agrega validacion a peticion de fernando en caso de ser direccion ID = 1010879
+							//se envia mensaje personalizado
+								/*	if(order.getC_BPartner_Location_ID() == 1010879 || order.getC_BPartner_Location_ID()  == 1011338)
+									{
+										if(order.getM_Warehouse_ID()== 1000027)
+										{
+											BigDecimal aux3 = DB.getSQLValueBD(po.get_TrxName(), "SELECT qtyavailableofb(mp.M_Product_ID,1000027) FROM M_Product mp WHERE mp.M_Product_ID = "+oLine.getM_Product_ID());
+											if(aux3 == null)
+												aux3 = Env.ZERO;
+											qtyAvai = qtyAvai.add(aux3);
+										}							
+										BigDecimal aux2 = DB.getSQLValueBD(po.get_TrxName(), "SELECT qtyavailableofb(mp.M_Product_ID,1000024) FROM M_Product mp WHERE mp.M_Product_ID = "+oLine.getM_Product_ID());
+										if(aux2 == null)
+											aux2 = Env.ZERO;							
+										if(aux2.subtract(oLine.getQtyOrdered()).compareTo(Env.ZERO) < 0)								
+											return "ERROR: Stock Insuficiente: "+aux2.intValue()+". Stock en otras bodegas:"+qtyAvai.intValue()+". <LC: 259>";
+										else//si es la direccion pero no manda el error que reemplaze el disponible
+											qtyAvai = aux2;								
+									}*/
+									//ininoles nueva validaciÃ³n pedida por fernando 27-12-2018
+									if(order.getM_Warehouse_ID() == 1000025)
+									{
+										BigDecimal aux2 = DB.getSQLValueBD(po.get_TrxName(), "SELECT "+ 
+												//" qtyavailableofb(mp.M_Product_ID,1000010) FROM M_Product mp WHERE mp.M_Product_ID = "+oLine.getM_Product_ID());
+												" COALESCE ( "+
+											      "         (SELECT SUM (s.qtyonhand) "+
+											       "           FROM rv_storage s "+
+											        "         WHERE     s.M_Product_ID = p.m_product_id "+
+											         "              AND s.m_warehouse_id IN (1000025) "+
+											          "             AND s.isactive = 'Y'), "+
+											           "    0) "+
+											          " - (  (SELECT COALESCE (SUM (ol2.qtyreserved), 0)      "+
+											         "         FROM C_orderline ol2      "+
+											          "             INNER JOIN C_Order o2  "+
+											           "               ON (ol2.C_ORDER_ID = o2.c_order_ID)  "+
+											            "     WHERE     ol2.M_Product_ID = p.m_product_id "+
+											             "          AND o2.m_warehouse_id = 1000025 "+
+											              "         AND o2.saldada <> 'Y' "+
+											               "        AND o2.docstatus IN ('IP', 'CO', 'CL') "+
+											                "       AND o2.issotrx = 'Y' "+
+											                 "      AND o2.c_doctypetarget_ID NOT IN "+
+											                  "            (1000110, 1000048, 1000568)) "+
+											            " + (SELECT COALESCE (SUM (rl.qtyreserved), 0)     "+
+											             "     FROM M_Requisitionline rl     "+
+											              "         INNER JOIN M_Requisition r  "+
+											               "           ON (rl.M_Requisition_ID = r.M_Requisition_ID)  "+
+											                " WHERE     rl.M_Product_ID = p.m_product_id  "+
+											                 "      AND r.m_warehouse_id = 1000025  "+
+											                  "     AND r.docstatus IN ('CO', 'CL')  "+
+											                   "    AND r.issotrx = 'Y'))  "+
+												
+			 												" FROM M_Product p WHERE p.M_Product_ID = "+oLine.getM_Product_ID());
+										if(aux2 == null)
+											aux2 = Env.ZERO;							
+										if(aux2.subtract(oLine.getQtyOrdered()).compareTo(Env.ZERO) < 0)								
+											return "ERROR: Stock Insuficiente: "+aux2.intValue()+". Stock en otras bodegas:"+qtyAvai.intValue()+". <LC: 270>";
+										else//si es la direccion pero no manda el error que reemplaze el disponible
+										{
+											//ininoles si la bodega es 1000025 no se valida nada mas que el stock.
+											//qtyAvai = aux2;		
+											return null;
+										}
+									}
+									if(order.getM_Warehouse_ID() == 1000027)
+									{
+										BigDecimal aux2 = DB.getSQLValueBD(po.get_TrxName(), "SELECT "+ 
+												//" qtyavailableofb(mp.M_Product_ID,1000010) FROM M_Product mp WHERE mp.M_Product_ID = "+oLine.getM_Product_ID());
+												" COALESCE ( "+
+											      "         (SELECT SUM (s.qtyonhand) "+
+											       "           FROM rv_storage s "+
+											        "         WHERE     s.M_Product_ID = p.m_product_id "+
+											         "              AND s.m_warehouse_id IN (1000027) "+
+											          "             AND s.isactive = 'Y'), "+
+											           "    0) "+
+											          " - (  (SELECT COALESCE (SUM (ol2.qtyreserved), 0)      "+
+											         "         FROM C_orderline ol2      "+
+											          "             INNER JOIN C_Order o2  "+
+											           "               ON (ol2.C_ORDER_ID = o2.c_order_ID)  "+
+											            "     WHERE     ol2.M_Product_ID = p.m_product_id "+
+											             "          AND o2.m_warehouse_id = 1000027 "+
+											              "         AND o2.saldada <> 'Y' "+
+											               "        AND o2.docstatus IN ('IP', 'CO', 'CL') "+
+											                "       AND o2.issotrx = 'Y' "+
+											                 "      AND o2.c_doctypetarget_ID NOT IN "+
+											                  "            (1000110, 1000048, 1000568)) "+
+											            " + (SELECT COALESCE (SUM (rl.qtyreserved), 0)     "+
+											             "     FROM M_Requisitionline rl     "+
+											              "         INNER JOIN M_Requisition r  "+
+											               "           ON (rl.M_Requisition_ID = r.M_Requisition_ID)  "+
+											                " WHERE     rl.M_Product_ID = p.m_product_id  "+
+											                 "      AND r.m_warehouse_id = 1000027  "+
+											                  "     AND r.docstatus IN ('CO', 'CL')  "+
+											                   "    AND r.issotrx = 'Y'))  "+
+												
+			 												" FROM M_Product p WHERE p.M_Product_ID = "+oLine.getM_Product_ID());
+										if(aux2 == null)
+											aux2 = Env.ZERO;							
+										if(aux2.subtract(oLine.getQtyOrdered()).compareTo(Env.ZERO) < 0)								
+											return "ERROR: Stock Insuficiente: "+aux2.intValue()+". Stock en otras bodegas:"+qtyAvai.intValue()+". <LC: 284>";
+										else//si es la direccion pero no manda el error que reemplaze el disponible
+										{
+											//ininoles si la bodega es 1000027 no se valida nada mas que el stock.
+											//qtyAvai = aux2;		
+											return null;
+										}
+									}
+							
+									if(qtyAvai.subtract(oLine.getQtyOrdered()).compareTo(Env.ZERO) < 0)
+										return "ERROR: Stock Insuficiente y NO Existen solicitudes abiertas. <LC: 294>";
+							
+							}
+						}//fin else validadr requisicion>0
 						
 						//logica antigua
 						/*
@@ -196,7 +490,7 @@ public class ModWindsorValidAvaiQtyOrder implements ModelValidator
 								if(rLine.getParent().get_ValueAsInt("C_Bpartner_Location_ID") != order.getC_BPartner_Location_ID())
 								{
 									if(!rLine.getParent().get_ValueAsBoolean("OverWriteRequisition"))
-										return "Error: Solicitud no es de distribución";
+										return "Error: Solicitud no es de distribuciÃ³n";
 								}
 							}	
 							else
@@ -212,7 +506,7 @@ public class ModWindsorValidAvaiQtyOrder implements ModelValidator
 									MRequisition req = new MRequisition(po.getCtx(), ID_req, po.get_TrxName());
 									BigDecimal qtySol = DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(qty - qtyUsed) FROM M_RequisitionLine rl " +
 											" WHERE rl.M_Requisition_ID = "+ID_req+" AND rl.M_Product_ID = "+oLine.getM_Product_ID());								
-									return "ERROR: Sin Stock Disponible "+qtyAvai.intValue()+". Existe solicitud abierta para este cliente. N°: "+req.getDocumentNo()+" con cantidad "+qtySol;
+									return "ERROR: Sin Stock Disponible "+qtyAvai.intValue()+". Existe solicitud abierta para este cliente. NÂ°: "+req.getDocumentNo()+" con cantidad "+qtySol;
 								}else
 								{
 									//se busca alguna solicitu de distribucion abierta
@@ -226,7 +520,7 @@ public class ModWindsorValidAvaiQtyOrder implements ModelValidator
 										MRequisition req = new MRequisition(po.getCtx(), ID_req, po.get_TrxName());
 										BigDecimal qtySol = DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(qty - qtyUsed) FROM M_RequisitionLine rl " +
 												" WHERE rl.M_Requisition_ID = "+ID_req+" AND rl.M_Product_ID = "+oLine.getM_Product_ID());
-										return "ERROR: Sin Stock Disponible "+qtyAvai.intValue()+". Existe solicitud de distribución abierta para este cliente. N°: "+req.getDocumentNo()+" con cantidad "+qtySol;
+										return "ERROR: Sin Stock Disponible "+qtyAvai.intValue()+". Existe solicitud de distribuciÃ³n abierta para este cliente. NÂ°: "+req.getDocumentNo()+" con cantidad "+qtySol;
 									}
 									else
 										return "ERROR: No hay stock disponible ni solicitud asociada";
@@ -241,7 +535,7 @@ public class ModWindsorValidAvaiQtyOrder implements ModelValidator
 			if(order.isSOTrx() && order.getC_DocTypeTarget().getDocSubTypeSO().compareTo("RM") == 0)
 			{
 				if(oLine.get_ValueAsInt("M_RequisitionLine_ID") > 0)
-					return "ERROR. Linea de devolución NO debe tener solicitud asociada";
+					return "ERROR. Linea de devoluciÃ³n NO debe tener solicitud asociada <LC: 368>";
 			}
 		}
 		
@@ -289,23 +583,7 @@ public class ModWindsorValidAvaiQtyOrder implements ModelValidator
 							;
 						else
 						{
-							BigDecimal qtyAvai = Env.ZERO; 
-							if(order.getAD_Client_ID() == 1000000)
-							{
-								qtyAvai= DB.getSQLValueBD(po.get_TrxName(), "SELECT qtyavailableofb(mp.M_Product_ID,1000001) FROM M_Product mp WHERE mp.M_Product_ID = "+oLine.getM_Product_ID());
-								if(qtyAvai == null)
-									qtyAvai = Env.ZERO;
-								BigDecimal aux = DB.getSQLValueBD(po.get_TrxName(), "SELECT qtyavailableofb(mp.M_Product_ID,1000010) FROM M_Product mp WHERE mp.M_Product_ID = "+oLine.getM_Product_ID());
-								if(aux == null)
-									aux = Env.ZERO;
-								qtyAvai = qtyAvai.add(aux);
-							}
-							else
-							{
-								qtyAvai= DB.getSQLValueBD(po.get_TrxName(), "SELECT bomqtyavailableofb(mp.M_Product_ID,"+order.getM_Warehouse_ID()+",0) FROM M_Product mp WHERE mp.M_Product_ID = "+oLine.getM_Product_ID());
-							}
-							if(qtyAvai == null)
-								qtyAvai = Env.ZERO;
+							
 							//validaciones nuevas
 							//ininoles 27-06 nueva logica pedida por fernando
 							if(oLine.get_ValueAsInt("M_RequisitionLine_ID")>0)
@@ -328,39 +606,351 @@ public class ModWindsorValidAvaiQtyOrder implements ModelValidator
 								if(rLine.getParent().get_ValueAsInt("C_Bpartner_Location_ID") != order.getC_BPartner_Location_ID())
 								{
 									if(!rLine.getParent().get_ValueAsBoolean("OverWriteRequisition"))
-										return "Error: Solicitud no es de distribución";
+										return "Error: Solicitud no es de distribuciÃ³n";
 								}*/
 								;
 							}
 							else
 							{							
+								BigDecimal qtyAvai = Env.ZERO; 
+								if(order.get_ValueAsInt("OV_Prereserva_ID")>0)
+								{
+
+									qtyAvai= DB.getSQLValueBD(po.get_TrxName(), "SELECT "+ 
+											//" qtyavailableofb(mp.M_Product_ID,1000010) FROM M_Product mp WHERE mp.M_Product_ID = "+oLine.getM_Product_ID());
+											" COALESCE ( "+
+										      "         (SELECT SUM (s.qtyonhand) "+
+										       "           FROM rv_storage s "+
+										        "         WHERE     s.M_Product_ID = p.m_product_id "+
+										         "              AND s.m_warehouse_id IN (1000001) "+
+										          "             AND s.isactive = 'Y'), "+
+										           "    0) "+
+										          " - (  (SELECT COALESCE (SUM (ol2.qtyreserved), 0)      "+
+										         "         FROM C_orderline ol2      "+
+										          "             INNER JOIN C_Order o2  "+
+										           "               ON (ol2.C_ORDER_ID = o2.c_order_ID)  "+
+										            "     WHERE     ol2.M_Product_ID = p.m_product_id "+
+										             "          AND o2.m_warehouse_id = 1000001 "+
+										              "         AND o2.saldada <> 'Y' "+
+										               "        AND o2.docstatus IN ('IP', 'CO', 'CL') "+
+										                "       AND o2.issotrx = 'Y' "+
+										                 "      AND o2.c_doctypetarget_ID NOT IN "+
+										                  "            (1000110, 1000048, 1000568)) "+
+										            " + (SELECT COALESCE (SUM (rl.qtyreserved), 0)     "+
+										             "     FROM M_Requisitionline rl     "+
+										              "         INNER JOIN M_Requisition r  "+
+										               "           ON (rl.M_Requisition_ID = r.M_Requisition_ID)  "+
+										                " WHERE     rl.M_Product_ID = p.m_product_id  "+
+										                 "      AND r.m_warehouse_id = 1000001  "+
+										                  "     AND r.docstatus IN ('CO', 'CL')  "+
+										                   "    AND r.issotrx = 'Y'))  "+
+											
+		 												" FROM M_Product p WHERE p.M_Product_ID = "+oLine.getM_Product_ID());
+									if(qtyAvai == null)
+										qtyAvai = Env.ZERO;
+									BigDecimal aux = DB.getSQLValueBD(po.get_TrxName(), "SELECT "+ 
+											//" qtyavailableofb(mp.M_Product_ID,1000010) FROM M_Product mp WHERE mp.M_Product_ID = "+oLine.getM_Product_ID());
+											" COALESCE ( "+
+										      "         (SELECT SUM (s.qtyonhand) "+
+										       "           FROM rv_storage s "+
+										        "         WHERE     s.M_Product_ID = p.m_product_id "+
+										         "              AND s.m_warehouse_id IN (1000010) "+
+										          "             AND s.isactive = 'Y'), "+
+										           "    0) "+
+										          " - (  (SELECT COALESCE (SUM (ol2.qtyreserved), 0)      "+
+										         "         FROM C_orderline ol2      "+
+										          "             INNER JOIN C_Order o2  "+
+										           "               ON (ol2.C_ORDER_ID = o2.c_order_ID)  "+
+										            "     WHERE     ol2.M_Product_ID = p.m_product_id "+
+										             "          AND o2.m_warehouse_id = 1000010 "+
+										              "         AND o2.saldada <> 'Y' "+
+										               "        AND o2.docstatus IN ('IP', 'CO', 'CL') "+
+										                "       AND o2.issotrx = 'Y' "+
+										                 "      AND o2.c_doctypetarget_ID NOT IN "+
+										                  "            (1000110, 1000048, 1000568)) "+
+										            " + (SELECT COALESCE (SUM (rl.qtyreserved), 0)     "+
+										             "     FROM M_Requisitionline rl     "+
+										              "         INNER JOIN M_Requisition r  "+
+										               "           ON (rl.M_Requisition_ID = r.M_Requisition_ID)  "+
+										                " WHERE     rl.M_Product_ID = p.m_product_id  "+
+										                 "      AND r.m_warehouse_id = 1000010  "+
+										                  "     AND r.docstatus IN ('CO', 'CL')  "+
+										                   "    AND r.issotrx = 'Y'))  "+
+											
+		 												" FROM M_Product p WHERE p.M_Product_ID = "+oLine.getM_Product_ID());
+									if(aux == null)
+										aux = Env.ZERO;
+									qtyAvai = qtyAvai.add(aux);	
+									
+									if(qtyAvai.subtract(oLine.getQtyOrdered()).compareTo(Env.ZERO) < 0)
+										return "ERROR: Stock Insuficiente Linea: "+ oLine.getLine() +". <LC: 458>";
+								}
+								else
+								{
+								//se separa revision de internet y normal
+								//se separa revision de internet y normal
+								if(order.get_ValueAsString("MedioCompra").compareTo("Internet")==0)
+								{
+									//ininoles nueva funcion para presolicitud
+									/*int ID_reqP = DB.getSQLValue(po.get_TrxName(), "SELECT MAX(mrl2.M_Requisition_ID) FROM M_RequisitionLine rl " +
+											" INNER JOIN M_Requisition mr ON (rl.M_Requisition_ID = mr.M_Requisition_ID)" +
+											" INNER JOIN M_Requisition mr2 ON (mr2.M_Requisition_ID = mr.M_RequisitionRef_ID)" +
+											" WHERE mr.DocStatus IN ('CO','CL') AND mr.C_BPartner_ID = "+order.getC_BPartner_ID()+
+											" AND rl.M_Product_ID = "+oLine.getM_Product_ID()+"" +
+											" AND qty > qtyUsed AND mr.C_DocType_ID IN (1000111,1000570)");
+									*/
+									int ID_reqP = DB.getSQLValue(po.get_TrxName(), "SELECT MAX(mrl2.M_Requisition_ID)" +
+											" FROM  M_Requisition mr" +
+											" INNER JOIN M_Requisition mr2 ON (mr.M_RequisitionRef_ID = mr2.M_Requisition_ID)" +
+											" INNER JOIN M_Requisitionline mrl2 ON (mr2.M_Requisition_ID = mrl2.M_Requisition_ID)" +
+											" WHERE mr.DocStatus IN ('CO','CL') AND mr.C_BPartner_ID=" +order.getC_BPartner_ID()+
+											//ininoles se agrega que solo use la misma bodega
+											" AND mr.M_Warehouse_ID = "+order.getM_Warehouse_ID()+
+											" and mrl2.M_Product_ID = "+oLine.getM_Product_ID()+
+											" AND (mrl2.qty - mrl2.qtyUsed) > 0");
+									if (ID_reqP > 0)
+									{
+										MRequisition req = new MRequisition(po.getCtx(), ID_reqP, po.get_TrxName());
+										/*int ID_reqAux = DB.getSQLValue(po.get_TrxName(), "SELECT MAX(mr.M_Requisition_ID) FROM M_RequisitionLine rl " +
+												" INNER JOIN M_Requisition mr ON (rl.M_Requisition_ID = mr.M_Requisition_ID)" +
+												" INNER JOIN M_Requisition mr2 ON (mr2.M_Requisition_ID = mr.M_RequisitionRef_ID)" +
+												" WHERE mr.DocStatus IN ('CO','CL') AND mr2.C_BPartner_ID = "+order.getC_BPartner_ID()+
+												" AND rl.M_Product_ID = "+oLine.getM_Product_ID()+"" +
+												" AND qty > qtyUsed AND mr.C_DocType_ID IN (1000111,1000570)");*/								
+										BigDecimal qtySol = DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(qty - qtyUsed) FROM M_RequisitionLine rl " +
+												" WHERE rl.IsActive = 'Y' AND rl.M_Requisition_ID = "+ID_reqP+" AND rl.M_Product_ID = "+oLine.getM_Product_ID());
+										return "ERROR: Debe usar solicitud Ecommerce abierta para este cliente. NÂ°: "+req.getDocumentNo()+", producto "+oLine.getM_Product().getName()+" con cantidad "+qtySol + " Linea OV:"+oLine.getLine() +". <LC: 494>";
+									}
+								}
 								//se revisa si existe solicitud abierta
 								int ID_req = DB.getSQLValue(po.get_TrxName(), "SELECT MAX(mr.M_Requisition_ID) FROM M_RequisitionLine rl " +
 										" INNER JOIN M_Requisition mr ON (rl.M_Requisition_ID = mr.M_Requisition_ID) " +
 										" WHERE mr.DocStatus IN ('CO','CL') AND mr.C_BPartner_ID = "+order.getC_BPartner_ID()+
+										" AND mr.M_Warehouse_ID = "+order.getM_Warehouse_ID()+
 										" AND mr.C_BPartner_Location_ID = "+order.getC_BPartner_Location_ID()+
+										//ininoles se agrega que solo use la misma bodega
+										" AND mr.M_Warehouse_ID = "+order.getM_Warehouse_ID()+
 										" AND rl.M_Product_ID = "+oLine.getM_Product_ID()+" AND qty > qtyUsed");
 								//se revisa si existe solicitud de distribucion abierta
 								int ID_reqD = DB.getSQLValue(po.get_TrxName(), "SELECT MAX(mr.M_Requisition_ID) FROM M_RequisitionLine rl " +
 										" INNER JOIN M_Requisition mr ON (rl.M_Requisition_ID = mr.M_Requisition_ID) " +
 										" WHERE mr.DocStatus IN ('CO','CL') AND mr.C_BPartner_ID = "+order.getC_BPartner_ID()+
-										" AND mr.OverWriteRequisition = 'Y' "+
+										" AND mr.M_Warehouse_ID = "+order.getM_Warehouse_ID()+
+										" AND mr.OverWriteRequisition = 'Y' AND mr.C_DocType_ID NOT IN (1000111,1000570)"+
 										" AND rl.M_Product_ID = "+oLine.getM_Product_ID()+" AND qty > qtyUsed");
+								
 								if(ID_req > 0)
 								{
 									MRequisition req = new MRequisition(po.getCtx(), ID_req, po.get_TrxName());
 									BigDecimal qtySol = DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(qty - qtyUsed) FROM M_RequisitionLine rl " +
 											" WHERE rl.IsActive = 'Y' AND rl.M_Requisition_ID = "+ID_req+" AND rl.M_Product_ID = "+oLine.getM_Product_ID());								
-									return "ERROR: Debe usar solicitud abierta para este cliente. N°: "+req.getDocumentNo()+" , producto "+oLine.getM_Product().getName()+"con cantidad "+qtySol;
-								}else if (ID_reqD > 0)
-								{
-									MRequisition req = new MRequisition(po.getCtx(), ID_req, po.get_TrxName());
-									BigDecimal qtySol = DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(qty - qtyUsed) FROM M_RequisitionLine rl " +
-											" WHERE rl.IsActive = 'Y' AND rl.M_Requisition_ID = "+ID_req+" AND rl.M_Product_ID = "+oLine.getM_Product_ID());
-									return "ERROR: Debe usar solicitud de distribución abierta para este cliente. N°: "+req.getDocumentNo()+ ", producto "+oLine.getM_Product().getName()+" con cantidad "+qtySol;
+									return "ERROR: Debe usar solicitud abierta para este cliente. NÂ°: "+req.getDocumentNo()+", producto "+oLine.getM_Product().getName()+"con cantidad "+qtySol+ ". Liena OV:"+oLine.getLine()+". <LC: 519>";
 								}
+								else if (ID_reqD > 0)
+								{
+									MRequisition req = new MRequisition(po.getCtx(), ID_reqD, po.get_TrxName());
+									BigDecimal qtySol = DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(qty - qtyUsed) FROM M_RequisitionLine rl " +
+											" WHERE rl.IsActive = 'Y' AND rl.M_Requisition_ID = "+ID_reqD+" AND rl.M_Product_ID = "+oLine.getM_Product_ID());
+									return "ERROR: Debe usar solicitud de distribuciÃ³n abierta para este cliente. NÂ°: "+req.getDocumentNo()+", producto "+oLine.getM_Product().getName()+" con cantidad "+qtySol;
+								}
+								
+								//ininoles 24-09-2019 se mueven validaciones  de solicitud y presolicitud de venta al principio
+						//		BigDecimal qtyAvai = Env.ZERO; 
+								if(order.getAD_Client_ID() == 1000000)
+								{
+									qtyAvai= DB.getSQLValueBD(po.get_TrxName(), "SELECT "+ 
+											//" qtyavailableofb(mp.M_Product_ID,1000010) FROM M_Product mp WHERE mp.M_Product_ID = "+oLine.getM_Product_ID());
+											" COALESCE ( "+
+										      "         (SELECT SUM (s.qtyonhand) "+
+										       "           FROM rv_storage s "+
+										        "         WHERE     s.M_Product_ID = p.m_product_id "+
+										         "              AND s.m_warehouse_id IN (1000001) "+
+										          "             AND s.isactive = 'Y'), "+
+										           "    0) "+
+										          " - (  (SELECT COALESCE (SUM (ol2.qtyreserved), 0)      "+
+										         "         FROM C_orderline ol2      "+
+										          "             INNER JOIN C_Order o2  "+
+										           "               ON (ol2.C_ORDER_ID = o2.c_order_ID)  "+
+										            "     WHERE     ol2.M_Product_ID = p.m_product_id "+
+										             "          AND o2.m_warehouse_id = 1000001 "+
+										              "         AND o2.saldada <> 'Y' "+
+										               "        AND o2.docstatus IN ('IP', 'CO', 'CL') "+
+										                "       AND o2.issotrx = 'Y' "+
+										                 "      AND o2.c_doctypetarget_ID NOT IN "+
+										                  "            (1000110, 1000048, 1000568)) "+
+										            " + (SELECT COALESCE (SUM (rl.qtyreserved), 0)     "+
+										             "     FROM M_Requisitionline rl     "+
+										              "         INNER JOIN M_Requisition r  "+
+										               "           ON (rl.M_Requisition_ID = r.M_Requisition_ID)  "+
+										                " WHERE     rl.M_Product_ID = p.m_product_id  "+
+										                 "      AND r.m_warehouse_id = 1000001  "+
+										                  "     AND r.docstatus IN ('CO', 'CL')  "+
+										                   "    AND r.issotrx = 'Y'))  "+
+											
+		 												" FROM M_Product p WHERE p.M_Product_ID = "+oLine.getM_Product_ID());
+									if(qtyAvai == null)
+										qtyAvai = Env.ZERO;
+									BigDecimal aux = DB.getSQLValueBD(po.get_TrxName(), "SELECT "+ 
+											//" qtyavailableofb(mp.M_Product_ID,1000010) FROM M_Product mp WHERE mp.M_Product_ID = "+oLine.getM_Product_ID());
+											" COALESCE ( "+
+										      "         (SELECT SUM (s.qtyonhand) "+
+										       "           FROM rv_storage s "+
+										        "         WHERE     s.M_Product_ID = p.m_product_id "+
+										         "              AND s.m_warehouse_id IN (1000010) "+
+										          "             AND s.isactive = 'Y'), "+
+										           "    0) "+
+										          " - (  (SELECT COALESCE (SUM (ol2.qtyreserved), 0)      "+
+										         "         FROM C_orderline ol2      "+
+										          "             INNER JOIN C_Order o2  "+
+										           "               ON (ol2.C_ORDER_ID = o2.c_order_ID)  "+
+										            "     WHERE     ol2.M_Product_ID = p.m_product_id "+
+										             "          AND o2.m_warehouse_id = 1000010 "+
+										              "         AND o2.saldada <> 'Y' "+
+										               "        AND o2.docstatus IN ('IP', 'CO', 'CL') "+
+										                "       AND o2.issotrx = 'Y' "+
+										                 "      AND o2.c_doctypetarget_ID NOT IN "+
+										                  "            (1000110, 1000048, 1000568)) "+
+										            " + (SELECT COALESCE (SUM (rl.qtyreserved), 0)     "+
+										             "     FROM M_Requisitionline rl     "+
+										              "         INNER JOIN M_Requisition r  "+
+										               "           ON (rl.M_Requisition_ID = r.M_Requisition_ID)  "+
+										                " WHERE     rl.M_Product_ID = p.m_product_id  "+
+										                 "      AND r.m_warehouse_id = 1000010  "+
+										                  "     AND r.docstatus IN ('CO', 'CL')  "+
+										                   "    AND r.issotrx = 'Y'))  "+
+											
+		 												" FROM M_Product p WHERE p.M_Product_ID = "+oLine.getM_Product_ID());
+									if(aux == null)
+										aux = Env.ZERO;
+									qtyAvai = qtyAvai.add(aux);
+									/*if(order.getC_BPartner_Location_ID() == 1010879 || order.getC_BPartner_Location_ID()  == 1011338)
+									{
+										BigDecimal aux2 = DB.getSQLValueBD(po.get_TrxName(), "SELECT qtyavailableofb(mp.M_Product_ID,1000024) FROM M_Product mp WHERE mp.M_Product_ID = "+oLine.getM_Product_ID());
+										if(aux2 == null)
+											aux2 = Env.ZERO;
+										qtyAvai = qtyAvai.add(aux2);
+									}*/
+									if(order.getM_Warehouse_ID() == 1000025)
+	                                {
+	                                      BigDecimal aux2 = DB.getSQLValueBD(po.get_TrxName(), "SELECT "+ 
+	          									//" qtyavailableofb(mp.M_Product_ID,1000025) FROM M_Product mp WHERE mp.M_Product_ID = "+oLine.getM_Product_ID());
+	        									" COALESCE ( "+
+	        								      "         (SELECT SUM (s.qtyonhand) "+
+	        								       "           FROM rv_storage s "+
+	        								        "         WHERE     s.M_Product_ID = p.m_product_id "+
+	        								         "              AND s.m_warehouse_id IN (1000025) "+
+	        								          "             AND s.isactive = 'Y'), "+
+	        								           "    0) "+
+	        								          " - (  (SELECT COALESCE (SUM (ol2.qtyreserved), 0)      "+
+	        								         "         FROM C_orderline ol2      "+
+	        								          "             INNER JOIN C_Order o2  "+
+	        								           "               ON (ol2.C_ORDER_ID = o2.c_order_ID)  "+
+	        								            "     WHERE     ol2.M_Product_ID = p.m_product_id "+
+	        								             "          AND o2.m_warehouse_id = 1000025 "+
+	        								              "         AND o2.saldada <> 'Y' "+
+	        								               "        AND o2.docstatus IN ('IP', 'CO', 'CL') "+
+	        								                "       AND o2.issotrx = 'Y' "+
+	        								                 "      AND o2.c_doctypetarget_ID NOT IN "+
+	        								                  "            (1000110, 1000048, 1000568)) "+
+	        								            " + (SELECT COALESCE (SUM (rl.qtyreserved), 0)     "+
+	        								             "     FROM M_Requisitionline rl     "+
+	        								              "         INNER JOIN M_Requisition r  "+
+	        								               "           ON (rl.M_Requisition_ID = r.M_Requisition_ID)  "+
+	        								                " WHERE     rl.M_Product_ID = p.m_product_id  "+
+	        								                 "      AND r.m_warehouse_id = 1000025  "+
+	        								                  "     AND r.docstatus IN ('CO', 'CL')  "+
+	        								                   "    AND r.issotrx = 'Y'))  "+
+	        									
+	         												" FROM M_Product p WHERE p.M_Product_ID = "+oLine.getM_Product_ID());
+	                                      if(aux2 == null)
+	                                             aux2 = Env.ZERO;
+	                                      qtyAvai = qtyAvai.add(aux2);
+	                                      return null;
+	                                }
+								}
+								else
+								{
+									qtyAvai= DB.getSQLValueBD(po.get_TrxName(), "SELECT bomqtyavailableofb(mp.M_Product_ID,"+order.getM_Warehouse_ID()+",0) FROM M_Product mp WHERE mp.M_Product_ID = "+oLine.getM_Product_ID());
+									if(order.getC_BPartner_Location_ID() == 1010879 || order.getC_BPartner_Location_ID()  == 1011338)
+									{
+										if(order.getM_Warehouse_ID()== 1000027)
+										{
+											BigDecimal aux3 = DB.getSQLValueBD(po.get_TrxName(), "SELECT "+ 
+													//" qtyavailableofb(mp.M_Product_ID,1000027) FROM M_Product mp WHERE mp.M_Product_ID = "+oLine.getM_Product_ID());
+													" COALESCE ( "+
+												      "         (SELECT SUM (s.qtyonhand) "+
+												       "           FROM rv_storage s "+
+												        "         WHERE     s.M_Product_ID = p.m_product_id "+
+												         "              AND s.m_warehouse_id IN (1000027) "+
+												          "             AND s.isactive = 'Y'), "+
+												           "    0) "+
+												          " - (  (SELECT COALESCE (SUM (ol2.qtyreserved), 0)      "+
+												         "         FROM C_orderline ol2      "+
+												          "             INNER JOIN C_Order o2  "+
+												           "               ON (ol2.C_ORDER_ID = o2.c_order_ID)  "+
+												            "     WHERE     ol2.M_Product_ID = p.m_product_id "+
+												             "          AND o2.m_warehouse_id = 1000027 "+
+												              "         AND o2.saldada <> 'Y' "+
+												               "        AND o2.docstatus IN ('IP', 'CO', 'CL') "+
+												                "       AND o2.issotrx = 'Y' "+
+												                 "      AND o2.c_doctypetarget_ID NOT IN "+
+												                  "            (1000110, 1000048, 1000568)) "+
+												            " + (SELECT COALESCE (SUM (rl.qtyreserved), 0)     "+
+												             "     FROM M_Requisitionline rl     "+
+												              "         INNER JOIN M_Requisition r  "+
+												               "           ON (rl.M_Requisition_ID = r.M_Requisition_ID)  "+
+												                " WHERE     rl.M_Product_ID = p.m_product_id  "+
+												                 "      AND r.m_warehouse_id = 1000027  "+
+												                  "     AND r.docstatus IN ('CO', 'CL')  "+
+												                   "    AND r.issotrx = 'Y'))  "+
+													
+				 												" FROM M_Product p WHERE p.M_Product_ID = "+oLine.getM_Product_ID());
+											if(aux3 == null)
+												aux3 = Env.ZERO;
+											qtyAvai = qtyAvai.add(aux3);
+										}
+										BigDecimal aux2 = DB.getSQLValueBD(po.get_TrxName(), "SELECT "+ 
+												//" qtyavailableofb(mp.M_Product_ID,1000024) FROM M_Product mp WHERE mp.M_Product_ID = "+oLine.getM_Product_ID());
+												" COALESCE ( "+
+											      "         (SELECT SUM (s.qtyonhand) "+
+											       "           FROM rv_storage s "+
+											        "         WHERE     s.M_Product_ID = p.m_product_id "+
+											         "              AND s.m_warehouse_id IN (1000024) "+
+											          "             AND s.isactive = 'Y'), "+
+											           "    0) "+
+											          " - (  (SELECT COALESCE (SUM (ol2.qtyreserved), 0)      "+
+											         "         FROM C_orderline ol2      "+
+											          "             INNER JOIN C_Order o2  "+
+											           "               ON (ol2.C_ORDER_ID = o2.c_order_ID)  "+
+											            "     WHERE     ol2.M_Product_ID = p.m_product_id "+
+											             "          AND o2.m_warehouse_id = 1000024 "+
+											              "         AND o2.saldada <> 'Y' "+
+											               "        AND o2.docstatus IN ('IP', 'CO', 'CL') "+
+											                "       AND o2.issotrx = 'Y' "+
+											                 "      AND o2.c_doctypetarget_ID NOT IN "+
+											                  "            (1000110, 1000048, 1000568)) "+
+											            " + (SELECT COALESCE (SUM (rl.qtyreserved), 0)     "+
+											             "     FROM M_Requisitionline rl     "+
+											              "         INNER JOIN M_Requisition r  "+
+											               "           ON (rl.M_Requisition_ID = r.M_Requisition_ID)  "+
+											                " WHERE     rl.M_Product_ID = p.m_product_id  "+
+											                 "      AND r.m_warehouse_id = 1000024  "+
+											                  "     AND r.docstatus IN ('CO', 'CL')  "+
+											                   "    AND r.issotrx = 'Y'))  "+
+												
+			 												" FROM M_Product p WHERE p.M_Product_ID = "+oLine.getM_Product_ID());
+										if(aux2 == null)
+											aux2 = Env.ZERO;
+										qtyAvai = qtyAvai.add(aux2);
+									}
+								}
+								if(qtyAvai == null)
+									qtyAvai = Env.ZERO;								
+
 								if(qtyAvai.subtract(oLine.getQtyOrdered()).compareTo(Env.ZERO) < 0)
-									return "ERROR: Stock Insuficiente y NO Existen solicitudes abiertas";
+									return "ERROR: Stock Insuficiente y NO Existen solicitudes abiertas. Linea OV:"+oLine.getLine() +". <LC: 578>";
+							
+								}
 							}
 						}
 					}

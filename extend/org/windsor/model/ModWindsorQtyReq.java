@@ -255,7 +255,4 @@ public class ModWindsorQtyReq implements ModelValidator
 		
 		return val;
 	}
-
-	
-
 }	

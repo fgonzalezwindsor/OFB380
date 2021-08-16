@@ -94,7 +94,9 @@ public class GenerateInventoryUseInternal extends SvrProcess
 					
 					//mov.setC_DocType_ID(1000869);
 					// se cambia a campo name para reconocer
-					String sqldoctype = "SELECT nvl(max(c_doctype_id),0) from c_doctype where name like 'WSConsumoProduccion' and AD_Client_ID = "+Env.getAD_Client_ID(getCtx());
+					//mfrojas, 20180820
+					//se cambia los NVL por COALESCE
+					String sqldoctype = "SELECT coalesce(max(c_doctype_id),0) from c_doctype where name like 'WSConsumoProduccion' and AD_Client_ID = "+Env.getAD_Client_ID(getCtx());
 					int doctype = DB.getSQLValue(get_TrxName(), sqldoctype);
 					
 					if(doctype > 0)
@@ -136,7 +138,7 @@ public class GenerateInventoryUseInternal extends SvrProcess
 				MInventoryLine line = new MInventoryLine(getCtx(),0,get_TrxName());
 				
 				//line.setAD_Org_ID(mov.getAD_Org_ID());
-				String sqlorg = "SELECT nvl(AD_Org_ID,0) FROM AD_Org where name like '"+rs.getString("CENTROCOSTO")+"'";
+				String sqlorg = "SELECT coalesce(AD_Org_ID,0) FROM AD_Org where name like '"+rs.getString("CENTROCOSTO")+"'";
 				log.config("sql org "+sqlorg);
 				int id_orgline = DB.getSQLValue(get_TrxName(), sqlorg);
 				if(id_orgline == -1)
@@ -196,7 +198,7 @@ public class GenerateInventoryUseInternal extends SvrProcess
 				 BigDecimal bdd=new BigDecimal(rs.getString("COSTO"));
 
 				DB.executeUpdate("UPDATE M_Inventoryline set costo = "+bdd+" where m_inventoryline_id = "+line.get_ID(),get_TrxName());
-				DB.executeUpdate("UPDATE M_Inventoryline set CentroCosto = '"+rs.getString("CENTROCOSTO")+"' where m_inventoryline_id = "+line.get_ID(),get_TrxName());
+				//DB.executeUpdate("UPDATE M_Inventoryline set CentroCosto = '"+rs.getString("CENTROCOSTO")+"' where m_inventoryline_id = "+line.get_ID(),get_TrxName());
 				
 				
 

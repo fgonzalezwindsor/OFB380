@@ -606,7 +606,7 @@ public final class ALogin extends CDialog
 			ADialog.info(m_WindowNo, this, msg);
 
 		//	Check Apps Server - DB Checked in Menu
-		checkVersion();			//	exits if conflict
+		//checkVersion();			//	exits if conflict
 
 		//  Close - we are done
 		if (m_connectionOK)

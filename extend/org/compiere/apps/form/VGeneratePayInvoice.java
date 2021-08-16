@@ -86,6 +86,8 @@ import org.compiere.util.TimeUtil;
 import org.compiere.util.Trx;
 import org.compiere.util.Util;
 
+import org.ofb.model.OFBForward;
+
 /**
  * Allocation Form
  *
@@ -670,19 +672,37 @@ public class VGeneratePayInvoice extends CPanel
 			{
 				//validacion antes de crear la factura
 				//faaguilar OFB cashbook default
-				int C_CashBook_ID=DB.getSQLValue(trx.getTrxName(),"select C_CashBook_ID from C_CashBook where ISDEFAULT='Y' and AD_Org_ID IN (0,"+order.getAD_Org_ID()+") and AD_Client_ID="+order.getAD_Client_ID());
-				if(C_CashBook_ID<=0)
+				
+				//mfrojas validador ofbforward windsor
+				int revisar = 0;
+				try
 				{
-					JOptionPane.showMessageDialog(this, "No existe un libro de efectivo por defecto", "Error", JOptionPane.ERROR_MESSAGE);
-					return;
+					boolean usecashbook = OFBForward.WindsorUseCashBook();
+					if(usecashbook)
+					{
+						revisar = 1;
+					}
 				}
-				MCash cash;
-				cash = MCash.getDefault (Env.getCtx(), order.getAD_Client_ID(), 
-						C_CashBook_ID,  trx.getTrxName());
-				if (cash == null || cash.get_ID() == 0)
+				catch (Exception e)
 				{
-					JOptionPane.showMessageDialog(this, "No hay una caja de efectivo disponible", "Error", JOptionPane.ERROR_MESSAGE);
-					return;
+					log.config(e.toString());
+				}
+				if(revisar == 0)
+				{	
+					int C_CashBook_ID=DB.getSQLValue(trx.getTrxName(),"select C_CashBook_ID from C_CashBook where ISDEFAULT='Y' and AD_Org_ID IN (0,"+order.getAD_Org_ID()+") and AD_Client_ID="+order.getAD_Client_ID());
+					if(C_CashBook_ID<=0)
+					{
+						JOptionPane.showMessageDialog(this, "No existe un libro de efectivo por defecto", "Error", JOptionPane.ERROR_MESSAGE);
+						return;
+					}
+					MCash cash;
+					cash = MCash.getDefault (Env.getCtx(), order.getAD_Client_ID(), 
+							C_CashBook_ID,  trx.getTrxName());
+					if (cash == null || cash.get_ID() == 0)
+					{
+						JOptionPane.showMessageDialog(this, "No hay una caja de efectivo disponible", "Error", JOptionPane.ERROR_MESSAGE);
+						return;
+					}
 				}
 				
 	            //faaguilar OFB cashbook default END

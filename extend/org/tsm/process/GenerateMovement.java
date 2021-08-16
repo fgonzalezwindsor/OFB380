@@ -23,6 +23,7 @@ import java.util.logging.Level;
 
 import org.compiere.model.MMovement;
 import org.compiere.model.MMovementLine;
+import org.compiere.process.ProcessInfoParameter;
 import org.compiere.process.SvrProcess;
 import org.compiere.util.DB;
 import org.compiere.util.Env;
@@ -35,9 +36,23 @@ public class GenerateMovement extends SvrProcess
 	/**
 	 *  Prepare - e.g., get Parameters.
 	 */
+	
+	private int ID_ProcessTSM = 0;
 	protected void prepare()
 	{
-		
+		ProcessInfoParameter[] para = getParameter();
+		for (int i = 0; i < para.length; i++)
+		{
+			String name = para[i].getParameterName();
+			if (para[i].getParameter() == null)
+				;			
+			else if (name.equals("ID_ProcessTSM"))
+			{
+				ID_ProcessTSM = para[i].getParameterAsInt();
+			}
+			else
+				log.log(Level.SEVERE, "Unknown Parameter: " + name);
+		}
 	}	//	prepare
 
 	/**
@@ -47,6 +62,9 @@ public class GenerateMovement extends SvrProcess
 	 */
 	protected String doIt() throws Exception
 	{	
+		if(ID_ProcessTSM < 0)
+			ID_ProcessTSM = 0;
+		
 		String sqlDet = "SELECT mm.id_hoja_ruta,mm.id_flota,mm.mov_codigo,mm.rampla_codigo,mm.rutconductor, " +
 				" mm.MovementDate,mm.fechahorainicio,mm.fechahoracierre,mm.id_base_inicio,mm.odometro_inicial, " +
 				" mm.odometro_final,TP_TollSpendingManual,I_MovementXML_ID, " +
@@ -58,8 +76,12 @@ public class GenerateMovement extends SvrProcess
 				" FROM i_movementxml mm " +
 				" LEFT JOIN i_movementlinexml ml ON (mm.Id_Hoja_Ruta = ml.Id_Hoja_Ruta)" +
 				" WHERE mm.processed = 'N' AND (ml.processed = 'N' OR ml.processed IS NULL) " +
-				" AND mm.AD_Org_ID != 100 and ml.AD_Org_ID != 100 "+
-				" Order By mm.Id_Hoja_Ruta Desc, Id_Hoja_Ruta_Detalle ASC";
+				" AND mm.AD_Org_ID != 100 and ml.AD_Org_ID != 100  ";
+		if(ID_ProcessTSM > 0)
+			sqlDet+= " AND ID_ProcessTSM = "+ID_ProcessTSM;
+		else
+			sqlDet+= " AND (ID_ProcessTSM = 0 OR ID_ProcessTSM IS NULL) ";	
+		sqlDet+=" Order By mm.Id_Hoja_Ruta Desc, Id_Hoja_Ruta_Detalle ASC";
 		
 		PreparedStatement pstmt = null;
 		int cant = 0;

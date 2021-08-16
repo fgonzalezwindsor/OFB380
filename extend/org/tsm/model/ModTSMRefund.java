@@ -172,7 +172,7 @@ public class ModTSMRefund implements ModelValidator
 					//viatico con Disponibilidad ya existente
 					int cantRepLine = DB.getSQLValue(po.get_TrxName(), "SELECT COUNT(1) FROM TP_RefundLine rl" +
 						" INNER JOIN TP_Refund r ON (rl.TP_Refund_ID = r.TP_Refund_ID) " +
-						" WHERE Pre_M_Movement_ID > 0 AND r.C_BPartner_ID = "+rLine.getTP_Refund().getC_BPartner_ID()+
+						" WHERE r.type = '"+head.getType()+"' AND Pre_M_Movement_ID > 0 AND r.C_BPartner_ID = "+rLine.getTP_Refund().getC_BPartner_ID()+
 						" AND rl.DateTrx = ?",rLine.getDateTrx());
 					if (cantRepLine > 0)
 						throw new AdempiereException("ERROR: Ya existe un viatico por disponibilidad para la misma fecha y conductor:"+rLine.getTP_Refund().getC_BPartner().getName());
@@ -182,7 +182,7 @@ public class ModTSMRefund implements ModelValidator
 				{
 					int cantRep = DB.getSQLValue(po.get_TrxName(), "SELECT COUNT(1) FROM TP_RefundLine rl" +
 						" INNER JOIN TP_Refund r ON (rl.TP_Refund_ID = r.TP_Refund_ID) " +
-						" WHERE M_Movement_ID > 0 AND r.C_BPartner_ID = "+rLine.getTP_Refund().getC_BPartner_ID()+
+						" WHERE r.type = '"+head.getType()+"' AND M_Movement_ID > 0 AND r.C_BPartner_ID = "+rLine.getTP_Refund().getC_BPartner_ID()+
 						" AND rl.DateTrx = ?",rLine.getDateTrx());
 					if (cantRep > 0)
 						throw new AdempiereException("ERROR: Ya existe un viatico por hoja de ruta para la misma fecha y conductor:"+rLine.getTP_Refund().getC_BPartner().getName());
@@ -195,11 +195,33 @@ public class ModTSMRefund implements ModelValidator
 					throw new AdempiereException("ERROR: Existe una HR y concepto repetido");
 				//hr obligatoria
 				if(rLine.getM_Movement_ID() <=0 && rLine.get_ValueAsInt("TP_RefundAmt_ID") > 0 
-						&& (rLine.getTP_Refund().getAD_Org_ID() != 1000004 && rLine.getTP_Refund().getAD_Org_ID() != 1000017))
+						&& (rLine.getTP_Refund().getAD_Org_ID() != 1000004 && rLine.getTP_Refund().getAD_Org_ID() != 1000017 && rLine.getTP_Refund().getAD_Org_ID() != 1000067))    
 					throw new AdempiereException("ERROR: Debe ingresar HR");
+				//nueva validacion misma fecha 2 veces y mismo concepto //se opta por sacar validacion 09-03-2018
+				/*int cantRep = DB.getSQLValue(po.get_TrxName(), "SELECT COUNT(1) FROM TP_RefundLine rl" +
+						" INNER JOIN TP_Refund r ON (rl.TP_Refund_ID = r.TP_Refund_ID) " +
+						" WHERE r.C_BPartner_ID = "+rLine.getTP_Refund().getC_BPartner_ID()+
+						" AND TP_RefundAmt_ID = "+rLine.get_ValueAsInt("TP_RefundAmt_ID")+
+						" AND r.Type = '"+head.getType()+"' AND rl.DateTrx = ?",rLine.getDateTrx());
+					if (cantRep > 0)
+						throw new AdempiereException("ERROR: Ya existe un viatico para la misma fecha y conductor: "+rLine.getTP_Refund().getC_BPartner().getName());
+				*/
 			}		
-		}	
-		
+		}		
+		/*if((type == TYPE_BEFORE_NEW || type == TYPE_BEFORE_CHANGE) && po.get_Table_ID()==X_TP_Refund.Table_ID)  
+		{
+			X_TP_Refund refund = (X_TP_Refund) po;
+			X_TP_RefundHeader head = new X_TP_RefundHeader(po.getCtx(), refund.getTP_RefundHeader_ID(), po.get_TrxName());
+			if(head.getType().compareTo("02") == 0)
+			{
+				
+				int cantRep = DB.getSQLValue(po.get_TrxName(), "SELECT COUNT(1) FROM TP_Refund r" +
+						" WHERE r.C_BPartner_ID = "+refund.getC_BPartner_ID()+
+						" AND r.DateDoc = ?",refund.getDateDoc());
+				if (cantRep > 0)
+					throw new AdempiereException("ERROR: Ya existe un viatico para la misma fecha y conductor: "+refund.getC_BPartner().getName());
+			}
+		}*/		
 		if(type == TYPE_BEFORE_DELETE && po.get_Table_ID()==X_TP_RefundLine.Table_ID)  
 		{
 			X_TP_RefundLine rLine = (X_TP_RefundLine) po;
@@ -210,7 +232,7 @@ public class ModTSMRefund implements ModelValidator
 				return "ERROR: No se puede borrar linea de viatico";				
 			if(head.isSignature2() && flag == false)
 				return "ERROR: No se puede borrar linea de viatico";
-		}	
+		}
 		if(type == TYPE_BEFORE_DELETE && po.get_Table_ID()==X_TP_Refund.Table_ID)  
 		{
 			X_TP_Refund refund = (X_TP_Refund) po;
@@ -225,13 +247,41 @@ public class ModTSMRefund implements ModelValidator
 		if(type == TYPE_BEFORE_DELETE && po.get_Table_ID()==X_TP_Refund.Table_ID)  
 		{
 			X_TP_Refund refund = (X_TP_Refund) po;
-			DB.executeUpdate("DELETE * FROM TP_RefundLine WHERE TP_Refund_ID = "+refund.get_ID(), po.get_TrxName());		
+			DB.executeUpdate("DELETE FROM TP_RefundLine WHERE TP_Refund_ID = "+refund.get_ID(), po.get_TrxName());
+			//se actualiza cabecera
+			X_TP_RefundHeader head = new X_TP_RefundHeader(po.getCtx(), refund.getTP_RefundHeader_ID(), po.get_TrxName());
+			BigDecimal amtrefund = DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(rl.amt) " +
+					" FROM tp_refund r " +
+					" INNER JOIN tp_refundline rl ON (rl.tp_refund_id = r.tp_refund_id)" +
+					" WHERE r.tp_refundheader_id = "+head.get_ID());
+			if(amtrefund != null)
+			{
+				head.set_CustomColumn("GrandTotal",amtrefund);
+				head.saveEx(po.get_TrxName());
+			}
+			
+			
 		}	
 		if(type == TYPE_BEFORE_DELETE && po.get_Table_ID()==X_TP_RefundHeader.Table_ID)  
 		{
 			X_TP_RefundHeader head = (X_TP_RefundHeader) po;
 			DB.executeUpdate("DELETE FROM TP_RefundLine WHERE TP_Refund_ID IN (SELECT TP_Refund_ID FROM TP_Refund WHERE TP_RefundHeader_ID = "+head.get_ID()+") ", po.get_TrxName());
 			DB.executeUpdate("DELETE FROM TP_Refund WHERE TP_RefundHeader_ID = "+head.get_ID(), po.get_TrxName());		
+		}
+		
+		if((type == TYPE_AFTER_CHANGE || type == TYPE_AFTER_NEW || type == TYPE_AFTER_DELETE) && po.get_Table_ID()==X_TP_RefundLine.Table_ID)  
+		{
+			X_TP_RefundLine rLine = (X_TP_RefundLine) po;
+			X_TP_RefundHeader head = new X_TP_RefundHeader(po.getCtx(), rLine.getTP_Refund().getTP_RefundHeader_ID(), po.get_TrxName());
+			BigDecimal amtrefund = DB.getSQLValueBD(po.get_TrxName(), "SELECT SUM(rl.amt) " +
+					" FROM tp_refund r " +
+					" INNER JOIN tp_refundline rl ON (rl.tp_refund_id = r.tp_refund_id)" +
+					" WHERE r.tp_refundheader_id = "+head.get_ID());
+			if(amtrefund != null)
+			{
+				head.set_CustomColumn("GrandTotal",amtrefund);
+				head.saveEx(po.get_TrxName());
+			}
 		}
 		
 		return null;

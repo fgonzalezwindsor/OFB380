@@ -307,20 +307,21 @@ public class ExportDTEMInOutCGProvectis extends SvrProcess
             		taxAmt = Env.ZERO;
             		MInOutLine iLine = iLines2[a];
             		String nameCg = iLine.get_ValueAsString("ProductNameCG"); 
-            		if (nameCg != null && nameCg != "" && nameCg != " ")
+            		if (nameCg != null && nameCg.trim().length() > 0)
             		{
                			priceT = (BigDecimal)iLine.get_Value("PriceEntered_CG");   
             			BigDecimal qtyGC = (BigDecimal)iLine.get_Value("QtyGC");
                 		priceT = priceT.multiply(qtyGC);
-                		if(iLine.getC_OrderLine().getC_Tax_ID() > 0)
+                		//se saca logica para impuestos ya que no cuadran montos entre lineas y total
+                		/*if(iLine.getC_OrderLine().getC_Tax_ID() > 0)
                 		{
                 			if (iLine.getC_OrderLine().getC_Tax().getRate().compareTo(Env.ZERO) > 0)
                 			{
                 				taxAmt = priceT.multiply(iLine.getC_OrderLine().getC_Tax().getRate());
                 				taxAmt = taxAmt.divide(Env.ONEHUNDRED);
                 			}
-                		}
-                		priceT = priceT.add(taxAmt);
+                		}*/
+                		//priceT = priceT.add(taxAmt);
                 		amountGrandT = amountGrandT.add(priceT);
             		}
                 }

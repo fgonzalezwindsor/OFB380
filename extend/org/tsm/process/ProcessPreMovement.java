@@ -25,6 +25,8 @@ import java.util.Calendar;
 import java.util.logging.Level;
 
 import org.adempiere.exceptions.AdempiereException;
+import org.compiere.model.MAsset;
+import org.compiere.model.MBPartner;
 import org.compiere.model.X_HR_Prebitacora;
 import org.compiere.model.X_Pre_M_Movement;
 import org.compiere.model.X_Pre_M_MovementLine;
@@ -202,7 +204,7 @@ public class ProcessPreMovement extends SvrProcess
 				
 				//validacion sera contra el total de activos/bp analizarla bien al terminar todo
 				int cantBP = DB.getSQLValue(get_TrxName(),"SELECT COUNT(1) FROM C_Bpartner " +						
-						" WHERE IsActive = 'Y' AND AD_OrgRef_ID = "+preMov.getAD_Org_ID()+
+						" WHERE IsActive = 'Y' AND AD_OrgRef_ID = "+preMov.getAD_Org_ID()+" AND IsUnlinked = 'N' "+
 						" AND C_BPartner_ID NOT IN (SELECT C_BPartner_ID FROM Pre_M_MovementLine WHERE C_BPartner_ID IS NOT NULL " +
 						" AND Pre_M_Movement_ID ="+preMov.get_ID()+")");
 				if(cantBP > 0)
@@ -321,6 +323,30 @@ public class ProcessPreMovement extends SvrProcess
 								throw new AdempiereException("Mas de 2 domingos Trabajados. Conductor: "+pMovLine.getC_BPartner().getName());
 							*/
 						//}
+						if(pMovLine.getC_BPartner_ID() > 0)
+						{
+							int cantPMovLine = DB.getSQLValue(get_TrxName(), "SELECT COUNT(1) FROM Pre_M_Movement mm" +
+									" INNER JOIN Pre_M_MovementLine mml ON (mm.Pre_M_Movement_ID = mml.Pre_M_Movement_ID) " +
+									" WHERE mm.Pre_M_Movement_ID <> "+preMov.get_ID()+" AND mm.MovementDate = ? " +
+									" AND mm.AD_Org_ID <> "+preMov.getAD_Org_ID()+
+									" AND mml.C_Bpartner_ID = "+pMovLine.getC_BPartner_ID(),preMov.getMovementDate());
+							if(cantPMovLine > 0)
+								throw new AdempiereException("ERROR: Ya existe una disponibilidad en otra flota para el mismo conductor:"+pMovLine.getC_BPartner().getValue());
+						}
+						
+					}
+					//actualizacion de org actual
+					if(pMovLine.getA_Asset_ID() > 0)
+					{
+						MAsset asset = new MAsset(getCtx(), pMovLine.getA_Asset_ID(), get_TrxName());						
+						pMovLine.set_CustomColumn("AD_OrgRefA_ID",asset.get_ValueAsInt("AD_OrgRef_ID"));
+						pMovLine.save(get_TrxName());
+					}
+					if(pMovLine.getC_BPartner_ID() > 0)
+					{
+						MBPartner partner = new MBPartner(getCtx(), pMovLine.getC_BPartner_ID(), get_TrxName());						
+						pMovLine.set_CustomColumn("AD_OrgRefB_ID",partner.get_ValueAsInt("AD_OrgRef_ID"));
+						pMovLine.save(get_TrxName());
 					}
 				}
 				
@@ -335,6 +361,7 @@ public class ProcessPreMovement extends SvrProcess
 					preMov.save();
 					DB.executeUpdate("UPDATE Pre_M_MovementLine SET Processed = 'Y' " +
 						" WHERE Pre_M_Movement_ID = "+preMov.get_ID(), get_TrxName());
+					//se actualiza 
 		        }
 				
 			}

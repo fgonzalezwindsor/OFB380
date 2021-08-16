@@ -16,6 +16,7 @@
  *****************************************************************************/
 package org.geminis.model;
 
+import org.compiere.model.MCash;
 import org.compiere.model.MClient;
 import org.compiere.model.MPayment;
 import org.compiere.model.ModelValidationEngine;
@@ -23,6 +24,7 @@ import org.compiere.model.ModelValidator;
 import org.compiere.model.PO;
 import org.compiere.util.CLogger;
 import org.compiere.util.DB;
+import org.compiere.util.Env;
 
 /**
  *	Validator for company Sismode
@@ -65,6 +67,7 @@ public class ModelOFBGeminis implements ModelValidator
 		//	Tables to be monitored
 		//	Documents to be monitored
 		engine.addModelChange(MPayment.Table_Name, this); // ID tabla 335
+		engine.addDocValidate(MCash.Table_Name, this); 
 				
 
 	}	//	initialize
@@ -99,9 +102,9 @@ public class ModelOFBGeminis implements ModelValidator
 					return "Existe un pago sin asignaciones para el mismo socio de negocio con el mismo monto";
 				}
 			}
-		}		
+		}				
 			
-	return null;
+		return null;
 	}	//	modelChange
 
 	/**
@@ -116,7 +119,13 @@ public class ModelOFBGeminis implements ModelValidator
 	public String docValidate (PO po, int timing)
 	{
 		log.info(po.get_TableName() + " Timing: "+timing);
-
+		if(timing == TIMING_AFTER_VOID && po.get_Table_ID()==MCash.Table_ID)
+		{
+			MCash cash = (MCash) po;
+			cash.setBeginningBalance(Env.ZERO);
+			cash.setEndingBalance(Env.ZERO);
+			cash.saveEx(po.get_TrxName());
+		}
 		
 		return null;
 	}	//	docValidate

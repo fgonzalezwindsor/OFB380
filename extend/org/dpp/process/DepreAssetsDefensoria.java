@@ -17,6 +17,7 @@ import java.math.*;
 import java.sql.*;
 import java.util.*;
 import java.util.logging.*;
+
 import org.compiere.process.SvrProcess;
 import org.compiere.model.*;
 import org.compiere.util.*;
@@ -208,6 +209,113 @@ public class DepreAssetsDefensoria extends SvrProcess
 		else
 			sql+= " And a.A_Asset_ID = 0";
 	}
+	
+	
+	/**
+	 * mfrojas 20181002
+	 * se agrega nuevo proceso de reevaluacion y deterioro, para que sean por activo, y no por grupo
+	 */
+	
+	if(DepDoc.getDepType().equalsIgnoreCase("RRV")) //Reevaluacion
+	{
+		int id_activo = 0;
+		//Se sobreescribe sql para no utilizar periodo y que sea por activo y no por grupo.
+		sql="select a.a_asset_id,a.name,a.value,acct.c_acctschema_id, acct.a_asset_acct, "
+				+" acct.a_depreciation_acct,"
+				//+" fore.amount,fore.a_asset_forecast_id,p.c_period_id,p.name,"
+				+" acct.a_accumdepreciation_acct,acct.A_Disposal_Gain_Acct,wk.a_asset_cost,acct.A_Disposal_RevenueC_Acct,"
+				+" acct.A_Disposal_RevenueD_Acct,acct.A_Disposal_Loss_Acct, wk.a_accumulated_depr, acct.A_AssetComplement_Acct"
+				+" from a_asset a"
+				+" inner join a_asset_acct acct on (a.a_asset_id=acct.a_asset_id)"
+				+" inner join A_Depreciation_Workfile wk on (a.a_asset_id=wk.a_asset_id)"
+				//+" inner join a_asset_forecast fore on (a.a_asset_id=fore.a_asset_id)"
+				+" where a.ad_client_id=? ";
+				//and fore.a_asset_forecast_ID = ";
+				/*+" (SELECT MAX(fa.a_asset_forecast_ID) FROM a_asset_forecast fa " +
+				 "  WHERE fa.isactive = 'Y' AND fore.A_Asset_ID = a.A_Asset_ID) ";*/
+		try
+		{ 
+			id_activo = DepDoc.get_ValueAsInt("A_Asset_ID");
+		}
+		catch(Exception e)
+		{
+			id_activo = 0;
+			log.log(Level.SEVERE, sql.toString(), e);			
+		}
+		if (id_activo > 0)//solo el activo mencionado en el proceso
+			sql+= " And a.A_Asset_ID IN ("+DepDoc.get_ValueAsInt("A_Asset_ID")+")" ;			
+		else
+			sql+= " And a.A_Asset_ID = 0";
+
+
+		
+	}
+	
+	if(DepDoc.getDepType().equalsIgnoreCase("DDT")) //Deterioro
+	{
+		int id_activo = 0;
+		//Se sobreescribe sql para no utilizar periodo y que sea por activo y no por grupo.
+		sql="select a.a_asset_id,a.name,a.value,acct.c_acctschema_id, acct.a_asset_acct, "
+				+" acct.a_depreciation_acct,"
+				//+" fore.amount,fore.a_asset_forecast_id,p.c_period_id,p.name,"
+				+" acct.a_accumdepreciation_acct,acct.A_Disposal_Gain_Acct,wk.a_asset_cost,acct.A_Disposal_RevenueC_Acct,"
+				+" acct.A_Disposal_RevenueD_Acct,acct.A_Disposal_Loss_Acct, wk.a_accumulated_depr, acct.A_AssetComplement_Acct"
+				+" from a_asset a"
+				+" inner join a_asset_acct acct on (a.a_asset_id=acct.a_asset_id)"
+				+" inner join A_Depreciation_Workfile wk on (a.a_asset_id=wk.a_asset_id)"
+				//+" inner join a_asset_forecast fore on (a.a_asset_id=fore.a_asset_id)"
+				+" where a.ad_client_id=? ";
+				//and fore.a_asset_forecast_ID = ";
+				/*+" (SELECT MAX(fa.a_asset_forecast_ID) FROM a_asset_forecast fa " +
+				 "  WHERE fa.isactive = 'Y' AND fore.A_Asset_ID = a.A_Asset_ID) ";*/
+		try
+		{ 
+			id_activo = DepDoc.get_ValueAsInt("A_Asset_ID");
+		}
+		catch(Exception e)
+		{
+			id_activo = 0;
+			log.log(Level.SEVERE, sql.toString(), e);			
+		}
+		if (id_activo > 0)//solo el activo mencionado en el proceso
+			sql+= " And a.A_Asset_ID IN ("+DepDoc.get_ValueAsInt("A_Asset_ID")+")" ;			
+		else
+			sql+= " And a.A_Asset_ID = 0";
+
+
+		
+	}
+	/**
+	 * mfrojas 20181003
+	 * Se genera nuevo proceso de depreciacion
+	 * 
+	 */
+	if(DepDoc.getDepType().equalsIgnoreCase("DDP")) //Depreciacion OFB
+	{
+		//Se sobreescribe: Los periodos a depreciar ahora corresponderan a aquellos que correspondan al mismo año del periodo que aca se obtiene. 
+		sql="select a.a_asset_id,a.name,a.value,acct.c_acctschema_id, acct.a_asset_acct, "
+				+" acct.a_depreciation_acct, fore.amount,fore.a_asset_forecast_id,"
+				+" acct.a_accumdepreciation_acct,acct.A_Disposal_Gain_Acct,wk.a_asset_cost,acct.A_Disposal_RevenueC_Acct,"
+				+" acct.A_Disposal_RevenueD_Acct,acct.A_Disposal_Loss_Acct, wk.a_accumulated_depr, acct.A_AssetComplement_Acct"
+				+" from a_asset a"
+				+" inner join a_asset_acct acct on (a.a_asset_id=acct.a_asset_id)"
+				+" inner join A_Depreciation_Workfile wk on (a.a_asset_id=wk.a_asset_id)"
+				+" inner join a_asset_forecast fore on (a.a_asset_id=fore.a_asset_id)"
+				//+" inner join c_period p on (fore.datedoc between p.startdate and p.enddate)"
+				+" where a.ad_client_id=? ";// and p.c_period_id=? ";
+		
+		sql += " AND extract(year from fore.datedoc) = (select to_number(fiscalyear,'9999') " +
+				" from c_year where c_year_id in (select c_year_id from c_period where c_period_id = "+DepDoc.getC_Period_ID()+")) AND fore.processed='N' ";
+		sql += " and a.isinposession='Y' And "+ID_grupo;
+		sql += " and a.isactive='Y'";
+
+		//MOrg orgP = new MOrg(getCtx(), DepDoc.getAD_Org_ID(), get_TrxName());
+		if(orgP.getValue()!= null)
+			if(!orgP.getValue().contains("*"))
+				sql+= " and a.AD_OrgRef_ID="+DepDoc.getAD_Org_ID();
+
+	}
+
 	log.config("SQL Activos: "+sql);
 	PreparedStatement pstmt = null;
 	
@@ -496,6 +604,78 @@ public class DepreAssetsDefensoria extends SvrProcess
 					line3.setAD_Org_ID(assetTemp.get_ValueAsInt("AD_OrgRef_ID"));
 					line3.save();
 				}
+				else if(DepDoc.getDepType().equalsIgnoreCase("RRV")){ //Reevaluacion OFB
+					batch.setDescription("Reevaluacion Activos");
+					BigDecimal newAmount= new BigDecimal(0.0);
+					newAmount=rs.getBigDecimal("a_asset_cost").multiply(DepDoc.getRate().divide(Env.ONEHUNDRED));
+					
+					MJournalLine line1= new MJournalLine(journal);
+					line1.setA_Asset_ID(rs.getInt("a_asset_id"));
+					line1.setAmtSourceDr(newAmount);
+					line1.setAmtSourceCr(Env.ZERO);
+					line1.setAmtAcct(newAmount, Env.ZERO);
+					line1.setC_ValidCombination_ID(rs.getInt("a_asset_acct"));
+					line1.save();
+					line1.setAD_Org_ID(assetTemp.get_ValueAsInt("AD_OrgRef_ID"));
+					line1.save();
+					
+					MJournalLine line2= new MJournalLine(journal);
+					line2.setA_Asset_ID(rs.getInt("a_asset_id"));
+					line2.setAmtSourceDr(Env.ZERO);
+					line2.setAmtSourceCr(newAmount);
+					line2.setAmtAcct(Env.ZERO, newAmount);
+					line2.setC_ValidCombination_ID(rs.getInt("A_Disposal_Gain_Acct"));
+					line2.save();
+					line2.setAD_Org_ID(assetTemp.get_ValueAsInt("AD_OrgRef_ID"));
+					line2.save();
+				}
+				else if(DepDoc.getDepType().equalsIgnoreCase("DDT")){//Deterioro OFB
+					batch.setDescription("Deterioro Activos");
+					BigDecimal newAmount= new BigDecimal(0.0);
+					newAmount=rs.getBigDecimal("a_asset_cost").multiply(DepDoc.getRate().divide(Env.ONEHUNDRED));
+					
+					MJournalLine line1= new MJournalLine(journal);
+					line1.setA_Asset_ID(rs.getInt("a_asset_id"));
+					line1.setAmtSourceDr(newAmount);
+					line1.setAmtSourceCr(Env.ZERO);
+					line1.setAmtAcct(newAmount, Env.ZERO);
+					line1.setC_ValidCombination_ID(rs.getInt("A_Disposal_Loss_Acct"));
+					line1.save();
+					line1.setAD_Org_ID(assetTemp.get_ValueAsInt("AD_OrgRef_ID"));
+					line1.save();
+					
+					MJournalLine line2= new MJournalLine(journal);
+					line2.setA_Asset_ID(rs.getInt("a_asset_id"));
+					line2.setAmtSourceDr(Env.ZERO);
+					line2.setAmtSourceCr(newAmount);
+					line2.setAmtAcct(Env.ZERO, newAmount);
+					line2.setC_ValidCombination_ID(rs.getInt("a_asset_acct"));
+					line2.save();
+					line2.setAD_Org_ID(assetTemp.get_ValueAsInt("AD_OrgRef_ID"));
+					line2.save();
+				}
+				else if(DepDoc.getDepType().equalsIgnoreCase("DDP")){ //depreciacion OFB
+					MJournalLine line1= new MJournalLine(journal);
+					line1.setA_Asset_ID(rs.getInt("a_asset_id"));
+					line1.setAmtSourceDr(rs.getBigDecimal("amount"));
+					line1.setAmtSourceCr(Env.ZERO);
+					line1.setAmtAcct(rs.getBigDecimal("amount"), Env.ZERO);
+					line1.setC_ValidCombination_ID(rs.getInt("a_depreciation_acct"));
+					line1.save();
+					line1.setAD_Org_ID(assetTemp.get_ValueAsInt("AD_OrgRef_ID"));
+					line1.save();
+					
+					MJournalLine line2= new MJournalLine(journal);
+					line2.setA_Asset_ID(rs.getInt("a_asset_id"));
+					line2.setAmtSourceDr(Env.ZERO);
+					line2.setAmtSourceCr(rs.getBigDecimal("amount"));
+					line2.setAmtAcct(Env.ZERO, rs.getBigDecimal("amount"));
+					//line2.setC_ValidCombination_ID(rs.getInt("a_asset_acct")); // old
+					line2.setC_ValidCombination_ID(rs.getInt("A_AssetComplement_Acct")); //new
+					line2.save();
+					line2.setAD_Org_ID(assetTemp.get_ValueAsInt("AD_OrgRef_ID"));
+					line2.save();
+				}
 			}
 			rs.close();
 			pstmt.close();
@@ -592,6 +772,49 @@ public class DepreAssetsDefensoria extends SvrProcess
 					workfile.setA_Asset_Cost(workfile.getA_Asset_Cost().subtract(jour.getTotalCr()));
 					workfile.save();
 				}
+				else if(DepDoc.getDepType().equalsIgnoreCase("RRV")){
+					MDepreciationWorkfile workfile=MAsset.getWorkFile(jour.get_ValueAsInt("A_Asset_ID"));
+					workfile.setA_Asset_Cost(workfile.getA_Asset_Cost().add(jour.getTotalCr()));
+					workfile.save();
+					//cambio de vida util.
+					if(DepDoc.get_ValueAsInt("A_Asset_Life_Years") > 0)
+					{
+						DB.executeUpdate("Update a_asset_acct set a_period_end = "+DepDoc.get_ValueAsInt("A_Asset_Life_Years")+" WHERE a_Asset_id = "+jour.get_ValueAsInt("A_Asset_ID"), get_TrxName());
+					}
+					try
+					{
+						asset.set_CustomColumn("GrandTotal", workfile.getA_Asset_Cost());
+						asset.save();
+						
+					}
+					catch(Exception e)
+					{
+						log.log(Level.SEVERE, sql.toString(), e);			
+					}
+					
+				}
+				else if(DepDoc.getDepType().equalsIgnoreCase("DDT")){
+					MDepreciationWorkfile workfile=MAsset.getWorkFile(jour.get_ValueAsInt("A_Asset_ID"));
+					workfile.setA_Asset_Cost(workfile.getA_Asset_Cost().subtract(jour.getTotalCr()));
+					workfile.save();
+					//cambio de vida util.
+					if(DepDoc.get_ValueAsInt("A_Asset_Life_Years") > 0)
+					{
+						DB.executeUpdate("Update a_asset_acct set a_period_end = "+DepDoc.get_ValueAsInt("A_Asset_Life_Years")+" WHERE a_Asset_id = "+jour.get_ValueAsInt("A_Asset_ID"), get_TrxName());
+					}
+					try
+					{
+						asset.set_CustomColumn("GrandTotal", workfile.getA_Asset_Cost());
+						asset.save();
+						
+					}
+					catch(Exception e)
+					{
+						log.log(Level.SEVERE, sql.toString(), e);			
+					}
+
+				}
+
 				else if(DepDoc.getDepType().equalsIgnoreCase(X_A_Asset_Dep.DEPTYPE_VentaActivo))
 				{
 					MDepreciationWorkfile workfile=MAsset.getWorkFile(jour.get_ValueAsInt("A_Asset_ID"));
@@ -608,7 +831,24 @@ public class DepreAssetsDefensoria extends SvrProcess
 					asset.save();
 					asset.setIsActive(false);
 					asset.save();
-				}				
+				}		
+				else if(DepDoc.getDepType().equalsIgnoreCase("DDP"))
+				{
+					MDepreciationWorkfile workfile=MAsset.getWorkFile(jour.get_ValueAsInt("A_Asset_ID"));
+					workfile.setA_Accumulated_Depr(workfile.getA_Accumulated_Depr().add(jour.getTotalCr()) );
+					workfile.setA_Period_Posted(workfile.getA_Period_Posted()+1);
+					workfile.setAssetDepreciationDate(DepDoc.getDateDoc());
+					workfile.save();
+					
+					X_A_Asset_Forecast fore=new X_A_Asset_Forecast (Env.getCtx(),jour.get_ValueAsInt("A_Asset_Forecast_ID"),null);
+					fore.setProcessed(true);
+					fore.setGL_Journal_ID(jour.getGL_Journal_ID());
+					fore.save();
+					
+					asset.setLastMaintenanceNote("Depreciacion Periodo :"+(workfile.getA_Period_Posted()+1)+" por "+jour.getTotalCr());
+				}
+				log.config("deptype "+DepDoc.getDepType());
+
 			}		 
 		 DepDoc.setDocStatus("CO");
 		 DepDoc.setProcessed(true);

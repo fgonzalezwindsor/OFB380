@@ -262,12 +262,13 @@ public class MRequisition extends X_M_Requisition implements DocAction
 		{
 			return DocAction.STATUS_Invalid;
 		}
-		
-		if(lines.length == 0)
+		if(!OFBForward.NoValidationReqNoLine())
 		{
-			throw new AdempiereException("@NoLines@");
-		}
-		
+			if(lines.length == 0)
+			{
+				throw new AdempiereException("@NoLines@");
+			}
+		}		
 		//	Std Period open?
 		MPeriod.testPeriodOpen(getCtx(), getDateDoc(), MDocType.DOCBASETYPE_PurchaseRequisition, getAD_Org_ID());
 		
@@ -981,14 +982,44 @@ public long getBudget(int category_ID, Timestamp dateDoc, int Org_ID, int Produc
 			{
 				log.severe(e.getMessage());
 			}
-		}
-		
+		}		
 		if(getDocBase().equals("RRC") && !isSOTrx()) //solicitud de materiales gore
 		{
 			String clientName = MClient.get(getCtx(), getAD_Client_ID()).getName().toUpperCase();
 			MRequisitionLine[] lines = getLines();
 			MInventory inv = null;
 			MWarehouse wh = MWarehouse.get(getCtx(), getM_Warehouse_ID(), get_TrxName());
+			if(OFBForward.ValidStockMaterialReq())
+			{
+				for (int a = 0; a < lines.length; a++)
+				{
+					MRequisitionLine line = lines[a];
+					if (line.getM_Product_ID() >0)
+					{
+						BigDecimal qtyEntered = DB.getSQLValueBD(get_TrxName(), "SELECT SUM(qtyonhand) FROM M_Storage " +
+								" WHERE M_Product_ID="+line.getM_Product_ID()+" AND M_Locator_ID="+wh.getDefaultLocator().getM_Locator_ID());
+						BigDecimal qtyIntransit = DB.getSQLValueBD(get_TrxName(), "SELECT SUM(ml.QtyInternalUse) FROM M_InventoryLine ml " +
+								" INNER JOIN M_Inventory mi ON (mi.M_Inventory_ID = ml.M_Inventory_ID) " +
+								" WHERE ml.M_Product_ID="+line.getM_Product_ID()+" AND ml.M_Locator_ID="+wh.getDefaultLocator().getM_Locator_ID()+
+								" AND mi.DocStatus IN ('DR','IP')");
+						if(qtyEntered == null)
+							qtyEntered = Env.ZERO;
+						if(qtyIntransit == null)
+							qtyIntransit = Env.ZERO;
+						qtyEntered = qtyEntered.subtract(qtyIntransit);
+						
+						if(line.getQty().compareTo(qtyEntered) > 0)
+						{
+							MLocator loc = new MLocator(getCtx(), wh.getDefaultLocator().getM_Locator_ID(), get_TrxName());
+							String ret = "ERROR: Producto "+line.getM_Product().getName()+" sin stock. Stock:"+qtyEntered+
+							". Solicitado:"+line.getQty()+" en ubicaciòn "+loc.getValue();
+							//throw new AdempiereException(ret);							
+							m_processMsg = ret;
+							return DocAction.STATUS_Invalid;
+						}
+					}
+				}
+			}
 			for (int i = 0; i < lines.length; i++)
 			{
 				MRequisitionLine line = lines[i];
@@ -1016,10 +1047,8 @@ public long getBudget(int category_ID, Timestamp dateDoc, int Org_ID, int Produc
 						//end ininoles
 						
 						inv.set_CustomColumn("AD_User_ID", getAD_User_ID());						
-						inv.save();
-						
-					}
-					
+						inv.save();						
+					}					
 					MInventoryLine il = new MInventoryLine(getCtx(),0,get_TrxName());
 					il.setM_Inventory_ID(inv.getM_Inventory_ID() );
 					il.setAD_Org_ID(getAD_Org_ID());
@@ -1027,12 +1056,9 @@ public long getBudget(int category_ID, Timestamp dateDoc, int Org_ID, int Produc
 					il.setM_Locator_ID(wh.getDefaultLocator().getM_Locator_ID());
 					il.setQtyInternalUse(line.getQty());
 					il.setC_Charge_ID(get_ValueAsInt("C_Charge_ID"));
-					il.save();
-					
-				}
-			
-			}
-			
+					il.save();					
+				}			
+			}			
 			if(inv!=null)
 				set_CustomColumn("M_Inventory_ID", inv.getM_Inventory_ID());
 		}

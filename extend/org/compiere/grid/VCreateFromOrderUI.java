@@ -313,7 +313,35 @@ public class VCreateFromOrderUI extends CreateFromOrder implements ActionListene
 			sql+=" and doc.issotrx='Y' ";
 			if(OFBForward.UseRequisitionForSaleWINDSOR())
 			{
-				sql+=" and A.C_BPartner_ID="+bPartner_ID;
+				sql+=" and A.C_BPartner_ID="+bPartner_ID;	
+			}	
+			//ininoles se sobreescribe sql para nuevo metodo con pre-solicitud ecomerce windsor
+			if(OFBForward.UseRequisitionECommerce())
+			{
+				sql = "Select A.DocumentNo,A.DATEREQUIRED,A.AD_USER_ID,A.M_Requisition_ID,coalesce(C.M_PRODUCT_ID,c2.M_PRODUCT_ID,0)," 
+						+" COALESCE((C.QTY-coalesce(C.QtyUsed,0)),(C2.QTY-coalesce(C2.QtyUsed,0)))," 
+						+" C.M_Requisitionline_id,B.name,"
+						+" coalesce(P.name,cast(' ' as nvarchar2(255)  )) as Productname,C.PRICEACTUAL,C.C_SubProjectOFB_ID,pj.name as Projectname,C.description,coalesce(h.name,cast(' ' as nvarchar2(60)  )),coalesce(h.C_Charge_ID,0) "
+						+" from M_Requisition A "
+						+" inner join M_RequisitionLine C on (A.M_Requisition_ID=C.M_Requisition_ID)"
+						+" left outer join M_Product P on (P.M_Product_ID=C.M_Product_ID)"
+						+" left outer join C_Charge h on (h.C_Charge_ID=C.C_Charge_ID)"
+						+" inner join C_DocType doc on (A.C_DocType_ID=doc.C_DocType_ID)"
+						+" left outer join AD_User B on (A.AD_USER_ID=B.AD_USER_ID)"
+						+" left outer join C_SubProjectOFB pj on (C.C_SubProjectOFB_ID=pj.C_SubProjectOFB_ID)" 
+						+" left join M_Requisition a2 ON (a2.M_Requisition_ID = A.M_RequisitionRef_ID)" 
+						+" left join M_RequisitionLine c2 ON (a2.M_Requisition_ID = c2.M_Requisition_ID)"						
+						+" where A.DocStatus='CO' and A.isactive='Y' and C.isactive='Y' and  doc.docbasetype not in ('RRC','PLR','PRT')  and A.AD_Client_ID="+Env.getAD_Client_ID(Env.getCtx())
+						+" and ((C.QTY-coalesce(C.QtyUsed,0)) > 0 OR (C2.QTY-coalesce(C2.QtyUsed,0)) > 0)" 
+						+" and a.C_DocType_ID IN (1000111, 1000570) ";
+			
+				//ininoles validacion org * muestre todas las solicitudes			
+				if (Org_ID  > 0)
+					sql = sql + " and A.AD_Org_ID="+Org_ID;
+				else if (Org_ID == 0)
+					sql = sql + " and A.AD_Org_ID > 0 ";
+				else 
+					sql = sql + " and A.AD_Org_ID < 0 ";
 			}
 		}
 		else
@@ -325,7 +353,7 @@ public class VCreateFromOrderUI extends CreateFromOrder implements ActionListene
 		if(SubPro>0)
 			sql=sql+" and pj.C_SubProjectOFB_ID="+SubPro;
 		
-		log.config ("**"+sql);
+		log.config ("sql lineas de solicitud: "+sql);
 		
 		try
 		{

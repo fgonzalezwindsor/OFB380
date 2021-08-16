@@ -74,7 +74,7 @@ public class CalloutPriceList extends CalloutEngine
 			amt = amt.divide(tax, 10, RoundingMode.HALF_EVEN);
 			mTab.setValue("PriceList", amt);
 			mTab.setValue("PriceStd", amt);
-			mTab.setValue("PriceLimit", amt);
+			mTab.setValue("PriceLimit", amt.subtract(Env.ONEHUNDRED));
 		}
 		//
 		return "";

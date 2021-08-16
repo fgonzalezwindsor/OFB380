@@ -134,7 +134,14 @@ public class MPProcessOT extends SvrProcess
 		{
 			log.log(Level.SEVERE, sql, e);
 		}
-		
+
+		if(OT.getDocStatus().equals("DR") && P_DocAction.equals("PR"))			
+		{
+			OT.setDocStatus("PR");
+			OT.setDocAction("CO");
+			OT.save();
+			return "OT Processed";
+		}
 		if((OT.getDocStatus().equals("DR") || OT.getDocStatus().equals("PR")) && P_DocAction.equals("CO"))
 		{
 			DB.executeUpdate("Update MP_OT_RESOURCE set Processed='Y' where MP_OT_TASK_ID IN (select MP_OT_TASK_ID from MP_OT_TASK where MP_OT_ID="+OT.getMP_OT_ID()+")", get_TrxName());

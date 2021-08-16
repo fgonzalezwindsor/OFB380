@@ -126,8 +126,11 @@ public class ModBlumosAsignaVendedor implements ModelValidator
 				}
 			}
 			//control de correctas condiciones de regla de pago
-			if(order.getC_BPartner().getPaymentRule().compareTo(order.getPaymentRule()) != 0 )
-				order.setPaymentRule(order.getC_BPartner().getPaymentRule());
+			if(order.getC_BPartner().getPaymentRule() != null && order.getPaymentRule() != null)
+			{
+				if(order.getC_BPartner().getPaymentRule().compareTo(order.getPaymentRule()) != 0 )
+					order.setPaymentRule(order.getC_BPartner().getPaymentRule());
+			}
 		}
 		return null;
 	}	//	modelChange

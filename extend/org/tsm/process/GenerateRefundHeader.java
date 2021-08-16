@@ -27,6 +27,7 @@ import java.util.logging.Level;
 import org.compiere.model.MBPartner;
 import org.compiere.model.MOrg;
 import org.compiere.model.X_TP_Refund;
+import org.compiere.model.X_TP_RefundAmt;
 import org.compiere.model.X_TP_RefundHeader;
 import org.compiere.model.X_TP_RefundLine;
 import org.compiere.process.ProcessInfoParameter;
@@ -91,7 +92,7 @@ public class GenerateRefundHeader extends SvrProcess
 				//ininoles se saca cantidad de dias de la HR
 				" (select MAX(extract(day from mml.tp_inicialhr)) from m_movementline mml where mml.m_movement_id =  pm.M_Movement_ID)- " +
 				" (select MIN(extract(day from mml.tp_finalhr)) from m_movementline mml where mml.m_movement_id = pm.M_Movement_ID) + 1 " +
-				" as cantDays , null as Pre_M_Movement_ID,pm.created" +
+				" as cantDays , null as Pre_M_Movement_ID,pm.created, '--' as workshiftBP "  +
 				//end
 				" FROM M_Movement pm " +
 				/*" WHERE pm.M_Movement_ID NOT IN (SELECT rLine.M_Movement_ID FROM TP_RefundLine rLine " +
@@ -100,7 +101,7 @@ public class GenerateRefundHeader extends SvrProcess
 				" AND pm.AD_Client_ID = "+Env.getAD_Client_ID(getCtx())+*/
 				" WHERE pm.AD_Client_ID = "+Env.getAD_Client_ID(getCtx())+
 				//" AND pm.MovementDate BETWEEN ? AND ? ";
-				//" AND C_Bpartner_ID = 1002699" + //ininoles liea comenada solo usar para analisis en debug 
+				//" AND C_Bpartner_ID = 1002699" + //ininoles linea comenada solo usar para analisis en debug 
 				" AND " +
 				" (((select MIN(mml.tp_finalhr) from m_movementline mml where mml.m_movement_id = pm.M_Movement_ID)  > ? " +
 				" AND" +
@@ -120,13 +121,15 @@ public class GenerateRefundHeader extends SvrProcess
 		if(IsMultyDaysH)
 		{
 			sqlHR = sqlHR + " UNION" +
-				" SELECT null,pml.C_Bpartner_ID,pm.movementDate,pm.AD_Org_ID,1,pm.Pre_M_Movement_ID,pm.created" +
+				" SELECT null,pml.C_Bpartner_ID,pm.movementDate,pm.AD_Org_ID,1,pm.Pre_M_Movement_ID,pm.created, pml.workshiftBP " +
 				" FROM Pre_M_Movement pm " +
 				" INNER JOIN Pre_M_MovementLine pml ON (pm.Pre_M_Movement_ID = pml.Pre_M_Movement_ID AND C_Bpartner_ID IS NOT NULL) " +
-				" WHERE pm.AD_Org_ID = "+p_Org_ID+" AND pm.movementDate BETWEEN ?  AND ? AND pm.DocStatus IN ('CO','CL')" +
-				" AND pml.WorkShiftBP IN ('FZ','TS','TN')";	
+				" WHERE pm.AD_Org_ID = "+p_Org_ID+" AND pm.movementDate BETWEEN ?  AND ? AND pm.DocStatus IN ('CO','CL')"+
+				//" AND pml.WorkShiftBP IN ('FZ','TS','TN','TI','D2')";	
+				" AND pml.WorkShiftBP IN (SELECT VALUE FROM TP_RefundAmt WHERE IsActive = 'Y')";
+				
 		}
-		sqlHR = sqlHR + " ORDER BY C_BPartner_ID, movementdate, created";
+		sqlHR = sqlHR + " ORDER BY C_BPartner_ID,movementdate,m_movement_id asc,created";
 			
 		PreparedStatement pstmtHR = null;
 		ResultSet rsHR = null;
@@ -157,6 +160,10 @@ public class GenerateRefundHeader extends SvrProcess
 				BigDecimal amtOrg = null;
 				BigDecimal amtBP = null;
 				BigDecimal amtRefund = null; 
+				if(rsHR.getInt("C_BPartner_ID") == 1000184)
+					log.config("sop para debug");
+				
+				
 				//generamos viatico para BP
 				if(ID_BPartner > 0 && ID_Org > 0)
 				{
@@ -208,8 +215,23 @@ public class GenerateRefundHeader extends SvrProcess
 									line.set_CustomColumn("Pre_M_Movement_ID",rsHR.getInt("Pre_M_Movement_ID"));
 								line.setAD_Org_ID(rsHR.getInt("AD_Org_ID"));
 								//line.setDescription("Ingresado Automaticamente");
-								line.setDateTrx(rsHR.getTimestamp("MovementDate"));						
-								line.setAmt(amtRefund);
+								line.setDateTrx(rsHR.getTimestamp("MovementDate"));	
+								//se busca sigla para usar concepto si usa disponibilidad 
+								if(rsHR.getInt("Pre_M_Movement_ID") > 0)
+								{
+									int id_RefundAmt = DB.getSQLValue(get_TrxName(), "SELECT TP_RefundAmt_ID FROM TP_RefundAmt " +
+											" WHERE AD_Org_ID = "+p_Org_ID+" AND value like '"+rsHR.getString("workshiftBP")+"'");
+									if(id_RefundAmt > 0)
+									{
+										X_TP_RefundAmt rAmt = new X_TP_RefundAmt(getCtx(), id_RefundAmt, get_TrxName());
+										line.set_CustomColumn("TP_RefundAmt_ID",id_RefundAmt);
+										line.setAmt(rAmt.getAmt());
+									}
+									else
+										line.setAmt(Env.ZERO);
+								}
+								else
+									line.setAmt(amtRefund);
 								line.save();
 								cantLine++;
 							}
@@ -239,7 +261,23 @@ public class GenerateRefundHeader extends SvrProcess
 											line2.setAD_Org_ID(rsHR.getInt("AD_Org_ID"));
 											//line2.setDescription("Ingresado Automaticamente");
 											line2.setDateTrx(new Timestamp(calInicial.getTimeInMillis()));
-											line2.setAmt(amtRefund);
+											//se busca sigla para usar concepto si usa disponibilidad 
+											if(rsHR.getInt("Pre_M_Movement_ID") > 0)
+											{
+												int id_RefundAmt = DB.getSQLValue(get_TrxName(), "SELECT TP_RefundAmt_ID FROM TP_RefundAmt " +
+														" WHERE AD_Org_ID = "+p_Org_ID+" AND value like '"+rsHR.getString("workshiftBP")+"'");
+												if(id_RefundAmt > 0)
+												{
+													X_TP_RefundAmt rAmt = new X_TP_RefundAmt(getCtx(), id_RefundAmt, get_TrxName());
+													line2.set_CustomColumn("TP_RefundAmt_ID",id_RefundAmt);
+													line2.setAmt(rAmt.getAmt());
+												}
+												else
+													line2.setAmt(Env.ZERO);
+											}
+											else
+												line2.setAmt(amtRefund);
+											//line2.setAmt(amtRefund);
 											line2.save();
 											cantLine++;
 										}
@@ -258,13 +296,15 @@ public class GenerateRefundHeader extends SvrProcess
 							viatico.setDocStatus("DR");
 							viatico.setType("01");
 							viatico.setTP_RefundHeader_ID(ID_HeadViatico);
+							//ininoles se guarda flota de conductor
+							viatico.set_CustomColumn("AD_OrgRef_ID", bPartner.getAD_Org_ID());
 							viatico.save();
 							canthead++;
 							//generamos la linea del viatico
 							//antes de generar la linea de viatico normal, hay que revisar que no exista otra linea con los mismo datos
 							int cantV = DB.getSQLValue(get_TrxName(), "SELECT COUNT(1) FROM TP_RefundLine rl" +
 									" INNER JOIN TP_Refund r ON (rl.TP_Refund_ID = r.TP_Refund_ID) " +
-									" WHERE r.C_BPartner_ID = "+ID_BPartner+" AND rl.DateTrx = ?",rsHR.getTimestamp("MovementDate"));
+									" WHERE r.Type = '01' AND r.C_BPartner_ID = "+ID_BPartner+" AND rl.DateTrx = ?",rsHR.getTimestamp("MovementDate"));
 							if(cantV < 1  && rsHR.getTimestamp("MovementDate").compareTo(p_DateTrxTo) <= 0
 									&& rsHR.getTimestamp("MovementDate").compareTo(p_DateTrxFrom) >= 0)
 							{
@@ -276,8 +316,24 @@ public class GenerateRefundHeader extends SvrProcess
 									line.set_CustomColumn("Pre_M_Movement_ID",rsHR.getInt("Pre_M_Movement_ID"));
 								line.setAD_Org_ID(rsHR.getInt("AD_Org_ID"));
 								//line.setDescription("Ingresado Automaticamente");
-								line.setDateTrx(rsHR.getTimestamp("MovementDate"));						
-								line.setAmt(amtRefund);
+								line.setDateTrx(rsHR.getTimestamp("MovementDate"));
+								//se busca sigla para usar concepto si usa disponibilidad 
+								if(rsHR.getInt("Pre_M_Movement_ID") > 0)
+								{
+									int id_RefundAmt = DB.getSQLValue(get_TrxName(), "SELECT TP_RefundAmt_ID FROM TP_RefundAmt " +
+											" WHERE AD_Org_ID = "+p_Org_ID+" AND value like '"+rsHR.getString("workshiftBP")+"'");
+									if(id_RefundAmt > 0)
+									{
+										X_TP_RefundAmt rAmt = new X_TP_RefundAmt(getCtx(), id_RefundAmt, get_TrxName());
+										line.set_CustomColumn("TP_RefundAmt_ID",id_RefundAmt);
+										line.setAmt(rAmt.getAmt());
+									}
+									else
+										line.setAmt(Env.ZERO);
+								}
+								else
+									line.setAmt(amtRefund);
+								//line.setAmt(amtRefund);
 								line.save();
 								cantLine++;
 							}
@@ -307,7 +363,23 @@ public class GenerateRefundHeader extends SvrProcess
 											line2.setAD_Org_ID(rsHR.getInt("AD_Org_ID"));
 											//line2.setDescription("Ingresado Automaticamente");
 											line2.setDateTrx(new Timestamp(calInicial.getTimeInMillis()));
-											line2.setAmt(amtRefund);
+											//line2.setAmt(amtRefund);
+											//se busca sigla para usar concepto si usa disponibilidad 
+											if(rsHR.getInt("Pre_M_Movement_ID") > 0)
+											{
+												int id_RefundAmt = DB.getSQLValue(get_TrxName(), "SELECT TP_RefundAmt_ID FROM TP_RefundAmt " +
+														" WHERE AD_Org_ID = "+p_Org_ID+" AND value like '"+rsHR.getString("workshiftBP")+"'");
+												if(id_RefundAmt > 0)
+												{
+													X_TP_RefundAmt rAmt = new X_TP_RefundAmt(getCtx(), id_RefundAmt, get_TrxName());
+													line2.set_CustomColumn("TP_RefundAmt_ID",id_RefundAmt);
+													line2.setAmt(rAmt.getAmt());
+												}
+												else
+													line2.setAmt(Env.ZERO);
+											}
+											else
+												line2.setAmt(amtRefund);
 											line2.save();
 											cantLine++;
 										}
@@ -352,7 +424,23 @@ public class GenerateRefundHeader extends SvrProcess
 								line.setAD_Org_ID(rsHR.getInt("AD_Org_ID"));
 								//line.setDescription("Ingresado Automaticamente");
 								line.setDateTrx(rsHR.getTimestamp("MovementDate"));						
-								line.setAmt(amtRefund);
+								//line.setAmt(amtRefund);
+								//se busca sigla para usar concepto si usa disponibilidad 
+								if(rsHR.getInt("Pre_M_Movement_ID") > 0)
+								{
+									int id_RefundAmt = DB.getSQLValue(get_TrxName(), "SELECT TP_RefundAmt_ID FROM TP_RefundAmt " +
+											" WHERE AD_Org_ID = "+p_Org_ID+" AND value like '"+rsHR.getString("workshiftBP")+"'");
+									if(id_RefundAmt > 0)
+									{
+										X_TP_RefundAmt rAmt = new X_TP_RefundAmt(getCtx(), id_RefundAmt, get_TrxName());
+										line.set_CustomColumn("TP_RefundAmt_ID",id_RefundAmt);
+										line.setAmt(rAmt.getAmt());
+									}
+									else
+										line.setAmt(Env.ZERO);
+								}
+								else
+									line.setAmt(amtRefund);
 								line.save();
 								cantLine++;
 							}
@@ -382,7 +470,23 @@ public class GenerateRefundHeader extends SvrProcess
 											line2.setAD_Org_ID(rsHR.getInt("AD_Org_ID"));
 											//line2.setDescription("Ingresado Automaticamente");
 											line2.setDateTrx(new Timestamp(calInicial.getTimeInMillis()));
-											line2.setAmt(amtRefund);
+											//line2.setAmt(amtRefund);
+											//se busca sigla para usar concepto si usa disponibilidad 
+											if(rsHR.getInt("Pre_M_Movement_ID") > 0)
+											{
+												int id_RefundAmt = DB.getSQLValue(get_TrxName(), "SELECT TP_RefundAmt_ID FROM TP_RefundAmt " +
+														" WHERE AD_Org_ID = "+p_Org_ID+" AND value like '"+rsHR.getString("workshiftBP")+"'");
+												if(id_RefundAmt > 0)
+												{
+													X_TP_RefundAmt rAmt = new X_TP_RefundAmt(getCtx(), id_RefundAmt, get_TrxName());
+													line2.set_CustomColumn("TP_RefundAmt_ID",id_RefundAmt);
+													line2.setAmt(rAmt.getAmt());
+												}
+												else
+													line2.setAmt(Env.ZERO);
+											}
+											else
+												line2.setAmt(amtRefund);
 											line2.save();
 											cantLine++;
 										}
@@ -401,6 +505,8 @@ public class GenerateRefundHeader extends SvrProcess
 							viatico.setDocStatus("DR");
 							viatico.setType("01");
 							viatico.setTP_RefundHeader_ID(headViatico.get_ID());
+							//ininoles se guarda flota de conductor
+							viatico.set_CustomColumn("AD_OrgRef_ID", bPartner.getAD_Org_ID());
 							viatico.save();
 							canthead++;
 							//generamos la linea del viatico
@@ -420,7 +526,23 @@ public class GenerateRefundHeader extends SvrProcess
 								line.setAD_Org_ID(rsHR.getInt("AD_Org_ID"));
 								//line.setDescription("Ingresado Automaticamente");
 								line.setDateTrx(rsHR.getTimestamp("MovementDate"));						
-								line.setAmt(amtRefund);
+								//line.setAmt(amtRefund);
+								//se busca sigla para usar concepto si usa disponibilidad 
+								if(rsHR.getInt("Pre_M_Movement_ID") > 0)
+								{
+									int id_RefundAmt = DB.getSQLValue(get_TrxName(), "SELECT TP_RefundAmt_ID FROM TP_RefundAmt " +
+											" WHERE AD_Org_ID = "+p_Org_ID+" AND value like '"+rsHR.getString("workshiftBP")+"'");
+									if(id_RefundAmt > 0)
+									{
+										X_TP_RefundAmt rAmt = new X_TP_RefundAmt(getCtx(), id_RefundAmt, get_TrxName());
+										line.set_CustomColumn("TP_RefundAmt_ID",id_RefundAmt);
+										line.setAmt(rAmt.getAmt());
+									}
+									else
+										line.setAmt(Env.ZERO);
+								}
+								else
+									line.setAmt(amtRefund);
 								line.save();
 								cantLine++;
 							}
@@ -450,7 +572,23 @@ public class GenerateRefundHeader extends SvrProcess
 											line2.setAD_Org_ID(rsHR.getInt("AD_Org_ID"));
 											//line2.setDescription("Ingresado Automaticamente");
 											line2.setDateTrx(new Timestamp(calInicial.getTimeInMillis()));
-											line2.setAmt(amtRefund);
+											//line2.setAmt(amtRefund);
+											//se busca sigla para usar concepto si usa disponibilidad 
+											if(rsHR.getInt("Pre_M_Movement_ID") > 0)
+											{
+												int id_RefundAmt = DB.getSQLValue(get_TrxName(), "SELECT TP_RefundAmt_ID FROM TP_RefundAmt " +
+														" WHERE AD_Org_ID = "+p_Org_ID+" AND value like '"+rsHR.getString("workshiftBP")+"'");
+												if(id_RefundAmt > 0)
+												{
+													X_TP_RefundAmt rAmt = new X_TP_RefundAmt(getCtx(), id_RefundAmt, get_TrxName());
+													line2.set_CustomColumn("TP_RefundAmt_ID",id_RefundAmt);
+													line2.setAmt(rAmt.getAmt());
+												}
+												else
+													line2.setAmt(Env.ZERO);
+											}
+											else
+												line2.setAmt(amtRefund);
 											line2.save();
 											cantLine++;
 										}
@@ -468,7 +606,10 @@ public class GenerateRefundHeader extends SvrProcess
 		}
 		finally
 		{
-			rsHR.close ();	pstmtHR.close ();
+			if(rsHR != null && pstmtHR != null)
+			{
+				rsHR.close ();	pstmtHR.close ();
+			}
 			pstmtHR = null;	rsHR = null;
 		}
 		return "Se han generado "+canthead+" documentos de Viatico. Se han agregado "+cantLine+" lineas";

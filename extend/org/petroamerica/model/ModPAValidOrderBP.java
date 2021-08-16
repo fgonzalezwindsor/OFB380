@@ -18,6 +18,7 @@ package org.petroamerica.model;
 
 import java.math.BigDecimal;
 
+import org.compiere.model.MBPartner;
 import org.compiere.model.MBPartnerLocation;
 import org.compiere.model.MClient;
 import org.compiere.model.MOrder;
@@ -114,8 +115,12 @@ public class ModPAValidOrderBP implements ModelValidator
 						" FROM C_Invoice_v WHERE AD_Client_ID = "+Env.getAD_Client_ID(po.getCtx())+
 						" AND duedate < now() AND issotrx = 'Y' AND DocStatus NOT IN ('VO') AND C_BPartner_ID = "+order.getC_BPartner_ID()+
 						" AND invoiceopen(c_invoice_ID,c_invoicepayschedule_id) > 0";*/
-				String sqlDays = "select coalesce(day,0) from rvofb_authorization where C_BPartner_ID = "+order.getC_BPartner_ID();
-				int days = DB.getSQLValue(po.get_TrxName(), sqlDays);
+				//String sqlDays = "select coalesce(day,0) from rvofb_authorization where C_BPartner_ID = "+order.getC_BPartner_ID();
+				//ininoles se cambia campo donde se lee los dias
+				//ininoles 16-09-2020 ya no se usaran validaciones con campo day2
+				//String sqlDays = "select coalesce(day2,0) from rvofb_authorization where C_BPartner_ID = "+order.getC_BPartner_ID();
+				//int days = DB.getSQLValue(po.get_TrxName(), sqlDays);
+				int days = 0;
 				
 				String sqlAmtTotal = "select coalesce(dueAmt,0) from rvofb_authorization where C_BPartner_ID = "+order.getC_BPartner_ID();
 				BigDecimal amtTotal = DB.getSQLValueBD(po.get_TrxName(), sqlAmtTotal);
@@ -133,13 +138,26 @@ public class ModPAValidOrderBP implements ModelValidator
 					else if(rol.getDescription() != null && rol.getDescription().toLowerCase().contains("gerente de venta"))
 						isGV = true;
 					
+					//ininoles se setean valores a comparar 
+					int DiasMora = 0;
+					BigDecimal MontoMora = new BigDecimal("5000000.00"); 
+					MBPartner part = new MBPartner(po.getCtx(), order.getC_BPartner_ID(), po.get_TrxName());
+					if(part.get_ValueAsString("CreditGroup").compareTo("01") == 0)
+						DiasMora = 7;
+					else if(part.get_ValueAsString("CreditGroup").compareTo("02") == 0
+							|| part.get_ValueAsString("CreditGroup").compareTo("03") == 0)
+					{
+						DiasMora = 7;
+						MontoMora = new BigDecimal("3000000.00"); 
+					}
+					
 					if(isGV == false && isGG == false && (amt.compareTo(Env.ONE) >= 0 || amtTotal.compareTo(Env.ONE) >= 0))
 						return  "Orden necesita autorizacion: Cant doc vencidos: "+amt.intValue()+", Dias de atraso: "+days;
 					if(isGV == false && isGG == false && days > 0)
 						return  "Orden necesita autorizacion: Cant doc vencidos: "+amt.intValue()+", Dias de atraso: "+days;		
-					if(isGV && amtTotal.compareTo(new BigDecimal("5000000.00")) > 0)
+					if(isGV && amtTotal.compareTo(MontoMora) > 0)
 						return  "Orden necesita autorizacion: Cant doc vencidos: "+amt.intValue()+", Dias de atraso: "+days+", Monto Total mora: "+amtTotal.intValue();
-					if(isGV && days > 10)
+					if(isGV && days > DiasMora)
 						return  "Orden necesita autorizacion: Cant doc vencidos: "+amt.intValue()+", Dias de atraso: "+days;
 				}
 				

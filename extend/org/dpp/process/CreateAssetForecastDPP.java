@@ -7,7 +7,7 @@ import java.util.logging.Level;
 
 import org.compiere.model.MAsset;
 import org.compiere.model.MAssetAcct;
-import org.compiere.model.MAssetChange;	
+//import org.compiere.model.MAssetChange;	
 import org.compiere.model.MDepreciationWorkfile;
 import org.compiere.model.X_A_Asset_Forecast;
 import org.compiere.model.X_A_Asset;
@@ -43,8 +43,8 @@ public class CreateAssetForecastDPP extends SvrProcess{
             	asset_ID = para[i].getParameterAsInt();
             else if (name.equals("AD_Org_ID"))
             	Org_ID = para[i].getParameterAsInt();
-            else if (name.equals("lastdate"))
-            	p_lastdate = (Timestamp)para[i].getParameter();
+            //else if (name.equals("lastdate"))
+            //	p_lastdate = (Timestamp)para[i].getParameter();
             else
                 log.log(Level.SEVERE, "Unknown Parameter: " + name);
         }
@@ -89,8 +89,9 @@ public class CreateAssetForecastDPP extends SvrProcess{
 				if(workfile==null || workfile.getA_Period_Posted()==acct.getA_Period_End())
 					continue;
 				
-				if (p_lastdate == null)
-					p_lastdate = DB.getSQLValueTS(get_TrxName(), "select max(datedoc) from a_asset_forecast where corrected='Y' and A_Asset_ID="+rs.getInt(1));
+				//if (p_lastdate == null)//ininoles siempre se tratara de setear fecha y nunca desde parametro
+					//p_lastdate = DB.getSQLValueTS(get_TrxName(), "select max(datedoc) from a_asset_forecast where corrected='Y' and A_Asset_ID="+rs.getInt(1));
+				p_lastdate = DB.getSQLValueTS(get_TrxName(), "select max(datedoc) from a_asset_forecast where processed='Y' and A_Asset_ID="+rs.getInt(1));
 				
 				
 				replanningForecast(asset, workfile.getA_Asset_Cost().subtract(workfile.getA_Accumulated_Depr()),acct, 
@@ -196,7 +197,8 @@ public class CreateAssetForecastDPP extends SvrProcess{
 		BigDecimal Currentamt=Amount;
 		//Currentamt=Currentamt.subtract(Env.ONE);
 		//if(SalvageAmt.intValue()<=0)
-		Currentamt=Currentamt.divide(new BigDecimal(acct.getA_Period_End()-Period),2, BigDecimal.ROUND_DOWN);
+		//Currentamt=Currentamt.divide(new BigDecimal(acct.getA_Period_End()-Period),2, BigDecimal.ROUND_DOWN);
+		Currentamt=Currentamt.divide(new BigDecimal(acct.getA_Period_End()-Period),0, BigDecimal.ROUND_DOWN);
 		//else
 			//Currentamt=Currentamt.divide(Period==(acct.getA_Period_End()-1)? Env.ONE : new BigDecimal(acct.getA_Period_End()-1-Period),2, BigDecimal.ROUND_DOWN);
 		
@@ -227,7 +229,9 @@ public class CreateAssetForecastDPP extends SvrProcess{
 				BigDecimal amtAcct = Currentamt;
 				if(i == acct.getA_Period_End())
 				{
-					amtAcct = amtAcct.subtract(SalvageAmt);				
+					//amtAcct = amtAcct.subtract(SalvageAmt);
+					amtAcct = Amount.subtract(Currentamt.multiply(new BigDecimal(mes-1))).subtract(SalvageAmt);
+
 				}
 				fore.setAmount(amtAcct.setScale(2, BigDecimal.ROUND_DOWN));		
 				fore.getAmount(); 
@@ -253,7 +257,9 @@ public class CreateAssetForecastDPP extends SvrProcess{
 				BigDecimal amtAcct = Currentamt;
 				if(i == acct.getA_Period_End())
 				{
-					amtAcct = amtAcct.subtract(SalvageAmt);				
+					//amtAcct = amtAcct.subtract(SalvageAmt);
+					amtAcct = Amount.subtract(Currentamt.multiply(new BigDecimal(mes-1))).subtract(SalvageAmt);
+					
 				}
 				fore.setAmount(amtAcct.setScale(2, BigDecimal.ROUND_DOWN));		
 				fore.getAmount(); 

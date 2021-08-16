@@ -65,20 +65,22 @@ public class ModBlumosProrroga implements ModelValidator
 				&& po.is_ValueChanged("Prorrogar"))  
 		{
 			MPayment pay = (MPayment) po;
-			Timestamp today = new Timestamp(System.currentTimeMillis());
-			String p_proroga = "";
-			if(pay.get_ValueAsString("prorroga_historial") != null && 
-					pay.get_ValueAsString("prorroga_historial").length() > 0)
-				p_proroga = "\n";
-			
-			pay.set_CustomColumn("PRORROGA_HISTORIAL", 
-					p_proroga+"Vcto. Anterior: "+pay.getDateTrx()+" - Motivo: "+pay.get_ValueAsString("razon_prorroga")+
-					pay.get_ValueAsString("PRORROGA_HISTORIAL")+"  - Usuario: "+pay.getUpdatedBy()+" - "+today);
-			pay.set_CustomColumn("prorrogado", true);
-			pay.set_CustomColumn("razon_prorroga", "");
-			pay.set_CustomColumn("prorrogar", false);
-			pay.set_CustomColumn("razon_prorroga", "");
-			
+			if(pay.get_ValueAsBoolean("Prorrogar"))
+			{
+				Timestamp today = new Timestamp(System.currentTimeMillis());
+				String p_proroga = "";
+				if(pay.get_ValueAsString("prorroga_historial") != null && 
+						pay.get_ValueAsString("prorroga_historial").length() > 0)
+					p_proroga = "\n";
+				
+				pay.set_CustomColumn("PRORROGA_HISTORIAL", 
+						p_proroga+"Vcto. Anterior: "+pay.getDateTrx()+" - Motivo: "+pay.get_ValueAsString("razon_prorroga")+
+						pay.get_ValueAsString("PRORROGA_HISTORIAL")+"  - Usuario: "+pay.getUpdatedBy()+" - "+today+" ");
+				pay.set_CustomColumn("prorrogado", true);
+				pay.set_CustomColumn("razon_prorroga", "");
+				pay.set_CustomColumn("prorrogar", false);
+				pay.setDateTrx((Timestamp)pay.get_Value("fecha_prorroga"));
+			}
 		}
 		return null;
 	}	//	modelChange

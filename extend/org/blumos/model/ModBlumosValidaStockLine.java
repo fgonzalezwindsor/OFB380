@@ -66,7 +66,8 @@ public class ModBlumosValidaStockLine implements ModelValidator
 	{
 		log.info(po.get_TableName() + " Type: "+type);		
 		
-		if((type == TYPE_BEFORE_CHANGE || type == TYPE_BEFORE_NEW) && po.get_Table_ID()==MOrderLine.Table_ID)  
+		if((type == TYPE_BEFORE_CHANGE || type == TYPE_BEFORE_NEW) && po.get_Table_ID()==MOrderLine.Table_ID
+				&& (po.is_ValueChanged("qtyentered") || po.is_ValueChanged("priceentered")))  
 		{
 			MOrderLine oLine = (MOrderLine) po;
 			if(oLine.getParent().isSOTrx() && oLine.getAD_Client_ID() != 1000005)
@@ -122,9 +123,9 @@ public class ModBlumosValidaStockLine implements ModelValidator
 						}
 					}
 				}
-				oLine.set_CustomColumn("info_precios", BlumosUtilities.DameUltimosPrecios(oLine.getM_Product_ID(),oLine.getParent().getC_BPartner_ID()));
+				oLine.set_CustomColumn("info_precios", BlumosUtilities.DameUltimosPrecios(oLine.getM_Product_ID(),oLine.getParent().getC_BPartner_ID(), po.getCtx(), po.get_TrxName()));
 				String codBlumos = oLine.getM_Product().getName().substring(0, 4);
-				int ID_vendedorCartera = BlumosUtilities.DameIDVendCartera(codBlumos, oLine.getParent().getC_BPartner_ID(), oLine.getParent().getC_BPartner_Location_ID());
+				int ID_vendedorCartera = BlumosUtilities.DameIDVendCartera(codBlumos, oLine.getParent().getC_BPartner_ID(), oLine.getParent().getC_BPartner_Location_ID(), po.getCtx(), po.get_TrxName());
 				if(oLine.getParent().getSalesRep_ID() != ID_vendedorCartera || ID_vendedorCartera < 1)
 				{
 					oLine.set_CustomColumn("INFO_CARTERA","PRODUCTO NO HALLADO EN CARTERA, ESCOGIO PRODUCTO:"+codBlumos+" ID_VENDEDOR:"+oLine.getParent().getSalesRep_ID()+" ID_VENDEDOR_CARTERA:"+ID_vendedorCartera);
@@ -133,7 +134,7 @@ public class ModBlumosValidaStockLine implements ModelValidator
 				else
 					oLine.set_CustomColumn("INFO_CARTERA","CARTERA ok,, ESCOGIO PRODUCTO:"+codBlumos+" ID_VENDEDOR:"+oLine.getParent().getSalesRep_ID()+" ID_VENDEDOR_CARTERA:"+ID_vendedorCartera);
 				String nomOrgCartera = ""; 
-				int ID_OrgCartera = BlumosUtilities.DameIDOrgCartera(codBlumos, oLine.getParent().getC_BPartner_ID(),oLine.getParent().getC_BPartner_Location_ID(),0);
+				int ID_OrgCartera = BlumosUtilities.DameIDOrgCartera(codBlumos, oLine.getParent().getC_BPartner_ID(),oLine.getParent().getC_BPartner_Location_ID(),0, po.getCtx(), po.get_TrxName());
 				if(ID_OrgCartera > 0)
 					nomOrgCartera = DB.getSQLValueString(po.get_TrxName(), "SELECT name FROM ad_org WHERE ad_org_id=?",ID_OrgCartera);
 				else

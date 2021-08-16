@@ -318,8 +318,8 @@ public class MCash extends X_C_Cash implements DocAction
 			int count = DB.getSQLValue(get_TrxName(),"select count(1) from C_Cash where DocStatus IN ('DR','IP') and C_CashBook_ID="+getC_CashBook_ID()+" and C_Cash_ID!="+getC_Cash_ID());
 			if(count>0)
 			{
-				log.saveError("Error", "Ya existe otra caja en borrador o en proceso por favor complï¿½tela antes de crear una nueva");
-								m_processMsg = "Ya existe otra caja en borrador por favor complï¿½tela antes de crear una nueva";
+				log.saveError("Error", "Ya existe otra caja en borrador o en proceso por favor complétela antes de crear una nueva");
+								m_processMsg = "Ya existe otra caja en borrador por favor complétela antes de crear una nueva";
 								return false;
 			}
 		}
@@ -329,7 +329,8 @@ public class MCash extends X_C_Cash implements DocAction
         calCalendario.setTimeInMillis(getDateAcct().getTime());
         //calCalendario.add(Calendar.DATE, -1);
         Timestamp tmsFecha = new Timestamp(calCalendario.getTimeInMillis());
-
+        /*if(OFBForward.UseOnlyCashForBBalance())//se sobreescribe fecha por posibles problemas
+        	tmsFecha = getDateAcct();*/        
 		//MCash oldCash= MCash.get (getCtx(), getAD_Org_ID(),tmsFecha, getC_Currency_ID(),get_TrxName());
         MCash oldCash=MCash.getDuplicate(getCtx(), getAD_Org_ID(),tmsFecha, getC_CashBook_ID(),get_TrxName(),getC_Cash_ID());
         //Se sobreescribe diario para que solo tome el ID del diario sin fecha ni org 
@@ -337,10 +338,12 @@ public class MCash extends X_C_Cash implements DocAction
         	oldCash=MCash.getDuplicate(getCtx(),getC_CashBook_ID(),get_TrxName(),getC_Cash_ID());
         
         if(oldCash==null)
-        setBeginningBalance(Env.ZERO);
+        	setBeginningBalance(Env.ZERO);
         else
-		setBeginningBalance(oldCash.getEndingBalance());
+        	setBeginningBalance(oldCash.getEndingBalance());
 		//END setBeginningBalance
+        if(newRecord)//ininoles si es registro nuevo que diferencia sea 0
+        	setStatementDifference(Env.ZERO);
 		//	Calculate End Balance
 		setEndingBalance(getBeginningBalance().add(getStatementDifference()));
 		return true;
@@ -1099,7 +1102,8 @@ public class MCash extends X_C_Cash implements DocAction
 			+ "WHERE c.C_CashBook_ID=?"			 //	#3
 			+ " AND c.DocStatus IN ('DR','CO')"
 			+ " AND c.C_CASH_ID!="+C_Cash_ID
-			+ " Order BY c.StatementDate Desc,c.created Desc";
+			//+ " Order BY c.StatementDate Desc,c.created Desc";
+			+ " Order BY c.documentNo desc, c.StatementDate Desc,c.created Desc";
 		PreparedStatement pstmt = null;
 		try
 		{

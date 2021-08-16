@@ -32,7 +32,7 @@ public class X_T_BL_ER_SALDOS extends PO implements I_T_BL_ER_SALDOS, I_Persiste
 	/**
 	 *
 	 */
-	private static final long serialVersionUID = 20171117L;
+	private static final long serialVersionUID = 20180830L;
 
     /** Standard Constructor */
     public X_T_BL_ER_SALDOS (Properties ctx, int T_BL_ER_SALDOS_ID, String trxName)
@@ -73,9 +73,9 @@ public class X_T_BL_ER_SALDOS extends PO implements I_T_BL_ER_SALDOS, I_Persiste
       return sb.toString();
     }
 
-	public I_C_ValidCombination getAccount() throws RuntimeException
+	public I_C_ElementValue getAccount() throws RuntimeException
     {
-		return (I_C_ValidCombination)MTable.get(getCtx(), I_C_ValidCombination.Table_Name)
+		return (I_C_ElementValue)MTable.get(getCtx(), I_C_ElementValue.Table_Name)
 			.getPO(getAccount_ID(), get_TrxName());	}
 
 	/** Set Account.

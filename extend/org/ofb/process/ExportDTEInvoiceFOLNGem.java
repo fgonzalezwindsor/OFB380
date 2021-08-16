@@ -455,17 +455,21 @@ public class ExportDTEInvoiceFOLNGem extends SvrProcess
                 org.w3c.dom.Text fchref = document.createTextNode(fechareferencia);
                 FchRef.appendChild(fchref);
                 Referencia.appendChild(FchRef);
-                
-                Element CodRef = document.createElement("CodRef");
-                //org.w3c.dom.Text codref = document.createTextNode(Integer.toString(tipo_Ref));
-                org.w3c.dom.Text codref = document.createTextNode(invoice.get_ValueAsString("CodRef"));                
-                CodRef.appendChild(codref);
-                Referencia.appendChild(CodRef);                
+                //solo se enviara codigo ref si no es nulo
+                if(invoice.get_ValueAsString("CodRef") != null && invoice.get_ValueAsString("CodRef").trim().length() > 0)
+                {
+	                Element CodRef = document.createElement("CodRef");
+	                //org.w3c.dom.Text codref = document.createTextNode(Integer.toString(tipo_Ref));
+	                org.w3c.dom.Text codref = document.createTextNode(invoice.get_ValueAsString("CodRef"));                
+	                CodRef.appendChild(codref);
+	                Referencia.appendChild(CodRef);
+                }
             }
             //fin referencia
             //referencia HES Geminis
             //nuevos campos de referencia geminis. ininoles
-            String sqlDN = "Select o.DocumentNo FROM C_Order o INNER JOIN C_Invoice i ON (o.C_Order_ID = i.C_Order_ID) WHERE i.C_Invoice_ID= ?";
+            //ininoles se cambia forma de sacar hes. Se utiliza nuevo campo
+            String sqlDN = "Select o.DocumentNo FROM C_Order o INNER JOIN C_Invoice i ON (o.C_Order_ID = i.C_RefOrder_ID) WHERE i.C_Invoice_ID= ?";
             String docNoRef = DB.getSQLValueString(get_TrxName(), sqlDN, invoice.get_ID()); 
             
             if (docNoRef != null)
@@ -499,10 +503,13 @@ public class ExportDTEInvoiceFOLNGem extends SvrProcess
                 FchRef2.appendChild(fchref2);
                 Referencia2.appendChild(FchRef2);
                 
-                Element CodRef2 = document.createElement("CodRef");
-                org.w3c.dom.Text codref2 = document.createTextNode(invoice.get_ValueAsString("CodRef"));
-                CodRef2.appendChild(codref2);
-                Referencia2.appendChild(CodRef2);
+                if(invoice.get_ValueAsString("CodRef") != null && invoice.get_ValueAsString("CodRef").trim().length() > 0)
+                {
+                	Element CodRef2 = document.createElement("CodRef");                	
+	                org.w3c.dom.Text codref2 = document.createTextNode(invoice.get_ValueAsString("CodRef"));
+	                CodRef2.appendChild(codref2);
+	                Referencia2.appendChild(CodRef2);
+                }
             }
             
             //end ininoles

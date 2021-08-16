@@ -326,7 +326,7 @@ public class VMPRequestOTTSM extends CPanel
 			"inner join A_Asset a on (rt.A_Asset_ID=a.A_Asset_ID) "+
 			"left outer join MP_JOBSTANDAR jo on (rt.MP_JOBSTANDAR_ID=jo.MP_JOBSTANDAR_ID) " +
 			"inner join AD_Ref_List rl on (rt.PriorityRule=rl.value and rl. AD_Reference_ID=154) " +
-			"where rt.DocStatus='CO' and rt.processed='Y'");
+			"where rt.concept='13' AND rt.DocStatus='CO' and rt.processed='Y'");
 		
 		sql.append(" and rt.AD_Client_ID="+ Env.getAD_Client_ID(Env.getCtx()));
 		

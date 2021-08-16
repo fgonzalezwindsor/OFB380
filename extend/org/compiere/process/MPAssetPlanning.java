@@ -165,12 +165,17 @@ public class MPAssetPlanning extends SvrProcess
 		byMeter.append(" WHERE MA.PROGRAMMINGTYPE='M' AND MA.DOCSTATUS<>'IT'");
 		//ininoles se agreg logica que no tome los desactivados
 		byMeter.append(" AND MA.ISACTIVE = 'Y' AND mp2.ISACTIVE = 'Y' ");
+		//ininoles se agreg logica que no tome los activos desactivados
+		byMeter.append(" AND A.ISACTIVE = 'Y' ");
 		if(DB.isOracle())
 			byMeter.append(" AND Mlog.DateTrx BETWEEN (Sysdate-40) AND sysdate");
 		else
 			byMeter.append(" AND Mlog.DateTrx BETWEEN (now()-40) AND now()");
 		//ininoles where para no tomar mantenciones sin campo "proxima matención"
 		byMeter.append(" AND MA.NEXTMP IS NOT NULL ");
+		//ininoles where para no medidores desactivados"
+		byMeter.append(" AND MS.IsActive = 'Y' AND ME.IsActive = 'Y' ");
+		//byMeter.append(" AND A.A_Asset_ID = 1000702 ");
 		
 		//ininoles se agrega where para no tomar en cuenta hijos de nueva tabla MP_MaintainParent
 		/*byMeter.append("AND MP_Maintain_ID NOT IN ");
@@ -190,8 +195,7 @@ public class MPAssetPlanning extends SvrProcess
 		byMeter.append("))");*/
 		//ininoles end
 		byMeter.append(" Group by MA.AD_CLIENT_ID,MA.AD_ORG_ID,MA.MP_MAINTAIN_ID,MA.DESCRIPTION,MA.PROGRAMMINGTYPE, A.A_ASSET_ID,MA.MP_METER_ID,MA.RANGE, MA.NEXTMP,ME.MP_ASSETMETER_ID,MS.Name, MA.MP_MAINTAINDetail_ID");
-																								
-	    
+
 		pstmt = null;
 		try
 		{
@@ -199,7 +203,10 @@ public class MPAssetPlanning extends SvrProcess
 			ResultSet rs = pstmt.executeQuery();
 			while (rs.next())
 			{
-		
+				
+			    if(rs.getInt("A_ASSET_ID") == 1000702)
+			    	log.config("stop para debug");
+			    
 				int cumple=0;
 				float lastM=0,firstM=0,prom=0;
 		        if(rs.getInt("Qty")>1)
@@ -226,6 +233,7 @@ public class MPAssetPlanning extends SvrProcess
 		        	if(prom == Double.NaN)
 		        	{
 		        		log.config("Activo con problemas"+rs.getInt("A_ASSET_ID"));
+		        		throw new AdempiereException("Activo con problemas: "+rs.getInt("A_ASSET_ID")+" Favor Revisar");
 		        	}
 		        	
 		        	StringBuffer update=new StringBuffer();
@@ -240,21 +248,22 @@ public class MPAssetPlanning extends SvrProcess
 		            dateExe.setTime(rs.getTimestamp("LastDay"));
 		            //VER SI ENTRA DE AQUI A LOS PROXIMOS N DIAS ( 7 * PERIODONO) 
 		            log.info("LoopMedidor");
-		            do{       
-		            
+		            do
+		            {       
 		                if((lastM >= (rs.getFloat("NEXTMP")-rs.getFloat("RANGE")) && lastM<= (rs.getFloat("NEXTMP")+rs.getFloat("RANGE")) )
-		                		|| (lastM>rs.getFloat("NEXTMP")) ){
-		                
+		                		|| (lastM>rs.getFloat("NEXTMP")) )
+		                {                
 		                	cumple=1;
-		                	dateExe.add(Calendar.DATE,cont);
-		
+		                	dateExe.add(Calendar.DATE,cont);		
 		                }
-		                	else{
-		                		lastM=lastM + prom;
+		                else
+		                {
+                			lastM=lastM + prom;
 		                	cont++;
-		                	}
-		                
-		            } while( cumple==0 && cont!=(10*periodNo));
+		                }
+		            } 
+		            while( cumple==0 && cont!=(10*periodNo));
+		            
 		            Timestamp currentDate=new Timestamp(dateExe.getTimeInMillis());
 		            if(cumple==1 || lastM > rs.getFloat("NEXTMP"))
 		            {
@@ -263,17 +272,14 @@ public class MPAssetPlanning extends SvrProcess
 						Calendar dateto = Calendar.getInstance();
 						int diaA=0;
 			            while(period<=periodNo)
-			            {
-							
-			            	
+			            {	
 							 datefrom.add(Calendar.DATE, diaA*7);
 							 dateto.add(Calendar.DATE, (diaA+1)*7);
 							 
-							 
 							if(currentDate.compareTo(datefrom.getTime())>=0 &&   currentDate.compareTo(dateto.getTime())<=0)
 					            ciclo=period;
-						 period++;
-						 diaA++;
+							period++;
+							diaA++;
 						}
 			            
 			            log.info("Insertmeter");
@@ -298,7 +304,6 @@ public class MPAssetPlanning extends SvrProcess
 			            mp.set_CustomColumn("MP_MaintainDetail_ID", rs.getInt("MP_MaintainDetail_ID"));
 			            mp.saveEx();
 		            }
-		             
 		        }
 			}			
 			commitEx();
@@ -314,7 +319,8 @@ public class MPAssetPlanning extends SvrProcess
 		
 		log.info("Correccion para anidados");		
 		
-		String sql="select * from MP_Prognosis where AD_PINSTANCE_ID="+p_PInstance_ID+" and PROGRAMMINGTYPE='M'";
+		String sql="select * from MP_Prognosis where AD_PINSTANCE_ID="+p_PInstance_ID+" and PROGRAMMINGTYPE='M' "+
+					" ORDER BY MP_Maintain_ID DESC";
 		pstmt = null;
 		try
 		{
@@ -324,7 +330,7 @@ public class MPAssetPlanning extends SvrProcess
 			{
 				if(OFBForward.NewUpdateMaintainceParent())
 				{
-					//ininoles nuevo metodo de actualizacion en mase a hijos para TSM
+					//ininoles nuevo metodo de actualizacion en base a hijos para TSM
 					DB.executeUpdate("UPDATE MP_Prognosis "+
 							"SET SELECTED='Y' "+
 					        "WHERE MP_MAINTAIN_ID IN " +
@@ -332,6 +338,15 @@ public class MPAssetPlanning extends SvrProcess
 					        "	WHERE MP_Maintain_ID = "+rs.getInt("MP_MAINTAIN_ID")+")" +
 					        " AND A_Asset_ID = "+rs.getInt("A_ASSET_ID")+" AND AD_PINSTANCE_ID = "+p_PInstance_ID, get_TrxName());						
 					//ininoles end
+					
+					//se actualizan tambien mantenciones padre
+					/*DB.executeUpdate("UPDATE MP_Prognosis "+
+							"SET SELECTED='Y' "+
+					        "WHERE MP_MAINTAIN_ID IN " +
+					        "(SELECT MP_Maintain_ID FROM MP_MaintainParent " +
+					        " WHERE MP_MaintainRef_ID = "+rs.getInt("MP_MAINTAIN_ID")+")" +
+					        " AND A_Asset_ID = "+rs.getInt("A_ASSET_ID")+" AND AD_PINSTANCE_ID = "+p_PInstance_ID, get_TrxName());
+					 */
 				}
 				else
 				{

@@ -460,17 +460,7 @@ public class ExportDTEInvoiceCGProvectis extends SvrProcess
             String folioreferencia  = new String();
             String fechareferencia = new String();
             int tipo_Ref =0;
-            
-            if(invoice.get_Value("C_RefDoc_ID") != null && ((Integer)invoice.get_Value("C_RefDoc_ID")).intValue() > 0)//referencia factura
-            {
-                mylog = "referencia:invoice";
-                MInvoice refdoc = new MInvoice(invoice.getCtx(), ((Integer)invoice.get_Value("C_RefDoc_ID")).intValue(), invoice.get_TrxName());
-                MDocType Refdoctype = new MDocType(invoice.getCtx(), refdoc.getC_DocType_ID(), invoice.get_TrxName());
-                tiporeferencia = (String) Refdoctype.get_Value("DocumentNo");
-                folioreferencia = (String) refdoc.getDocumentNo();
-                fechareferencia = refdoc.getDateInvoiced().toString().substring(0, 10);
-                tipo_Ref = 1; //factura
-            } 
+            int nroref = 0;
             
             if(invoice.getPOReference() != null && invoice.getPOReference().length() > 0)//referencia orden
             {
@@ -481,22 +471,41 @@ public class ExportDTEInvoiceCGProvectis extends SvrProcess
                  fechareferencia = invoice.getDateOrdered().toString().substring(0, 10);
             	 tipo_Ref = 2; //Orden
             }
-            
+            /*if(invoice.get_ValueAsString("POReference2") != null && invoice.get_ValueAsString("POReference2").length() > 0)//referencia 802
+            {
+            	 mylog = "referencia:802";
+            	 //MOrder refdoc = new MOrder(invoice.getCtx(), ((Integer)get_Value("C_RefOrder_ID")).intValue(), invoice.get_TrxName()); 
+            	 tiporeferencia = "802";
+                 folioreferencia = invoice.get_ValueAsString("POReference2");
+                 fechareferencia = invoice.getDateOrdered().toString().substring(0, 10);
+            	 tipo_Ref = 4; //802
+            }*/
             if(invoice.get_Value("C_RefInOut_ID") != null && ((Integer)invoice.get_Value("C_RefInOut_ID")).intValue() > 0)//referencia despacho
             {
             	 mylog = "referencia:despacho";
             	 MInOut refdoc = new MInOut(invoice.getCtx(), ((Integer)invoice.get_Value("C_RefInOut_ID")).intValue(), invoice.get_TrxName()); 
             	 tiporeferencia = "52";
-                 folioreferencia = (String) refdoc.getDocumentNo();
+                 folioreferencia = refdoc.getDocumentNo();
                  fechareferencia = refdoc.getMovementDate().toString().substring(0, 10);
             	 tipo_Ref = 3; //despacho
             }
-            
-            if(tipo_Ref>0){
+            if(invoice.get_Value("C_RefDoc_ID") != null && invoice.get_ValueAsInt("C_RefDoc_ID") > 0)//referencia factura
+            {
+                mylog = "referencia:invoice";
+                MInvoice refdoc = new MInvoice(invoice.getCtx(), ((Integer)invoice.get_Value("C_RefDoc_ID")).intValue(), invoice.get_TrxName());
+                MDocType Refdoctype = new MDocType(invoice.getCtx(), refdoc.getC_DocType_ID(), invoice.get_TrxName());
+                tiporeferencia = (String) Refdoctype.get_Value("DocumentNo");
+                folioreferencia = refdoc.getDocumentNo();
+                fechareferencia = refdoc.getDateInvoiced().toString().substring(0, 10);
+                tipo_Ref = 1; //factura
+            }            
+            if(tipo_Ref>0)
+            {
+            	nroref++;
                 Element Referencia = document.createElement("Referencia");
                 Documento.appendChild(Referencia);
                 Element NroLinRef = document.createElement("NroLinRef");
-                org.w3c.dom.Text Nro = document.createTextNode("1");
+                org.w3c.dom.Text Nro = document.createTextNode(Integer.toString(nroref));
                 NroLinRef.appendChild(Nro);
                 Referencia.appendChild(NroLinRef);
                 Element TpoDocRef = document.createElement("TpoDocRef");
@@ -507,6 +516,14 @@ public class ExportDTEInvoiceCGProvectis extends SvrProcess
                 org.w3c.dom.Text ref = document.createTextNode(folioreferencia);
                 FolioRef.appendChild(ref);
                 Referencia.appendChild(FolioRef);
+
+                if(fechareferencia == null)
+                	fechareferencia = invoice.getDateInvoiced().toString().substring(0, 10);
+                if(fechareferencia.compareTo(" ") == 0 || fechareferencia.compareTo("") == 0)
+                	fechareferencia = invoice.getDateInvoiced().toString().substring(0, 10);
+                if(fechareferencia.length()<2)
+                	fechareferencia = invoice.getDateInvoiced().toString().substring(0, 10);                
+                
                 Element FchRef = document.createElement("FchRef");
                 org.w3c.dom.Text fchref = document.createTextNode(fechareferencia);
                 FchRef.appendChild(fchref);
@@ -526,7 +543,60 @@ public class ExportDTEInvoiceCGProvectis extends SvrProcess
                     Referencia.appendChild(CodRef);                	
                 }              
             }
-            //fin referencia
+            //se crea segunda referencia para que aparescan 
+            if(invoice.get_ValueAsString("POReference2") != null && invoice.get_ValueAsString("POReference2").length() > 0)//referencia 802
+            {
+            	nroref++;
+            	mylog = "referencia:802";
+            	fechareferencia = invoice.getDateOrdered().toString().substring(0, 10);
+        		tipo_Ref = 4; //802
+        		
+        		nroref++;
+                Element Referencia2 = document.createElement("Referencia");
+                Documento.appendChild(Referencia2);
+                
+                Element NroLinRef2 = document.createElement("NroLinRef");
+                org.w3c.dom.Text Nro2 = document.createTextNode(Integer.toString(nroref));
+                NroLinRef2.appendChild(Nro2);
+                Referencia2.appendChild(NroLinRef2);
+                
+                Element TpoDocRef2 = document.createElement("TpoDocRef");
+                org.w3c.dom.Text tpo2 = document.createTextNode("802");
+                TpoDocRef2.appendChild(tpo2);
+                Referencia2.appendChild(TpoDocRef2);
+                
+                Element FolioRef2 = document.createElement("FolioRef");
+                org.w3c.dom.Text ref2 = document.createTextNode(invoice.get_ValueAsString("POReference2"));
+                FolioRef2.appendChild(ref2);
+                Referencia2.appendChild(FolioRef2);
+
+                if(fechareferencia == null)
+                	fechareferencia = invoice.getDateInvoiced().toString().substring(0, 10);
+                if(fechareferencia.compareTo(" ") == 0 || fechareferencia.compareTo("") == 0)
+                	fechareferencia = invoice.getDateInvoiced().toString().substring(0, 10);
+                if(fechareferencia.length()<2)
+                	fechareferencia = invoice.getDateInvoiced().toString().substring(0, 10);                
+                
+                Element FchRef2 = document.createElement("FchRef");
+                org.w3c.dom.Text fchref2 = document.createTextNode(fechareferencia);
+                FchRef2.appendChild(fchref2);
+                Referencia2.appendChild(FchRef2);
+                String CodRefTxt = null;
+                try {
+                	CodRefTxt = invoice.get_ValueAsString("CodRef");
+                }
+                catch (Exception e) {
+                	CodRefTxt = null;
+				}
+                if ( CodRefTxt != null && CodRefTxt.length()>0)
+                {
+                	Element CodRef2 = document.createElement("CodRef");
+                    org.w3c.dom.Text codref2 = document.createTextNode(invoice.get_ValueAsString("CodRef")==null?"0":invoice.get_ValueAsString("CodRef"));                
+                    CodRef2.appendChild(codref2);
+                    Referencia2.appendChild(CodRef2);                	
+                }    
+            }
+            //fin referencia2
             //Se crea tag adjuntos
             Element Adjuntos = document.createElement("Adjuntos");
             Documento.appendChild(Adjuntos);

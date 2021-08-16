@@ -97,8 +97,10 @@ public class ModTSMUpMaintainDetFromOT implements ModelValidator
 					pstmt = DB.prepareStatement(mysql, po.get_TrxName());
 					pstmt.setInt(1, ot.get_ID());
 					ResultSet rs = pstmt.executeQuery();
+					BigDecimal Dif = Env.ZERO;
 					while (rs.next())
 					{
+						Dif = Env.ZERO;
 						X_MP_MaintainDetail mp= new X_MP_MaintainDetail(Env.getCtx(), rs.getInt(1),po.get_TrxName());
 						BigDecimal actualKm = null;
 						if(!mp.isProgrammingType().equals("C"))
@@ -106,6 +108,8 @@ public class ModTSMUpMaintainDetFromOT implements ModelValidator
 							actualKm = (BigDecimal)ot.get_Value("tsm_km");
 							if(actualKm != null && actualKm.compareTo(Env.ZERO) > 0)
 							{
+								Dif = actualKm.subtract(mp.getnextmp().subtract(mp.getlastmp()));
+								//Dif = Dif.abs();
 								mp.setnextmp(mp.getInterval().add(actualKm).setScale(2, BigDecimal.ROUND_HALF_EVEN));
 								mp.setlastmp(actualKm);
 							}
@@ -136,7 +140,9 @@ public class ModTSMUpMaintainDetFromOT implements ModelValidator
 										if(actualKm != null && actualKm.compareTo(Env.ZERO) > 0)
 										{
 											mp2.setlastmp(actualKm);
-											mp2.setnextmp(mp2.getInterval().add(actualKm).setScale(2, BigDecimal.ROUND_HALF_EVEN));
+											//mp2.setnextmp(mp2.getInterval().add(actualKm).setScale(2, BigDecimal.ROUND_HALF_EVEN));
+											//ininoles al intervalo se le suma la diferencia
+											mp2.setnextmp(mp2.getInterval().add(Dif).setScale(2, BigDecimal.ROUND_HALF_EVEN));
 										}
 									}
 									mp2.save();

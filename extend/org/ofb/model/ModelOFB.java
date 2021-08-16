@@ -30,6 +30,7 @@ import org.compiere.model.PO;
 import org.compiere.model.X_C_Payment;
 import org.compiere.model.X_C_PaymentRequest;
 import org.compiere.model.X_C_PaymentRequestLine;
+import org.compiere.model.X_DM_Document;
 import org.compiere.model.X_MP_AssetMeter;
 import org.compiere.model.X_MP_AssetMeter_Log;
 import org.compiere.model.X_MP_Meter;
@@ -253,8 +254,31 @@ public class ModelOFB implements ModelValidator
 					return "Ya existe una factura con mismo Numero y Tipo de Documento";
 			}
 		}
+		//nuenvo metodo libera asignado en dm_document al anular solicitud de pago
+		if(type == TYPE_AFTER_CHANGE && po.get_Table_ID()==X_C_PaymentRequest.Table_ID
+				&& po.is_ValueChanged("DocStatus"))//anula solicitud de pago
+			
+		{
+			X_C_PaymentRequest req = (X_C_PaymentRequest) po;
+			if(req.getDocStatus().compareTo("VO") == 0)
+			{
+				X_C_PaymentRequestLine lines[]	= req.getLines();
+				for(X_C_PaymentRequestLine  line:lines)
+				{
+					if(line.get_ValueAsInt("DM_Document_ID") > 0)
+					{
+						X_DM_Document doc = new X_DM_Document(po.getCtx(), line.get_ValueAsInt("DM_Document_ID"), po.get_TrxName());
+						BigDecimal dif = (BigDecimal)doc.get_Value("Allocatedamt");
+						dif = dif.subtract(line.getAmt());
+						doc.set_CustomColumn("Allocatedamt",dif);
+						doc.saveEx(po.get_TrxName());
+					}
+				}	
+			}
+		}
+		
 					
-	return null;
+		return null;	
 	}	//	modelChange
 
 	/**

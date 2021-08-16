@@ -173,7 +173,68 @@ public class ModUpdateQtyShipment implements ModelValidator
 				if(loc2 != 0)
 					shline.set_CustomColumn("C_BPartner_Location2_ID", loc2);
 				if(loc3 != 0)
+				{
 					shline.set_CustomColumn("C_BPartner_Location3_ID", loc3);
+					//MFROJAS
+					//Agregar acá el campo de monto de comisión asociado a c_bpartner_location3_ID
+					
+					//Primero, se verá si el conductor es de Transportes Callegari, o es de una empresa contratista.
+					int bpartnerref = 0;
+					bpartnerref = shline.get_ValueAsInt("C_BPartner_ID");
+
+					String sqlemployer = "SELECT C_BPartnerRef_ID FROM C_BP_Employer where c_bpartner_id = "+bpartnerref+ "" +
+							" AND DateStart <= '"+shline.getM_InOut().getDateAcct()+"' AND EndDate >= '"+shline.getM_InOut().getDateAcct()+"'";
+					
+					int bpartneremp = DB.getSQLValue(shline.get_TrxName(), sqlemployer);
+
+					
+					String sqlcomision = "SELECT AssignmentAmount FROM C_BPartner_Location where C_BPartner_Location_ID = ?";
+					BigDecimal comision = DB.getSQLValueBD(shline.get_TrxName(), sqlcomision, loc3);
+					log.config("comision "+comision);
+					log.config("bpartneremp "+bpartneremp);
+					if(comision.compareTo(Env.ZERO)>=0)
+					{
+						//Si el empleado es de TC, su comision esta asociada al tramo
+						if(bpartneremp == 1002238)
+						{
+							shline.set_CustomColumn("AssignmentAmount",comision);
+						}
+						//si el empleado no es de tc, entonces se busca el porcentaje asociado al fletero, 
+						//y ese valor se multiplica por el monto del viaje (en la linea de entrega).
+						else if(bpartneremp > 0)
+						{
+							BigDecimal half = new BigDecimal(0.5);
+							BigDecimal threequarter = new BigDecimal(0.75);
+							String sqlpercent = "SELECT percentcomission from c_bpartner where c_bpartner_id = ? ";
+							String val = DB.getSQLValueString(shline.get_TrxName(), sqlpercent, bpartnerref);
+							comision = new BigDecimal(shline.get_ValueAsInt("PriceActual"));
+							log.config("val "+val);
+							log.config("comision "+comision);
+							
+							if(val.compareTo("01")==0)
+							{
+								log.config("comision "+comision);
+								shline.set_CustomColumn("AssignmentAmount",comision);
+
+							}
+							else if(val.compareTo("02")==0)
+							{
+								log.config("comision "+comision);
+								comision = comision.multiply(threequarter);
+								log.config("comision "+comision);
+
+								shline.set_CustomColumn("AssignmentAmount",comision);
+
+							}
+							else if(val.compareTo("03")==0)
+							{
+								comision = comision.multiply(half);
+								shline.set_CustomColumn("AssignmentAmount",comision);
+
+							}
+						}
+					}
+				}
 				if(loc4 != 0)
 					shline.set_CustomColumn("C_BPartner_Location4_ID", loc4);
 				

@@ -170,15 +170,16 @@ public class ModDPPUpdateAssetAmt implements ModelValidator
 						if(line.getA_Asset_ID()>0 && line.get_ValueAsString("A_CapvsExp").equals(X_C_InvoiceLine.A_CAPVSEXP_Expense))
 						{
 							MAsset asset = new MAsset(po.getCtx(),  line.getA_Asset_ID() ,po.get_TrxName());
-							BigDecimal monto = line.getLineNetAmt().add(line.getTaxAmt());
+							//BigDecimal monto = line.getLineNetAmt().add(line.getTaxAmt());
+							BigDecimal monto = line.getTaxAmt();
 							monto = monto.setScale(curr.getStdPrecision(),BigDecimal.ROUND_HALF_EVEN);
 							
-							int change_id = DB.getSQLValue(po.get_TableName(), "select A_Asset_Change_ID from A_Asset_Change where A_Asset_ID="+asset.getA_Asset_ID(),po.get_TrxName());
+							int change_id = DB.getSQLValue(po.get_TableName(), "select A_Asset_Change_ID from A_Asset_Change where A_Asset_ID="+asset.getA_Asset_ID());
 							MAssetChange change = new MAssetChange (po.getCtx(), change_id, po.get_TrxName());
 							change.setAssetValueAmt(change.getAssetValueAmt().add(monto) );
 							change.save();
 							
-							int Workfile_id = DB.getSQLValue(po.get_TableName(), "select A_Depreciation_Workfile_ID from A_Depreciation_Workfile where A_Asset_ID="+asset.getA_Asset_ID(),po.get_TrxName());
+							int Workfile_id = DB.getSQLValue(po.get_TableName(), "select A_Depreciation_Workfile_ID from A_Depreciation_Workfile where A_Asset_ID="+asset.getA_Asset_ID());
 							X_A_Depreciation_Workfile assetwk = new X_A_Depreciation_Workfile (po.getCtx(), Workfile_id, po.get_TrxName());
 							assetwk.setA_Asset_Cost(assetwk.getA_Asset_Cost().add(monto));
 							assetwk.save();

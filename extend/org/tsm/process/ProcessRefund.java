@@ -78,10 +78,10 @@ public class ProcessRefund extends SvrProcess
 				//validacion 2 viaticos normales existentes
 				if(viatico.getType().compareTo("01") == 0)
 				{
-					int cantV = DB.getSQLValue(get_TrxName(),"SELECT COUNT(1) FROM TP_Refund WHERE C_BPartner_ID = "+viatico.getC_BPartner_ID()+
+					/*int cantV = DB.getSQLValue(get_TrxName(),"SELECT COUNT(1) FROM TP_Refund WHERE C_BPartner_ID = "+viatico.getC_BPartner_ID()+
 							" AND Type = '01' AND TP_Refund_ID <> "+viatico.get_ID()+" AND DateDoc = ?",viatico.getDateDoc());
 					if(cantV > 0)
-						throw new AdempiereException("ERROR: Ya existe mas de un viatico para la misma fecha");
+						throw new AdempiereException("ERROR: Ya existe mas de un viatico para la misma fecha");*/
 					int cantRep = DB.getSQLValue(get_TrxName(), "SELECT COALESCE(COUNT(1),0)FROM TP_RefundLine " +
 							" WHERE M_Movement_ID > 0 AND TP_Refund_ID="+viatico.get_ID()+" GROUP BY DateTrx HAVING COUNT(1) > 1");
 						if(cantRep > 0)
@@ -116,7 +116,7 @@ public class ProcessRefund extends SvrProcess
 					}	
 					//validacion misma fecha y socio de negocio repetido no importa el tipo de viatico
 					//Disponibilidad ya existente
-					if(rLine.getM_Movement_ID() > 0)
+					/*if(rLine.getM_Movement_ID() > 0)
 					{
 						int cantRepLine = DB.getSQLValue(get_TrxName(), "SELECT COUNT(1) FROM TP_RefundLine rl" +
 							" INNER JOIN TP_Refund r ON (rl.TP_Refund_ID = r.TP_Refund_ID) " +
@@ -124,9 +124,9 @@ public class ProcessRefund extends SvrProcess
 							" AND rl.DateTrx = ?",rLine.getDateTrx());
 						if (cantRepLine > 0)
 							throw new AdempiereException("ERROR: Ya existe un viatico por disponibilidad para la misma fecha y conductor");
-					}	
+					}*/	
 					//hoja de ruta ya existente
-					if(rLine.get_ValueAsInt("Pre_M_Movement_ID") > 0)
+					/*if(rLine.get_ValueAsInt("Pre_M_Movement_ID") > 0)
 					{
 						int cantRepLine = DB.getSQLValue(get_TrxName(), "SELECT COUNT(1) FROM TP_RefundLine rl" +
 							" INNER JOIN TP_Refund r ON (rl.TP_Refund_ID = r.TP_Refund_ID) " +
@@ -134,7 +134,7 @@ public class ProcessRefund extends SvrProcess
 							" AND rl.DateTrx = ?",rLine.getDateTrx());
 						if (cantRepLine > 0)
 							throw new AdempiereException("ERROR: Ya existe un viatico por hoja de ruta para la misma fecha y conductor");
-					}
+					}*/
 					if(viatico.getType().compareTo("02") == 0)
 					{
 						int cant = DB.getSQLValue(get_TrxName(), "SELECT COUNT(1) FROM TP_RefundLine" +
@@ -143,9 +143,11 @@ public class ProcessRefund extends SvrProcess
 						if (cant > 0)
 							throw new AdempiereException("ERROR: Existe una HR y concepto repetido");
 						//hr obligatoria
-						if(rLine.getM_Movement_ID() <=0 && rLine.get_ValueAsInt("TP_RefundAmt_ID") > 0)
-							throw new AdempiereException("ERROR: Concepto sin HR ingresada");
-														
+						//ininoles se excluye enex pelambres y enex caldera
+						//if(rLine.getM_Movement_ID() <=0 && rLine.get_ValueAsInt("TP_RefundAmt_ID") > 0)
+						if(rLine.getM_Movement_ID() <=0 && rLine.get_ValueAsInt("TP_RefundAmt_ID") > 0 
+								&& (rLine.getTP_Refund().getAD_Org_ID() != 1000004 && rLine.getTP_Refund().getAD_Org_ID() != 1000017))
+							throw new AdempiereException("ERROR: Concepto sin HR ingresada");														
 					}
 				}
 				rs.close();

@@ -526,6 +526,8 @@ public class DepreAssetsGeminis extends SvrProcess
 					
 					BigDecimal acum=DB.getSQLValueBD(get_TrxName(),  "select sum(AmtAcctCr) from gl_journalline where gl_journal_id="+jour.getGL_Journal_ID()
 							+" and C_ValidCombination_ID="+group.get_ValueAsInt("a_assetcomplement_acct"));
+					if(acum == null)
+						acum = Env.ZERO;
 					//@mfrojas trace 
 					log.config("Grupo "+group.getA_Asset_ID());
 					log.config("cuenta del grupo"+group.get_ValueAsInt("a_assetcomplememt_acct"));
@@ -537,16 +539,27 @@ public class DepreAssetsGeminis extends SvrProcess
 					
 					BigDecimal neto=DB.getSQLValueBD(get_TrxName(), "select sum(AmtAcctDr) from gl_journalline where gl_journal_id="+jour.getGL_Journal_ID()
 							+" and C_ValidCombination_ID="+group.getA_Asset_Acct());
+					if(neto == null)
+						neto = Env.ZERO;
 					neto=neto.subtract(DB.getSQLValueBD(get_TrxName(), "select sum(AmtAcctCr) from gl_journalline where gl_journal_id="+jour.getGL_Journal_ID()
 							+" and C_ValidCombination_ID="+group.getA_Asset_Acct()));
+					if(acum == null)
+						acum = Env.ZERO;
+					if(neto == null)
+						neto = Env.ZERO;
 					
-					workfile.setA_Accumulated_Depr(workfile.getA_Accumulated_Depr().subtract(acum) );
-					workfile.setA_Asset_Cost(workfile.getA_Asset_Cost().subtract(neto));
-					workfile.save();
-					
-					X_A_Asset_Forecast fore=new X_A_Asset_Forecast (Env.getCtx(),jour.get_ValueAsInt("A_Asset_Forecast_ID"),null);
-					fore.setCorrected(false);
-					fore.save();
+					if(workfile != null)
+					{	
+						workfile.setA_Accumulated_Depr(workfile.getA_Accumulated_Depr().subtract(acum) );
+						workfile.setA_Asset_Cost(workfile.getA_Asset_Cost().subtract(neto));
+						workfile.save();
+					}
+					if(jour.get_ValueAsInt("A_Asset_Forecast_ID") > 0)
+					{	
+						X_A_Asset_Forecast fore=new X_A_Asset_Forecast (Env.getCtx(),jour.get_ValueAsInt("A_Asset_Forecast_ID"),null);						
+						fore.setCorrected(false);
+						fore.save();
+					}
 				}
 				else if(DepDoc.getDepType().equalsIgnoreCase((X_A_Asset_Dep.DEPTYPE_Reevaluacion))){
 					MDepreciationWorkfile workfile=MAsset.getWorkFile(jour.get_ValueAsInt("A_Asset_ID"));

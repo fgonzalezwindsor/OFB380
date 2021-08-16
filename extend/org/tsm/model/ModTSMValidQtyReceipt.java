@@ -31,7 +31,7 @@ import org.compiere.util.Env;
 
 
 /**
- *	Validator for PDV Colegios
+ *	Validator for TSM
  *
  *  @author Italo Niñoles
  */

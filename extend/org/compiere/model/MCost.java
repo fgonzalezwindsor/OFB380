@@ -1693,13 +1693,8 @@ public class MCost extends X_M_Cost
 			{
 				throw new IllegalArgumentException("No Costing Method");
 			}
-		}
-		
-		BigDecimal cost=Env.ZERO;
-		
-		
-		
-		return cost;
-		
+		}		
+		BigDecimal cost=Env.ZERO;		
+		return cost;	
 	}
 }	//	MCost

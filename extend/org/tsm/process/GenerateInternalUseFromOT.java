@@ -67,14 +67,15 @@ public class GenerateInternalUseFromOT extends SvrProcess
 	 */
 	protected String doIt() throws Exception
 	{	
-		X_MP_OT ot = new X_MP_OT(getCtx(), p_OT_ID, get_TrxName());		
+		X_MP_OT ot = new X_MP_OT(getCtx(), p_OT_ID, get_TrxName());
+		int warehouse_ID = 0;
 		if(ot.get_ValueAsInt("M_Inventory_ID") > 0)
 		{
 			new AdempiereException("Consumo YA Generado");
 			return "";
 		}
 		else
-		{
+		{	
 			int cant = 0;
 			String sql = "SELECT otr.M_Product_ID, otr.ResourceQty, ot.A_Asset_ID " +
 			"FROM MP_OT ot " +
@@ -94,11 +95,26 @@ public class GenerateInternalUseFromOT extends SvrProcess
 						" WHERE DocBaseType = 'MMI' AND upper(name) like '%INVENTARIO%'");
 				int id_Charge = DB.getSQLValue(get_TrxName(), " SELECT MAX(C_Charge_ID) FROM C_Charge cc " +
 						" INNER JOIN C_ChargeType ct ON (cc.C_ChargeType_ID = ct.C_ChargeType_ID) WHERE ct.value = 'TCIU'");
-				int id_Locator = DB.getSQLValue(get_TrxName(), " SELECT MAX(M_Locator_ID) FROM M_Locator ml " +
-				" WHERE ml.M_Warehouse_ID = "+p_Warehouse_ID+" AND IsDefault = 'Y'");
-				if(id_Locator < 1)
-					id_Locator = DB.getSQLValue(get_TrxName(), " SELECT MAX(M_Locator_ID) FROM M_Locator ml " +
-							" WHERE ml.M_Warehouse_ID = "+p_Warehouse_ID);					
+				
+				//ininoles se setean bodega con reglas de negocio 15-11-2019
+				warehouse_ID = DB.getSQLValue(get_TrxName(), "SELECT COALESCE(MAX(ml.M_Warehouse_ID),0)" +
+						" FROM M_Locator ml" +
+						" INNER JOIN M_Storage ms ON (ml.M_Locator_ID = ms.M_Locator_ID)" +
+						" WHERE ml.AD_Org_ID = " + ot.getAD_Org_ID()+
+						" AND ms.M_Product_ID IN (SELECT otr.M_Product_ID" +
+						" FROM MP_OT_Task ott" +
+						" INNER JOIN MP_OT_Resource otr ON (ott.MP_OT_Task_ID = otr.MP_OT_Task_ID)" +
+						" WHERE otr.M_Product_ID > 0 AND ott.MP_OT_ID = "+ot.get_ID()+")");
+				
+				if(warehouse_ID < 0 && p_Warehouse_ID > 0)
+					warehouse_ID = p_Warehouse_ID;
+				
+				int id_LocatorBase = DB.getSQLValue(get_TrxName(), " SELECT MAX(M_Locator_ID) FROM M_Locator ml " +
+						" WHERE ml.M_Warehouse_ID = "+warehouse_ID+" AND IsDefault = 'Y'");
+				if(id_LocatorBase < 1)
+					id_LocatorBase = DB.getSQLValue(get_TrxName(), " SELECT MAX(M_Locator_ID) FROM M_Locator ml " +
+							" WHERE ml.M_Warehouse_ID = "+warehouse_ID);
+				int id_Locator = 0;
 				while (rs.next())
 				{
 					//se genera cabecera del consumo
@@ -113,7 +129,8 @@ public class GenerateInternalUseFromOT extends SvrProcess
 						iUse.save();
 					}				
 					//se genera detalle del consumo
-					if(rs.getBigDecimal("ResourceQty").compareTo(Env.ZERO) > 0)
+					if(rs.getBigDecimal("ResourceQty").compareTo(Env.ZERO) > 0
+							&& rs.getInt("M_Product_ID") > 0)
 					{
 						MInventoryLine iLine = new MInventoryLine(getCtx(),0,get_TrxName());
 						iLine.setM_Inventory_ID(iUse.get_ID());
@@ -122,6 +139,13 @@ public class GenerateInternalUseFromOT extends SvrProcess
 						iLine.setQtyInternalUse(rs.getBigDecimal("ResourceQty"));
 						iLine.setQtyCount(Env.ZERO);
 						iLine.setC_Charge_ID(id_Charge);
+						//se busca ubicación 
+						id_Locator = DB.getSQLValue(get_TrxName(), "SELECT COALESCE(MAX(ml.M_Locator_ID),0)" +
+								" FROM M_Locator ml" +
+								" INNER JOIN M_Storage ms ON (ml.M_Locator_ID = ms.M_Locator_ID)" +
+								" WHERE ms.qtyonhand > 0 AND ml.M_Warehouse_ID = "+warehouse_ID+" AND ms.M_Product_ID ="+rs.getInt("M_Product_ID"));
+						if(id_Locator <=0 && id_LocatorBase >0)
+							id_Locator = id_LocatorBase ;						
 						iLine.setM_Locator_ID(id_Locator);
 						iLine.save();
 						try {

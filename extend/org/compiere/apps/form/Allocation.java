@@ -282,8 +282,12 @@ public class Allocation
 		 WHERE -- i.IsPaid='N' AND i.Processed='Y' AND i.C_BPartner_ID=1000001
 		 */
 		Vector<Vector<Object>> data = new Vector<Vector<Object>>();
-		//ininoles se cambia DateAcct por DueDAte
-		StringBuffer sql = new StringBuffer("SELECT i.DueDate,i.DocumentNo,i.C_Invoice_ID," //  1..3
+		String dateStr = "DueDate";		
+		dateStr = OFBForward.getDateVAllocation();
+		if(dateStr == null || dateStr.trim().length() ==0)
+			dateStr = "DueDate";
+		//ininoles se cambia DateAcct por DueDate
+		StringBuffer sql = new StringBuffer("SELECT i."+"DueDate"+",i.DocumentNo,i.C_Invoice_ID," //  1..3
 			+ "c.ISO_Code,i.GrandTotal*i.MultiplierAP, "                            //  4..5    Orig Currency
 			+ "currencyConvert(i.GrandTotal*i.MultiplierAP,i.C_Currency_ID,?,?,i.C_ConversionType_ID,i.AD_Client_ID,i.AD_Org_ID), " //  6   #1  Converted, #2 Date
 			+ "currencyConvert(invoiceOpen(C_Invoice_ID,C_InvoicePaySchedule_ID),i.C_Currency_ID,?,?,i.C_ConversionType_ID,i.AD_Client_ID,i.AD_Org_ID)*i.MultiplierAP, "  //  7   #3, #4  Converted Open
@@ -297,6 +301,32 @@ public class Allocation
 			+ "WHERE i.IsPaid='N' AND i.Processed='Y'"
 			+ " AND i.DocStatus <> 'VO' " //ininoles no mostrar facturas nulas
 			+ " AND i.C_BPartner_ID=?");                                            //  #7
+		//ININOLES Se sobreescribe sql para usar misma fecha que factura
+		if(OFBForward.AllocationUseDateInvoice())
+		{
+			sql = new StringBuffer("SELECT i.DueDate,i.DocumentNo,i.C_Invoice_ID," //  1..3
+					+ "c.ISO_Code,i.GrandTotal*i.MultiplierAP, "                            //  4..5    Orig Currency
+					+ " CASE WHEN i.multiplyrate > 1 " 
+					+ " 	THEN 1/i.multiplyrate*(i.GrandTotal*i.MultiplierAP) "
+					+ " ELSE  "
+					+ " 	currencyConvert(i.GrandTotal*i.MultiplierAP,i.C_Currency_ID,?,?,i.C_ConversionType_ID,i.AD_Client_ID,i.AD_Org_ID)" 
+					+ " END ," //  6   #1  Converted, #2 Date
+					+ " CASE WHEN i.multiplyrate > 1 " 
+					+ " 	THEN 1/i.multiplyrate*(invoiceOpen(C_Invoice_ID,C_InvoicePaySchedule_ID))*i.MultiplierAP "
+					+ " ELSE  "
+					+ " 	currencyConvert(invoiceOpen(C_Invoice_ID,C_InvoicePaySchedule_ID),i.C_Currency_ID,?,?,i.C_ConversionType_ID,i.AD_Client_ID,i.AD_Org_ID)*i.MultiplierAP "  //  7   #3, #4  Converted Open
+					+ " END,"
+					+ "currencyConvert(invoiceDiscount"                               //  8       AllowedDiscount
+					+ "(i.C_Invoice_ID,?,C_InvoicePaySchedule_ID),i.C_Currency_ID,?,i.DateAcct,i.C_ConversionType_ID,i.AD_Client_ID,i.AD_Org_ID)*i.Multiplier*i.MultiplierAP,"               //  #5, #6
+					+ "i.MultiplierAP, doc.name, " //faaguilar DocumentType 10
+					+ "i.c_invoicepayschedule_id " //ininoles IDcuota 11
+					+ "FROM C_Invoice_v i"		//  corrected for CM/Split
+					+ " INNER JOIN C_Currency c ON (i.C_Currency_ID=c.C_Currency_ID) "
+					+ " INNER JOIN C_DocType doc ON (i.C_Doctype_ID=doc.C_DocType_ID) " //faaguilar DocumentType	
+					+ "WHERE i.IsPaid='N' AND i.Processed='Y'"
+					+ " AND i.DocStatus <> 'VO' " //ininoles no mostrar facturas nulas
+					+ " AND i.C_BPartner_ID=?");  
+		}		
 		if (!isMultiCurrency)
 			sql.append(" AND i.C_Currency_ID=?");                                   //  #8
 		if (m_AD_Org_ID != 0 ) 
@@ -319,7 +349,7 @@ public class Allocation
 			pstmt.setInt(6, m_C_Currency_ID);
 			pstmt.setInt(7, m_C_BPartner_ID);
 			if (!isMultiCurrency)
-				pstmt.setInt(8, m_C_Currency_ID);
+				pstmt.setInt(8, m_C_Currency_ID);			
 			ResultSet rs = pstmt.executeQuery();
 			while (rs.next())
 			{
@@ -681,7 +711,6 @@ public class Allocation
 		{
 			new AdempiereException("Period Closed");
 		}
-
 		/*if(OFBForward.AllocationUseActualDate())
 		{
 			Timestamp Today = new Timestamp(TimeUtil.getToday().getTimeInMillis());
@@ -707,7 +736,12 @@ public class Allocation
 				//  Payment variables
 				int C_Payment_ID = pp.getKey();
 				paymentList.add(new Integer(C_Payment_ID));
-				//
+				//ininoles se reemplaza fecha por fecha de pago
+				if(OFBForward.AllocationUsePayDate())
+				{
+					MPayment pay = new MPayment(Env.getCtx(), C_Payment_ID, null);
+					DateTrx = pay.getDateAcct();
+				}
 				BigDecimal PaymentAmt = (BigDecimal)payment.getValueAt(i, i_payment);  //  Applied Payment
 				amountList.add(PaymentAmt);
 				//

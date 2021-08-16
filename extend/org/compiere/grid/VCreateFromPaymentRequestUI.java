@@ -290,7 +290,8 @@ public class VCreateFromPaymentRequestUI extends CreateFromPaymentRequest implem
 						"i.description,i.C_InvoicePaySchedule_ID, coalesce(pter.name, ' ') as ptername  "+
 						"from c_invoice_v i inner join c_bpartner bp on (i.c_bpartner_id=bp.c_bpartner_id) "+ 
 						" LEFT Join C_PaymentTerm pter ON (i.C_PaymentTerm_ID=pter.C_PaymentTerm_ID) "+        		
-						"where i.issotrx='N' and i.docstatus in ('CO','CL') and ispaid = 'N' and i.ad_client_id="+Env.getAD_Client_ID(Env.getCtx()));
+						" where i.issotrx='N' and i.docstatus in ('CO','CL') and ispaid = 'N' and docbaseType NOT IN ('APC','ARC') " +
+						" and i.ad_client_id="+Env.getAD_Client_ID(Env.getCtx()));
 			}else
 			{
 				sql.append( "select i.c_invoice_id,i.documentno,i.duedate,i.c_bpartner_id,bp.name, "+
@@ -298,8 +299,18 @@ public class VCreateFromPaymentRequestUI extends CreateFromPaymentRequest implem
 					"i.description,i.C_InvoicePaySchedule_ID, nvl(pter.name, ' ') as ptername  "+
 					"from c_invoice_v i inner join c_bpartner bp on (i.c_bpartner_id=bp.c_bpartner_id) "+ 
 					" LEFT Join C_PaymentTerm pter ON (i.C_PaymentTerm_ID=pter.C_PaymentTerm_ID) "+        		
-					"where i.issotrx='N' and i.docstatus in ('CO','CL') and ispaid = 'N' and i.ad_client_id="+Env.getAD_Client_ID(Env.getCtx()));
+					" where i.issotrx='N' and i.docstatus in ('CO','CL') and ispaid = 'N' and docbaseType NOT IN ('APC','ARC') " +
+					" and i.ad_client_id="+Env.getAD_Client_ID(Env.getCtx()));
 			}
+			//ininoles se agrega validacion que no se use 2 veces una factura en documentos en borrador
+			if(OFBForward.usePaymentOncePR())
+			{
+				sql.append(" AND i.C_Invoice_ID NOT IN(SELECT prl2.C_Invoice_ID " +
+						" FROM C_PaymentRequestLine prl2" +
+						" INNER JOIN C_PaymentRequest pr2 ON (prl2.C_PaymentRequest_ID = pr2.C_PaymentRequest_ID)" +
+						" WHERE DocStatus NOT IN ('VO'))");
+			}
+			
 			if(bPartnerLookup.getValue()!=null && (Integer)bPartnerLookup.getValue()>0)
 				sql.append( " And i.c_bpartner_id=" + (Integer)bPartnerLookup.getValue());
 			

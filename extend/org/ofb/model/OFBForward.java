@@ -185,6 +185,21 @@ public class OFBForward {
 		}
 		return ruta;
 	}
+	public static String PathBatIMacroNM()
+	{
+		String ruta = "";
+		try 
+		{
+			ruta = DB.getSQLValueString(null, "Select MAX(Value) from AD_SysConfig where name='OFB_RutaBatImacroNM' ");
+			if(ruta == null)	
+				ruta = "";
+		}
+		catch (Exception e)
+		{
+			ruta = "";
+		}
+		return ruta;
+	}
 	public static String PathDataIMacro()
 	{
 		String ruta = "";
@@ -500,6 +515,21 @@ public class OFBForward {
 		}
 		return ruta;
 	}
+	public static String PathBatIMacroCD4NM()
+	{
+		String ruta = "";
+		try 
+		{
+			ruta = DB.getSQLValueString(null, "Select MAX(Value) from AD_SysConfig where name='OFB_RutaBatImacroCD4NM' ");
+			if(ruta == null)	
+				ruta = "";
+		}
+		catch (Exception e)
+		{
+			ruta = "";
+		}
+		return ruta;
+	}
 	public static String PathFileBCICD4()
 	{
 		String ruta = "";
@@ -683,6 +713,21 @@ public class OFBForward {
 		}
 		return GenerateXML.equals("Y");
 	}
+	public static boolean AllocationUsePayDate()
+	{
+		String GenerateXML = "N";
+		try 
+		{
+			GenerateXML = DB.getSQLValueString(null, "Select Value from AD_SysConfig where name='OFB_AllocationUsePayDate'");
+			if(GenerateXML == null)	
+				GenerateXML = "N";
+		}
+		catch (Exception e)
+		{
+			GenerateXML = "N";
+		}
+		return GenerateXML.equals("Y");
+	}
 	public static boolean ValidationLineOrderRepWindsor()
 	{
 		String validLine = "N";
@@ -727,6 +772,262 @@ public class OFBForward {
 			validLine = "N";
 		}
 		return validLine.equals("Y");
+	}
+	public static boolean UseDocNoVoidTSM()
+	{
+		String validLine = "N";
+		try 
+		{
+			validLine = DB.getSQLValueString(null, "Select Value from AD_SysConfig where name='OFB_UseDocNoVoidTSM'");
+			if(validLine == null)	
+				validLine = "N";
+		}
+		catch (Exception e)
+		{
+			validLine = "N";
+		}
+		return validLine.equals("Y");
+	}
+	public static boolean WarningMultipleAllocation()
+	{
+		String validLine = "N";
+		try 
+		{
+			validLine = DB.getSQLValueString(null, "Select Value from AD_SysConfig where name='OFB_WarningMultipleAllocation'");
+			if(validLine == null)	
+				validLine = "N";
+		}
+		catch (Exception e)
+		{
+			validLine = "N";
+		}
+		return validLine.equals("Y");
+	}
+	public static boolean createFromInvSinceTwoMonth()
+	{
+		String GenerateXML = "N";
+		try 
+		{
+			GenerateXML = DB.getSQLValueString(null, "Select Value from AD_SysConfig where name='OFB_createFromInvSinceTwoMonth'");
+			if(GenerateXML == null)	
+				GenerateXML = "N";
+		}
+		catch (Exception e)
+		{
+			GenerateXML = "N";
+		}
+		return GenerateXML.equals("Y");
+	}
+	public static boolean createFromInvCopySalesRep()
+	{
+		String GenerateXML = "N";
+		try 
+		{
+			GenerateXML = DB.getSQLValueString(null, "Select Value from AD_SysConfig where name='OFB_createFromInvCopySalesRep'");
+			if(GenerateXML == null)	
+				GenerateXML = "N";
+		}
+		catch (Exception e)
+		{
+			GenerateXML = "N";
+		}
+		return GenerateXML.equals("Y");
+	}
+	public static boolean produccionMINA()
+	{
+		String GenerateXML = "N";
+		try 
+		{
+			GenerateXML = DB.getSQLValueString(null, "Select Value from AD_SysConfig where name='OFB_produccionMINA'");
+			if(GenerateXML == null)	
+				GenerateXML = "N";
+		}
+		catch (Exception e)
+		{
+			GenerateXML = "N";
+		}
+		return GenerateXML.equals("Y");
+	}
+	public static String PathFileTSMSAMOA()
+	{
+		String ruta = "";
+		try 
+		{
+			ruta = DB.getSQLValueString(null, "Select MAX(Value) from AD_SysConfig where name='OFB_PathFileTSMSAMOA' ");
+			if(ruta == null)	
+				ruta = "";
+		}
+		catch (Exception e)
+		{
+			ruta = "";
+		}
+		return ruta;
+	}
+	public static String TSMRutaDriversControl()
+	{
+		String ruta = "";
+		try 
+		{
+			ruta = DB.getSQLValueString(null, "Select MAX(Value) from AD_SysConfig where name='OFB_CencosudRutaStock' ");
+			if(ruta == null)	
+				ruta = "";
+		}
+		catch (Exception e)
+		{
+			ruta = "";
+		}
+		return ruta;
+	}
+	
+	public static boolean WindsorUseCashBook()
+	{
+		String validLine = "N";
+		try 
+		{
+			validLine = DB.getSQLValueString(null, "Select Value from AD_SysConfig where name='OFB_WindsorUseCashBook'");
+			if(validLine == null)	
+				validLine = "N";
+		}
+		catch (Exception e)
+		{
+			validLine = "N";
+		}
+		return validLine.equals("Y");
+	}
+	public static boolean NoUpdateCreditWindsor()
+	{
+		String cadena = "N";
+		try 
+		{
+			cadena = DB.getSQLValueString(null, "Select Value from AD_SysConfig where name='OFB_NoUpdateCreditWindsor'");
+			if(cadena == null)	
+				cadena = "N";
+		}
+		catch (Exception e)
+		{
+			cadena = "N";
+		}
+		return cadena.equals("Y");
+	}
+	public static boolean AllocationUseDateInvoice()
+	{
+		String cadena = "N";
+		try 
+		{
+			cadena = DB.getSQLValueString(null, "Select Value from AD_SysConfig where name='OFB_AllocationUseDateInvoice'");
+			if(cadena == null)	
+				cadena = "N";
+		}
+		catch (Exception e)
+		{
+			cadena = "N";
+		}
+		return cadena.equals("Y");
+	}
+	public static boolean usePaymentOncePR()
+	{
+		String cadena = "N";
+		try 
+		{
+			cadena = DB.getSQLValueString(null, "Select Value from AD_SysConfig where name='OFB_usePaymentOncePR'");
+			if(cadena == null)	
+				cadena = "N";
+		}
+		catch (Exception e)
+		{
+			cadena = "N";
+		}
+		return cadena.equals("Y");
+	}
+	public static String getDateVAllocation()
+	{
+		String cadena = "DueDate";
+		try 
+		{
+			cadena = DB.getSQLValueString(null, "Select Value from AD_SysConfig where name='OFB_getDateVAllocation'");
+			if(cadena == null)	
+				cadena = "DueDate";
+		}
+		catch (Exception e)
+		{
+			cadena = "DueDate";
+		}
+		return cadena;
+	}
+	public static boolean NoValidateStockShipment()
+	{
+		String validLine = "N";
+		try 
+		{
+			validLine = DB.getSQLValueString(null, "Select Value from AD_SysConfig where name='OFB_NoValidateStockShipment'");
+			if(validLine == null)	
+				validLine = "N";
+		}
+		catch (Exception e)
+		{
+			validLine = "N";
+		}
+		return validLine.equals("Y");
+	}
+	public static boolean NoValidateOrderShipment()
+	{
+		String cadena = "N";
+		try 
+		{
+			cadena = DB.getSQLValueString(null, "Select Value from AD_SysConfig where name='OFB_NoValidateOrderShipment'");
+			if(cadena == null)	
+				cadena = "N";
+		}
+		catch (Exception e)
+		{
+			cadena = "N";
+		}
+		return cadena.equals("Y");
+	}
+	public static boolean UseRequisitionECommerce()
+	{
+		String cadena = "N";
+		try 
+		{
+			cadena = DB.getSQLValueString(null, "Select Value from AD_SysConfig where name='OFB_UseRequisitionECommerce'");
+			if(cadena == null)	
+				cadena = "N";
+		}
+		catch (Exception e)
+		{
+			cadena = "N";
+		}
+		return cadena.equals("Y");
+	}
+	public static boolean NoValidationReqNoLine()
+	{
+		String cadena = "N";
+		try 
+		{
+			cadena = DB.getSQLValueString(null, "Select Value from AD_SysConfig where name='OFB_NoValidationReqNoLine'");
+			if(cadena == null)	
+				cadena = "N";
+		}
+		catch (Exception e)
+		{
+			cadena = "N";
+		}
+		return cadena.equals("Y");
+	}
+	public static boolean ValidStockMaterialReq()
+	{
+		String GenerateXML = "N";
+		try 
+		{
+			GenerateXML = DB.getSQLValueString(null, "Select Value from AD_SysConfig where name='OFB_ValidStockMaterialReq'");
+			if(GenerateXML == null)	
+				GenerateXML = "N";
+		}
+		catch (Exception e)
+		{
+			GenerateXML = "N";
+		}
+		return GenerateXML.equals("Y");
 	}
 }
 

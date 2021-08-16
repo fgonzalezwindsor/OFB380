@@ -715,7 +715,7 @@ public class VMPGenerateOT extends CPanel
 	
 	public boolean createOTTaskDetail(int MP_ID, X_MP_OT OT,int MPD_ID){
 		
-		String sql = "select * from MP_MAINTAIN_TASK where MP_MAINTAIN_ID=?";
+		String sql = "select * from MP_MAINTAIN_TASK where MP_MAINTAIN_ID=? ORDER BY Line ASC ";//ininoles se agrega order by line 18-03-2018
 		PreparedStatement pstmt = null;
 		try
 		{
@@ -728,10 +728,13 @@ public class VMPGenerateOT extends CPanel
 				ta.set_CustomColumn("MP_MaintainDetail_ID", MPD_ID);
 				ta.setAD_Org_ID(rs.getInt("AD_Org_ID"));
 				ta.setMP_OT_ID(OT.getMP_OT_ID());
-				ta.setDescription(rs.getString("Description"));
+				ta.setDescription(rs.getString("Description")+"-.");
 				ta.setDuration(rs.getBigDecimal("Duration"));
 				ta.setC_UOM_ID(rs.getInt("C_UOM_ID"));
 				ta.setStatus(X_MP_OT_Task.STATUS_NotStarted);
+				//ininoles se setea campo line 18-03-2018
+				log.config("se setea la linea start");
+				ta.set_CustomColumn("Line", rs.getInt("Line"));
 				ta.saveEx();
 				
 				createOTResourceDetail(rs.getInt("MP_MAINTAIN_TASK_ID"),ta.getMP_OT_Task_ID());

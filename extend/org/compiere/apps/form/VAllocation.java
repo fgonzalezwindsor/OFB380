@@ -50,9 +50,11 @@ import org.compiere.swing.CPanel;
 import org.compiere.swing.CTextField;
 import org.compiere.util.DisplayType;
 import org.compiere.util.Env;
+import org.compiere.util.KeyNamePair;
 import org.compiere.util.Msg;
 import org.compiere.util.Trx;
 import org.compiere.util.TrxRunnable;
+import org.ofb.model.OFBForward;
 
 public class VAllocation extends Allocation
 	implements FormPanel, ActionListener, TableModelListener, VetoableChangeListener
@@ -182,18 +184,22 @@ public class VAllocation extends Allocation
 			,GridBagConstraints.EAST, GridBagConstraints.NONE, new Insets(5, 5, 5, 5), 0, 0));
 		parameterPanel.add(bpartnerSearch, new GridBagConstraints(1, 0, 1, 1, 0.0, 0.0
 			,GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(5, 0, 5, 5), 0, 0));
+		
 		parameterPanel.add(dateLabel, new GridBagConstraints(2, 0, 1, 1, 0.0, 0.0
 			,GridBagConstraints.EAST, GridBagConstraints.NONE, new Insets(5, 5, 5, 5), 0, 0));
 		parameterPanel.add(dateField, new GridBagConstraints(3, 0, 1, 1, 0.0, 0.0
 			,GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(5, 0, 5, 5), 0, 0));
+		
 		parameterPanel.add(currencyLabel, new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0
 			,GridBagConstraints.EAST, GridBagConstraints.NONE, new Insets(5, 5, 5, 5), 0, 0));
 		parameterPanel.add(currencyPick, new GridBagConstraints(1, 1, 1, 1, 0.0, 0.0
 			,GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(5, 0, 5, 5), 0, 0));
+		
 		parameterPanel.add(multiCurrency, new GridBagConstraints(3, 1, 1, 1, 0.0, 0.0
 			,GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(5, 0, 5, 5), 0, 0));
 		parameterPanel.add(autoWriteOff, new GridBagConstraints(1, 2, 1, 1, 0.0, 0.0
 			,GridBagConstraints.WEST, GridBagConstraints.NONE, new Insets(5, 5, 5, 5), 0, 0));
+		
 		mainPanel.add(allocationPanel, BorderLayout.SOUTH);
 		allocationPanel.add(differenceLabel, new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0
 			,GridBagConstraints.EAST, GridBagConstraints.NONE, new Insets(5, 5, 5, 0), 0, 0));
@@ -284,10 +290,47 @@ public class VAllocation extends Allocation
 		//	Allocate
 		else if (e.getSource().equals(allocateButton))
 		{
-			allocateButton.setEnabled(false);
-			saveData();
-			loadBPartner();
-			allocateButton.setEnabled(true);
+			//ininoles validacion de error si hay mas de 1 pago o factura seleccionada.
+			if(OFBForward.WarningMultipleAllocation())
+			{
+				int rows = paymentTable.getRowCount();
+				int no_Payments = 0;
+				for (int i = 0; i < rows; i++)
+				{
+					if (((Boolean)paymentTable.getValueAt(i, 0)).booleanValue())
+					{
+						no_Payments++;
+					}
+				}
+				int rowsI = invoiceTable.getRowCount();
+				int no_Invoices = 0;
+				for (int i = 0; i < rowsI; i++)
+				{
+					if (((Boolean)invoiceTable.getValueAt(i, 0)).booleanValue())
+					{
+						no_Invoices++;
+					}
+				}
+				if(no_Payments > 1 || no_Invoices > 1)
+				{
+					ADialog.warn(m_WindowNo, panel, "ERROR: Mas de 1 pago seleccionado");
+				}
+				else
+				{
+					allocateButton.setEnabled(false);
+					saveData();
+					loadBPartner();
+					allocateButton.setEnabled(true);
+				}
+			}
+			else
+			{
+				//ininoles end
+				allocateButton.setEnabled(false);
+				saveData();
+				loadBPartner();
+				allocateButton.setEnabled(true);
+			}
 		}
 	}   //  actionPerformed
 

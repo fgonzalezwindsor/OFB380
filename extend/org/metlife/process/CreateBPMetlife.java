@@ -864,7 +864,8 @@ implements ImportProcess
 		int InterestArea2_ID = 0; //int InterestAreaValue2_ID = 0;
 		int InterestArea3_ID = 0; //int InterestAreaValue3_ID = 0;
 		//selecciona las etiquetas de una campaña unidas con las etiquetas obligatorias.
-		String sqlEtiquetas = "SELECT ci.R_InterestArea_ID, COALESCE(MAX(ci.R_InterestAreaValues_ID),0) as R_InterestAreaValues_ID "+
+		String sqlEtiquetas = "SELECT ci.R_InterestArea_ID, " +
+				"COALESCE(MAX(ci.R_InterestAreaValues_ID),0) as R_InterestAreaValues_ID "+
 				"FROM C_Campaign cc INNER JOIN R_CampaignInterest ci ON (cc.C_Campaign_ID = ci.C_Campaign_ID) "+
 				"WHERE cc.C_Campaign_ID=? AND ci.R_InterestArea_ID <> ? GROUP BY ci.R_InterestArea_ID "+ 
 				"UNION SELECT R_InterestArea_ID, 0 FROM R_InterestArea WHERE IsFilter = 'Y' ";

@@ -16,34 +16,18 @@
  *****************************************************************************/
 package org.ofb.model;
 
-import java.math.BigDecimal;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.util.logging.Level;
-
-import javax.swing.JOptionPane;
-
 import org.compiere.model.MClient;
 import org.compiere.model.MInvoice;
-import org.compiere.model.MProject;
 import org.compiere.model.ModelValidationEngine;
 import org.compiere.model.ModelValidator;
 import org.compiere.model.PO;
-import org.compiere.model.X_C_PaymentRequest;
-import org.compiere.model.X_C_PaymentRequestLine;
-import org.compiere.model.X_DM_Document;
-import org.compiere.model.X_DM_DocumentLine;
-import org.compiere.model.X_MP_AssetMeter_Log;
 import org.compiere.util.CLogger;
 import org.compiere.util.DB;
-import org.compiere.util.Env;
-import org.compiere.model.MProduct;
-
 
 /**
- *	Validator for company Sismode
+ *	Validator for company blumos
  *
- *  @author Julio Farias
+ *  @author italo niñoles
  */
 public class ModelOFBBlumosCAP implements ModelValidator
 {
@@ -98,15 +82,21 @@ public class ModelOFBBlumosCAP implements ModelValidator
 			
 			if (inv.isSOTrx())// solo facturas de ventas
 			{		
-				String sqlUT = "UPDATE C_InvoiceTax cit SET TaxAmt = round((round(TaxBaseAmt)* "+
+				/*String sqlUT = "UPDATE C_InvoiceTax cit SET TaxAmt = round((round(TaxBaseAmt)* "+
 					"(select Rate From C_Tax ct  where ct.C_Tax_ID = cit.C_Tax_ID))/100) "+ 
+					"where C_Invoice_ID=? ";*/
+				String sqlUT = "UPDATE C_InvoiceTax cit SET TaxAmt = COALESCE(round((round(TaxBaseAmt)* "+
+					"(select Rate From C_Tax ct  where ct.C_Tax_ID = cit.C_Tax_ID))/100),0) "+ 
 					"where C_Invoice_ID=? "; 
 			
 				DB.executeUpdate(sqlUT, inv.get_ID(), po.get_TrxName());
 			
-				String sqlUpdateCab = "UPDATE C_Invoice ci SET GrandTotal = Totallines + "+ 
+				/*String sqlUpdateCab = "UPDATE C_Invoice ci SET GrandTotal = Totallines + "+ 
 					"(SELECT SUM(TaxAmt) FROM C_InvoiceTax cit WHERE cit.C_Invoice_ID=ci.C_Invoice_ID) "+
-					"where C_Invoice_ID = ? ";
+					"where C_Invoice_ID = ? ";*/
+				String sqlUpdateCab = "UPDATE C_Invoice ci SET GrandTotal = COALESCE(Totallines + "+ 
+					" COALESCE((SELECT SUM(TaxAmt) FROM C_InvoiceTax cit WHERE cit.C_Invoice_ID=ci.C_Invoice_ID),0),0) "+
+					" where C_Invoice_ID = ? ";
 			
 				DB.executeUpdate(sqlUpdateCab, inv.get_ID(), po.get_TrxName());
 			}			

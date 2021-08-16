@@ -144,12 +144,12 @@ public class Doc_Inventory extends Doc
 		
 		ArrayList<Fact> facts = new ArrayList<Fact>();
 		
-		//faaguilar OFB validation not post begin ininoles
+		//faaguilar OFB validation not post begin
 	    	MInventory doc = (MInventory)getPO();
 	    	MDocType type = MDocType.get(getCtx(),  doc.getC_DocType_ID());
 	    	if(!type.get_ValueAsBoolean("Posted"))
 	    		return facts;
-//		END faaguilar validation not post end ininoles
+	    //	END faaguilar validation not post end 
 
 		//  Line pointers
 		FactLine dr = null;

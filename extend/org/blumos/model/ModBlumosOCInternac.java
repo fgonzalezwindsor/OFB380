@@ -67,18 +67,21 @@ public class ModBlumosOCInternac implements ModelValidator
 			{
 				if(order.getC_DocTypeTarget_ID() == 1000052 || order.getAD_Client_ID() == 1000012)
 					order.set_CustomColumn("Description2", "The buyer will not accept products whose " +
-							"remaining shelf life is less than 75% of that indicated on the Certificate of " +
-							"Analysis, and/or products that belong to more than one production batch.  " +
-							"All packing made of wood , including dunnage, should be treated according to " +
-							"ISPM 15 from FAO and marked as such in accordance with Annex II of said guideline.  " +
+							"remaining shelf life is less than 75% of that indicated on the Certificate of Analysis, " +
+							"or products that belong to more than one production batch, or products with manufacture " +
+							"date earlier than that of a previously sent batch. All packing made of wood, " +
+							"including dunnage, should be treated according to ISPM 15 from FAO and marked as such " +
+							"in accordance with Annex II of said guideline.  Additionaly, in compliance with our " +
+							"local regulations, all packages should weigh 20 kilograms or less. " +
 							"This International Purchase Order is computer generated, thus no signature is required.");
 				else
-					order.set_CustomColumn("Description2","The buyer will not accept products whose " +
-							"remaining shelf life is less than 75% of that indicated on the Certificate of " +
-							"Analysis, and/or products that belong to more than one production batch.  " +
-							"All packing made of wood , including dunnage, should be treated according to " +
-							"ISPM 15 from FAO and marked as such in accordance with Annex II of said guideline.  " +
-							"This International Purchase Order is computer generated, thus no signature is required.");
+					order.set_CustomColumn("Description2","El comprador no aceptará productos con vida útil menor " +
+							"al 75% de lo indicado en el Certificado de Análisis, o productos que pertenezcan a más de " +
+							"un lote de producción, o productos con fecha de manufactura menor a la de un lote " +
+							"previamente enviado. Todo el embalaje de madera, incluso el material de estiba, debe " +
+							"ser tratado de acuerdo con las normas de ISPM 15 de la FAO y estar marcado según el " +
+							"Anexo II de la mencionada directriz. Adicionalmente, para cumplir con regulación local, " +
+							"ningún envase debe de exceder los 20 kilogramos.");
 			}			
 		}
 		return null;
