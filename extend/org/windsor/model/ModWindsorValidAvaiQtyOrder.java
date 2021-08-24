@@ -125,7 +125,7 @@ public class ModWindsorValidAvaiQtyOrder implements ModelValidator
 								if(rLine.getParent().get_ValueAsInt("C_Bpartner_Location_ID") != order.getC_BPartner_Location_ID())
 								{
 									if(!rLine.getParent().get_ValueAsBoolean("OverWriteRequisition"))
-										return "Error: Solicitud no es de distribución. <LC: 128>";
+										return "Error: Solicitud no es de distribucion. <LC: 128>";
 								}
 							}
 							//validaciones para ecomerce
@@ -535,7 +535,7 @@ public class ModWindsorValidAvaiQtyOrder implements ModelValidator
 			if(order.isSOTrx() && order.getC_DocTypeTarget().getDocSubTypeSO().compareTo("RM") == 0)
 			{
 				if(oLine.get_ValueAsInt("M_RequisitionLine_ID") > 0)
-					return "ERROR. Linea de devolución NO debe tener solicitud asociada <LC: 368>";
+					return "ERROR. Linea de devolucion NO debe tener solicitud asociada <LC: 368>";
 			}
 		}
 		

@@ -258,7 +258,8 @@ public class MRequisitionLine extends X_M_RequisitionLine
 	 */
 	protected boolean beforeSave (boolean newRecord)
 	{
-		if (newRecord && getParent().isComplete()) {
+		m_parent = new MRequisition (getCtx(), getM_Requisition_ID(), get_TrxName());
+		if (newRecord && getParent().isComplete() && m_parent.getC_DocType_ID()!=1000569) {
 			log.saveError("ParentComplete", Msg.translate(getCtx(), "M_RequisitionLine"));
 			return false;
 		}
